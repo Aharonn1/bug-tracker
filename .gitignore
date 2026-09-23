@@ -3,6 +3,8 @@ backend/bin/
 backend/obj/
 backend/publish-output/
 backend/*.db
+backend.Tests/bin/
+backend.Tests/obj/
 *.user
 
 # Node / Vite

@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'backend.Tests/**'
       - '.github/workflows/backend-deploy.yml'
   pull_request:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'backend.Tests/**'
 
 env:
   AZURE_WEBAPP_NAME: bugtracker-api-aharon
@@ -32,6 +34,10 @@ jobs:
 
       - name: Build
         run: dotnet build --no-restore -c Release
+        working-directory: backend
+
+      - name: Test
+        run: dotnet test ../backend.Tests/MyBackendApi.Tests.csproj -c Release
         working-directory: backend
 
       - name: Publish
