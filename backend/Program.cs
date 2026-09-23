@@ -59,6 +59,12 @@ builder.Services.AddDbContext<AppDbContext>(options =>
             maxRetryDelay: TimeSpan.FromSeconds(30),
             errorNumbersToAdd: null)));
 
+// בדיקת בריאות שכוללת גם חיבור בפועל ל-DB - Azure App Service (feature חינמי בכל
+// ה-tiers) יכול לבדוק נתיב זה תדיר ולהחליף אוטומטית instance תקוע, בלי שנצטרך
+// לגלות ידנית שקרה crash loop כמו שקרה לנו היום
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>();
+
 // ==========================================
 // 4. שכבת שירותי הליבה (Core Services & Interfaces)
 // ==========================================
@@ -113,6 +119,7 @@ app.UseCors("AllowReactApp");
 
 app.UseAuthorization();
 
+app.MapHealthChecks("/health");
 app.MapControllers();
 
 app.Run();
