@@ -1,5 +1,5 @@
 import type { CreateIncidentDto, SystemIncident } from "../types/bug.types";
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, tenantHeaders } from '../config';
 
 const BASE_URL = `${API_BASE_URL}/api/Incidents`;
 
@@ -11,7 +11,7 @@ export const incidentService = {
 
     const url = params.toString() ? `${BASE_URL}?${params.toString()}` : BASE_URL;
     const res = await fetch(url, {
-      headers: { 'Accept': 'application/json' }
+      headers: tenantHeaders({ 'Accept': 'application/json' })
     });
 
     if (!res.ok) throw new Error(`שגיאה בטעינת אירועי מערכת (${res.status})`);
@@ -20,7 +20,7 @@ export const incidentService = {
 
   async getById(id: number): Promise<SystemIncident> {
     const res = await fetch(`${BASE_URL}/${id}`, {
-      headers: { 'Accept': 'application/json' }
+      headers: tenantHeaders({ 'Accept': 'application/json' })
     });
 
     if (!res.ok) throw new Error(`אירוע #${id} לא נמצא (${res.status})`);
@@ -30,10 +30,10 @@ export const incidentService = {
   async create(dto: CreateIncidentDto): Promise<{ message: string }> {
     const res = await fetch(`${BASE_URL}/ingest`, {
       method: 'POST',
-      headers: {
+      headers: tenantHeaders({
         'Content-Type': 'application/json',
         'Accept': 'application/json'
-      },
+      }),
       body: JSON.stringify(dto),
     });
 
@@ -48,7 +48,7 @@ export const incidentService = {
   async resolve(id: number): Promise<void> {
     const res = await fetch(`${BASE_URL}/${id}/resolve`, {
       method: 'PATCH',
-      headers: { 'Accept': 'application/json' }
+      headers: tenantHeaders({ 'Accept': 'application/json' })
     });
 
     if (!res.ok) {
@@ -66,7 +66,7 @@ export const incidentService = {
   }> {
     const res = await fetch(`${BASE_URL}/${id}/diagnose-agent`, {
       method: 'POST',
-      headers: { 'Accept': 'application/json' }
+      headers: tenantHeaders({ 'Accept': 'application/json' })
     });
 
     if (!res.ok) {

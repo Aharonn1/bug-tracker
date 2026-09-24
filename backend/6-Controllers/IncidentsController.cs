@@ -3,6 +3,7 @@ using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Responses;
 using MyBackendApi.Services.Interfaces;
 using MyBackendApi.Services.Queues;
+using MyBackendApi.Services.Tenancy;
 
 namespace MyBackendApi.Controllers;
 
@@ -11,7 +12,8 @@ namespace MyBackendApi.Controllers;
 public class IncidentsController(
     IIncidentService incidentService,
     IncidentChannelQueue queue,
-    IRcaAgentService rcaAgentService) : ControllerBase
+    IRcaAgentService rcaAgentService,
+    ICurrentTenantProvider tenantProvider) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<IncidentResponseDto>), StatusCodes.Status200OK)]
@@ -45,8 +47,13 @@ public class IncidentsController(
         [FromBody] CreateIncidentDto dto,
         CancellationToken ct)
     {
+        // מחליפים כאן (בזמן שיש עדיין HttpContext) את ה-TenantId שהלקוח שלח בגוף
+        // הבקשה בזה שמזוהה מה-header המהימן - כך שה-Worker שמעבד את התור מאוחר
+        // יותר (בלי HttpContext משלו) יקבל כבר ערך מהימן ולא צריך "לנחש" מי הלקוח
+        var trustedDto = dto with { TenantId = tenantProvider.TenantId };
+
         // כתיבה לערוץ זיכרון מהיר ללא חסימת ה-HTTP Pipeline
-        await queue.QueueIncidentAsync(dto, ct);
+        await queue.QueueIncidentAsync(trustedDto, ct);
         return Accepted(new { message = "Incident queued for processing and automated RCA." });
     }
 

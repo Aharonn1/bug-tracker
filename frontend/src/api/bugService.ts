@@ -1,7 +1,7 @@
 import type { BugReport, CreateBugDto } from '../types/bug.types';
 import { BugStatus } from '../types/bug.types';
 
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, tenantHeaders } from '../config';
 
 const BASE_URL = `${API_BASE_URL}/api/Bugs`;
 
@@ -12,9 +12,9 @@ export const bugService = {
       : BASE_URL;
 
     const res = await fetch(url, {
-      headers: {
+      headers: tenantHeaders({
         'Accept': 'application/json'
-      }
+      })
     });
 
     if (!res.ok) {
@@ -26,9 +26,9 @@ export const bugService = {
 
   async getById(id: number): Promise<BugReport> {
     const res = await fetch(`${BASE_URL}/${id}`, {
-      headers: {
+      headers: tenantHeaders({
         'Accept': 'application/json'
-      }
+      })
     });
 
     if (!res.ok) {
@@ -41,10 +41,10 @@ export const bugService = {
   async create(dto: CreateBugDto): Promise<BugReport> {
     const res = await fetch(BASE_URL, {
       method: 'POST',
-      headers: { 
+      headers: tenantHeaders({
         'Content-Type': 'application/json',
         'Accept': 'application/json'
-      },
+      }),
       body: JSON.stringify(dto),
     });
 
@@ -59,10 +59,10 @@ export const bugService = {
   async updateStatus(id: number, status: BugStatus): Promise<BugReport> {
     const res = await fetch(`${BASE_URL}/${id}/status`, {
       method: 'PATCH',
-      headers: { 
+      headers: tenantHeaders({
         'Content-Type': 'application/json',
         'Accept': 'application/json'
-      },
+      }),
       body: JSON.stringify({ status }),
     });
 
@@ -77,6 +77,7 @@ export const bugService = {
   async delete(id: number): Promise<void> {
     const res = await fetch(`${BASE_URL}/${id}`, {
       method: 'DELETE',
+      headers: tenantHeaders(),
     });
 
     if (!res.ok) {

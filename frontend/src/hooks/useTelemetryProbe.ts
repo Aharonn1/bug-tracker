@@ -1,9 +1,8 @@
 import { useState, useCallback } from 'react';
 import { telemetryService } from '../api/telemetryService';
 import type { ClientTelemetryProbeDto, TelemetryDiagnosticReport } from '../types/telemetry.types';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, TENANT_ID, tenantHeaders } from '../config';
 
-const TENANT_ID = 'default-tenant';
 const LATENCY_PING_URL = `${API_BASE_URL}/api/Bugs`;
 const PING_ATTEMPTS = 15;
 const PING_TIMEOUT_MS = 4000;
@@ -25,7 +24,7 @@ async function pingOnce(): Promise<number | null> {
     await fetch(LATENCY_PING_URL, {
       method: 'GET',
       cache: 'no-store',
-      headers: { Accept: 'application/json' },
+      headers: tenantHeaders({ Accept: 'application/json' }),
       signal: controller.signal,
     });
     return performance.now() - start;

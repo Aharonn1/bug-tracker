@@ -9,6 +9,7 @@ using MyBackendApi.Services.Deduplication;
 using MyBackendApi.Services.Interfaces;
 using MyBackendApi.Services.Plugins;
 using MyBackendApi.Services.Queues;
+using MyBackendApi.Services.Tenancy;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -72,6 +73,11 @@ builder.Services.AddScoped<IBugService, BugService>();
 builder.Services.AddScoped<IIncidentService, IncidentService>();
 builder.Services.AddScoped<TelemetryAnalysisService>();
 builder.Services.AddSingleton<OpsInsightsService>();
+
+// זיהוי הלקוח (Tenant) הנוכחי מתוך ה-header של הבקשה - נדרש עבור ה-Global Query
+// Filter ב-AppDbContext שמבדיל בין לקוחות שונים
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentTenantProvider, HttpContextTenantProvider>();
 
 // ==========================================
 // 5. תשתית High-Throughput Ingestion & Deduplication

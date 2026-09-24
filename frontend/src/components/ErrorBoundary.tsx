@@ -1,7 +1,6 @@
 import React from 'react';
 import { incidentService } from '../api/incidentService';
-
-const TENANT_ID = 'default-tenant';
+import { TENANT_ID } from '../config';
 
 interface Props {
   children: React.ReactNode;

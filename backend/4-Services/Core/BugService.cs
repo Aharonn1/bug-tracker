@@ -37,7 +37,9 @@ public class BugService(AppDbContext context) : IBugService
     {
         var bug = new BugReport
         {
-            TenantId = dto.TenantId,
+            // ה-TenantId נלקח מהמשתמש המזוהה בבקשה (Global Query Filter), לא מגוף
+            // הבקשה עצמו - אחרת לקוח יכול "לכתוב" רשומה תחת TenantId של מישהו אחר
+            TenantId = context.CurrentTenantId,
             Title = dto.Title,
             Description = dto.Description,
             SystemModule = dto.SystemModule,
@@ -53,7 +55,9 @@ public class BugService(AppDbContext context) : IBugService
 
     public async Task<bool> DeleteBugAsync(int id, CancellationToken cancellationToken = default)
     {
-        var bug = await context.BugReports.FindAsync([id], cancellationToken);
+        // שאילתת Where מפורשת (ולא FindAsync) כדי להבטיח שה-Global Query Filter
+        // של ה-Tenant מוחל - כך באג של לקוח אחר לא ניתן למחיקה
+        var bug = await context.BugReports.FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
         if (bug is null) return false;
 
         context.BugReports.Remove(bug);

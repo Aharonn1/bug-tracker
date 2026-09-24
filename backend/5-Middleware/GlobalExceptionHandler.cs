@@ -19,6 +19,7 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
         var (statusCode, title) = exception switch
         {
             BaseNotFoundException => (HttpStatusCode.NotFound, "המשאב המבוקש לא נמצא"),
+            MissingTenantException => (HttpStatusCode.BadRequest, "חסר מזהה לקוח בבקשה"),
             AiServiceUnavailableException => (HttpStatusCode.ServiceUnavailable, "שירות ה-AI החיצוני אינו זמין כרגע"),
             DbUpdateConcurrencyException => (HttpStatusCode.Conflict, "התקלה עודכנה בינתיים על ידי משתמש אחר"),
             ArgumentException => (HttpStatusCode.BadRequest, "קלט לא תקין בבקשה"),

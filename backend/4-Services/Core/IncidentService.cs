@@ -53,6 +53,9 @@ public class IncidentService(AppDbContext context) : IIncidentService
     {
         var incident = new SystemErrorIncident
         {
+            // הערה: dto.TenantId כבר "הוחלף" ב-Controller בזמן שהיה HttpContext
+            // זמין (לפני שנכנס לתור) בערך המהימן מה-header - כאן, בתוך ה-Background
+            // Worker, אין HttpContext, ולכן לא ניתן להשתמש ב-context.CurrentTenantId
             TenantId = dto.TenantId,
             ErrorCode = dto.ErrorCode,
             ErrorMessage = dto.ErrorMessage,
@@ -80,7 +83,10 @@ public class IncidentService(AppDbContext context) : IIncidentService
 
     public async Task MarkAsResolvedAsync(long id, CancellationToken ct = default)
     {
-        var incident = await context.SystemErrorIncidents.FindAsync([id], ct);
+        // שאילתת Where מפורשת (ולא FindAsync) כדי להבטיח שה-Global Query Filter
+        // של ה-Tenant מוחל - כך תקרית של לקוח אחר תיחשב "לא נמצאה" ולא ניתנת לעדכון
+        var incident = await context.SystemErrorIncidents
+            .FirstOrDefaultAsync(i => i.IncidentId == id, ct);
         if (incident is null) throw new IncidentNotFoundException(id);
 
         incident.IsResolved = true;
