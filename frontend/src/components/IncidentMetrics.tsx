@@ -1,5 +1,5 @@
 import React from 'react';
-import type { SystemIncident } from '../types/bug.types';
+import { IncidentSeverity, type SystemIncident } from '../types/bug.types';
 
 interface Props {
   incidents: SystemIncident[];
@@ -7,7 +7,7 @@ interface Props {
 
 export const IncidentMetrics: React.FC<Props> = ({ incidents }) => {
   const totalOpen = incidents.filter(i => !i.isResolved).length;
-  const criticalCount = incidents.filter(i => i.severityLevel === 3 && !i.isResolved).length;
+  const criticalCount = incidents.filter(i => i.severity === IncidentSeverity.Critical && !i.isResolved).length;
   const netMishpatCount = incidents.filter(i => i.subsystem === 'NetHaMishpat').length;
   const ecaCount = incidents.filter(i => i.subsystem === 'EcaGov').length;
 
@@ -30,7 +30,7 @@ export const IncidentMetrics: React.FC<Props> = ({ incidents }) => {
         <strong style={{ fontSize: '26px', color: totalOpen > 0 ? '#f87171' : '#4ade80' }}>{totalOpen}</strong>
       </div>
       <div style={cardStyle}>
-        <span style={{ fontSize: '13px', color: '#94a3b8' }}>אירועים קריטיים (Level 3)</span>
+        <span style={{ fontSize: '13px', color: '#94a3b8' }}>אירועים קריטיים (Level 4)</span>
         <strong style={{ fontSize: '26px', color: criticalCount > 0 ? '#ef4444' : '#94a3b8' }}>{criticalCount}</strong>
       </div>
       <div style={cardStyle}>

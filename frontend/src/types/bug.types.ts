@@ -1,9 +1,11 @@
 
+// הערכים תואמים בכוונה ל-enum IncidentSeverity בבקאנד (byte, מתחיל מ-1) - ה-DTO
+// שנשלח ליצירת באג נשמר תחת אותו enum בפועל
 export const BugPriority = {
-  Low: 0,
-  Medium: 1,
-  High: 2,
-  Critical: 3,
+  Low: 1,
+  Medium: 2,
+  High: 3,
+  Critical: 4,
 } as const;
 
 export type BugPriority = (typeof BugPriority)[keyof typeof BugPriority];
@@ -39,11 +41,12 @@ export interface CreateBugDto {
   priority: BugPriority;
 }
 
+// תואם ל-enum IncidentSeverity בבקאנד - ראו הערה מעל BugPriority
 export const IncidentSeverity = {
-  Info: 0,
-  Warning: 1,
-  Error: 2,
-  Critical: 3,
+  Low: 1,
+  Medium: 2,
+  High: 3,
+  Critical: 4,
 } as const;
 
 export type IncidentSeverity = (typeof IncidentSeverity)[keyof typeof IncidentSeverity];
@@ -63,7 +66,7 @@ export interface SystemIncident {
   errorCode: string;
   category: string;
   subsystem: SubsystemType | string;
-  severityLevel: IncidentSeverity;
+  severity: IncidentSeverity;
   hebrewDescription: string;
   caseNumber: string | null;
   externalReferenceId: string | null;

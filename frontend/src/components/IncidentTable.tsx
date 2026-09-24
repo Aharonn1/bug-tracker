@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { incidentService } from '../api/incidentService';
 import { AgentDiagnosisModal } from './AgentDiagnosisModal';
-import type { SystemIncident } from '../types/bug.types';
+import { IncidentSeverity, type SystemIncident } from '../types/bug.types';
 
 interface Props {
   incidents: SystemIncident[];
@@ -32,12 +32,14 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
 
   const getSeverityBadge = (level: number) => {
     switch (level) {
-      case 3:
-        return <span style={{ background: '#7f1d1d', color: '#fca5a5', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>קריטי (3)</span>;
-      case 2:
-        return <span style={{ background: '#78350f', color: '#fde047', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>גבוה (2)</span>;
+      case IncidentSeverity.Critical:
+        return <span style={{ background: '#7f1d1d', color: '#fca5a5', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>קריטי (4)</span>;
+      case IncidentSeverity.High:
+        return <span style={{ background: '#78350f', color: '#fde047', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>גבוה (3)</span>;
+      case IncidentSeverity.Medium:
+        return <span style={{ background: '#1e3a8a', color: '#93c5fd', padding: '3px 8px', borderRadius: '4px', fontSize: '11px' }}>בינוני (2)</span>;
       default:
-        return <span style={{ background: '#1e3a8a', color: '#93c5fd', padding: '3px 8px', borderRadius: '4px', fontSize: '11px' }}>בינוני (1)</span>;
+        return <span style={{ background: '#1e293b', color: '#94a3b8', padding: '3px 8px', borderRadius: '4px', fontSize: '11px' }}>נמוך (1)</span>;
     }
   };
 
@@ -71,7 +73,7 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                 return (
                   <tr key={i.incidentId} style={{ borderBottom: '1px solid #1e293b', background: resolved ? 'rgba(15, 23, 42, 0.4)' : '#131f37' }}>
                     <td style={{ padding: '12px', fontFamily: 'monospace' }}>#{i.incidentId}</td>
-                    <td style={{ padding: '12px' }}>{getSeverityBadge(i.severityLevel)}</td>
+                    <td style={{ padding: '12px' }}>{getSeverityBadge(i.severity)}</td>
                     <td style={{ padding: '12px', fontWeight: 'bold', color: '#38bdf8' }}>{i.subsystem}</td>
                     <td style={{ padding: '12px', fontFamily: 'monospace', color: '#f8fafc' }}>{i.caseNumber || '—'}</td>
                     <td style={{ padding: '12px' }}>
