@@ -28,5 +28,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenant
         // להוסיף את הסינון הזה ידנית במקום חדש בעתיד
         modelBuilder.Entity<SystemErrorIncident>().HasQueryFilter(e => e.TenantId == CurrentTenantId);
         modelBuilder.Entity<BugReport>().HasQueryFilter(e => e.TenantId == CurrentTenantId);
+
+        // IncidentDetailPayload אין לו TenantId משלו, אבל הוא הצד "החובה" ביחס 1:1
+        // עם SystemErrorIncident שכבר מסונן - בלי סינון תואם כאן EF Core מזהיר
+        // (ותיעודית ממליץ) שאפשר לקבל תוצאות לא עקביות בטעינת הניווט ביניהם
+        modelBuilder.Entity<IncidentDetailPayload>().HasQueryFilter(d => d.Incident.TenantId == CurrentTenantId);
     }
 }
