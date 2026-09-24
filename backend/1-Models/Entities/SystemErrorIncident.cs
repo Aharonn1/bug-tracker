@@ -44,8 +44,8 @@ public class SystemErrorIncident : AuditableEntity
     public DateTime? ResolvedAt { get; set; }
 
     // Navigation Properties
-    [ForeignKey(nameof(ErrorCode))]
-    public virtual ErrorCatalog? ErrorCatalog { get; set; }
-
+    // הערה: אין ניווט EF-מנוהל ל-ErrorCatalog בכוונה - הקישור נעשה בשכבת השירות
+    // כ"חיפוש רך" לפי ErrorCode (ראו IncidentService), כי אילוץ FK אמיתי ידחה
+    // תקרית עם קוד שגיאה שעוד לא תועד בקטלוג
     public virtual IncidentDetailPayload? Details { get; set; }
 }

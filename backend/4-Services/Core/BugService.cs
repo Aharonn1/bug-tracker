@@ -53,6 +53,18 @@ public class BugService(AppDbContext context) : IBugService
         return MapToResponseDto(bug);
     }
 
+    public async Task<BugReportResponseDto> UpdateBugStatusAsync(int id, IncidentStatus status, CancellationToken cancellationToken = default)
+    {
+        var bug = await context.BugReports.FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
+        if (bug is null) throw new BugNotFoundException(id);
+
+        bug.Status = status;
+        bug.ResolvedAt = status == IncidentStatus.Closed ? DateTime.UtcNow : null;
+
+        await context.SaveChangesAsync(cancellationToken);
+        return MapToResponseDto(bug);
+    }
+
     public async Task<bool> DeleteBugAsync(int id, CancellationToken cancellationToken = default)
     {
         // שאילתת Where מפורשת (ולא FindAsync) כדי להבטיח שה-Global Query Filter

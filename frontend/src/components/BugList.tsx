@@ -20,12 +20,12 @@ export const BugList: React.FC = () => {
 
   const getStatusBadge = (status: number) => {
     switch (status) {
-      case BugStatus.Resolved:
+      case BugStatus.Closed:
         return <span style={{ color: '#4ade80', fontWeight: 'bold' }}>✓ נפתר</span>;
-      case BugStatus.InProgress:
-        return <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>⟳ בטיפול</span>;
-      default:
+      case BugStatus.New:
         return <span style={{ color: '#f87171', fontWeight: 'bold' }}>● פתוח</span>;
+      default:
+        return <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>⟳ בטיפול</span>;
     }
   };
 
@@ -82,7 +82,7 @@ export const BugList: React.FC = () => {
               </tr>
             ) : (
               bugs.map((bug) => (
-                <tr key={bug.id} style={{ borderBottom: '1px solid #1e293b', background: bug.status === BugStatus.Resolved ? 'rgba(15, 23, 42, 0.4)' : '#131f37' }}>
+                <tr key={bug.id} style={{ borderBottom: '1px solid #1e293b', background: bug.status === BugStatus.Closed ? 'rgba(15, 23, 42, 0.4)' : '#131f37' }}>
                   <td style={{ padding: '12px', fontFamily: 'monospace' }}>#{bug.id}</td>
                   <td style={{ padding: '12px' }}>{getPriorityBadge(bug.priority)}</td>
                   <td style={{ padding: '12px', fontWeight: '600', color: '#38bdf8' }}>{bug.systemModule}</td>
@@ -94,9 +94,9 @@ export const BugList: React.FC = () => {
                   </td>
                   <td style={{ padding: '12px' }}>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      {bug.status !== BugStatus.Resolved && (
+                      {bug.status !== BugStatus.Closed && (
                         <button
-                          onClick={() => updateBugStatus(bug.id, BugStatus.Resolved)}
+                          onClick={() => updateBugStatus(bug.id, BugStatus.Closed)}
                           style={{
                             padding: '4px 8px',
                             background: '#15803d',

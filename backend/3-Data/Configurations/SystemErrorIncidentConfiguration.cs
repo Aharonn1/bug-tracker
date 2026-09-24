@@ -42,10 +42,6 @@ public class SystemErrorIncidentConfiguration : IEntityTypeConfiguration<SystemE
             .HasForeignKey<IncidentDetailPayload>(d => d.IncidentId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // קשר לקטלוג השגיאות
-        builder.HasOne(i => i.ErrorCatalog)
-            .WithMany()
-            .HasForeignKey(i => i.ErrorCode)
-            .OnDelete(DeleteBehavior.Restrict);
+        // אין קשר EF/FK אמיתי לקטלוג השגיאות בכוונה - ראו הערה ב-SystemErrorIncident.cs
     }
 }

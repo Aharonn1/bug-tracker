@@ -42,6 +42,18 @@ public class BugsController(IBugService bugService) : ControllerBase
         return CreatedAtAction(nameof(GetBugById), new { id = createdBug.Id }, createdBug);
     }
 
+    [HttpPatch("{id:int}/status")]
+    [ProducesResponseType(typeof(BugReportResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BugReportResponseDto>> UpdateBugStatus(
+        [FromRoute] int id,
+        [FromBody] UpdateBugStatusDto dto,
+        CancellationToken cancellationToken)
+    {
+        var updated = await bugService.UpdateBugStatusAsync(id, dto.Status, cancellationToken);
+        return Ok(updated);
+    }
+
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

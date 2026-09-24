@@ -12,41 +12,49 @@ namespace MyBackendApi.Services.Core;
 public class IncidentService(AppDbContext context) : IIncidentService
 {
     public async Task<IEnumerable<IncidentResponseDto>> GetAllIncidentsAsync(
-        bool? unresolvedOnly = null, 
-        string? subsystem = null, 
+        bool? unresolvedOnly = null,
+        string? subsystem = null,
         CancellationToken ct = default)
     {
-        var query = context.SystemErrorIncidents
-            .AsNoTracking()
-            .Include(i => i.ErrorCatalog)
-            .AsQueryable();
+        // Join "רך" מול הקטלוג (ולא Include על קשר FK אמיתי) - כי תקרית עם קוד
+        // שגיאה שעוד לא תועד בקטלוג עדיין חייבת להישמר ולהיות גלויה כאן
+        var query =
+            from i in context.SystemErrorIncidents.AsNoTracking()
+            join c in context.ErrorCatalogs.AsNoTracking() on i.ErrorCode equals c.ErrorCode into catalogJoin
+            from catalog in catalogJoin.DefaultIfEmpty()
+            select new { Incident = i, Catalog = catalog };
 
         if (unresolvedOnly == true)
         {
-            query = query.Where(i => !i.IsResolved);
+            query = query.Where(x => !x.Incident.IsResolved);
         }
 
         if (!string.IsNullOrWhiteSpace(subsystem))
         {
-            query = query.Where(i => i.ErrorCatalog != null && i.ErrorCatalog.Subsystem == subsystem);
+            query = query.Where(x => x.Catalog != null && x.Catalog.Subsystem == subsystem);
         }
 
-        var incidents = await query
-            .OrderByDescending(i => i.CreatedAt)
+        var rows = await query
+            .OrderByDescending(x => x.Incident.CreatedAt)
             .ToListAsync(ct);
 
-        return incidents.Select(MapToResponseDto);
+        return rows.Select(x => MapToResponseDto(x.Incident, x.Catalog));
     }
 
     public async Task<IncidentResponseDto?> GetIncidentByIdAsync(long id, CancellationToken ct = default)
     {
         var incident = await context.SystemErrorIncidents
             .AsNoTracking()
-            .Include(i => i.ErrorCatalog)
             .Include(i => i.Details)
             .FirstOrDefaultAsync(i => i.IncidentId == id, ct);
 
-        return incident is not null ? MapToResponseDto(incident) : throw new IncidentNotFoundException(id);
+        if (incident is null) throw new IncidentNotFoundException(id);
+
+        var catalog = await context.ErrorCatalogs
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.ErrorCode == incident.ErrorCode, ct);
+
+        return MapToResponseDto(incident, catalog);
     }
 
     public async Task<IncidentResponseDto> IngestIncidentAsync(CreateIncidentDto dto, CancellationToken ct = default)
@@ -75,10 +83,12 @@ public class IncidentService(AppDbContext context) : IIncidentService
         context.SystemErrorIncidents.Add(incident);
         await context.SaveChangesAsync(ct);
 
-        // טעינת הקטלוג במידה וקיים עבור התשובה
-        await context.Entry(incident).Reference(i => i.ErrorCatalog).LoadAsync(ct);
+        // חיפוש רך בקטלוג במידה וקיים עבור התשובה - לא חוסם שמירה אם עדיין לא תועד
+        var catalog = await context.ErrorCatalogs
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.ErrorCode == incident.ErrorCode, ct);
 
-        return MapToResponseDto(incident);
+        return MapToResponseDto(incident, catalog);
     }
 
     public async Task MarkAsResolvedAsync(long id, CancellationToken ct = default)
@@ -96,22 +106,22 @@ public class IncidentService(AppDbContext context) : IIncidentService
         await context.SaveChangesAsync(ct);
     }
 
-    private static IncidentResponseDto MapToResponseDto(SystemErrorIncident i) =>
+    private static IncidentResponseDto MapToResponseDto(SystemErrorIncident i, ErrorCatalog? catalog) =>
         new(
             i.IncidentId,
             i.TenantId,
             i.ErrorCode,
-            i.ErrorCatalog?.Category ?? "General",
-            i.ErrorCatalog?.Subsystem ?? "Unknown",
-            i.ErrorCatalog?.SeverityLevel ?? IncidentSeverity.Medium,
+            catalog?.Category ?? "General",
+            catalog?.Subsystem ?? "Unknown",
+            catalog?.SeverityLevel ?? IncidentSeverity.Medium,
             i.Status,
-            i.ErrorCatalog?.HebrewDescription ?? i.ErrorMessage,
+            catalog?.HebrewDescription ?? i.ErrorMessage,
             i.CaseNumber,
             i.ExternalReferenceId,
             i.ClientStationId,
             i.UserId,
             i.ErrorMessage,
-            i.ErrorCatalog?.ResolutionPlaybook,
+            catalog?.ResolutionPlaybook,
             RecommendedAction: null,
             RootCauseSummary: null,
             i.IsResolved,

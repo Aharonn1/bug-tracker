@@ -8,10 +8,15 @@ export const BugPriority = {
 
 export type BugPriority = (typeof BugPriority)[keyof typeof BugPriority];
 
+// הערכים תואמים בכוונה ל-enum IncidentStatus בבקאנד (byte, מתחיל מ-1) - הבאג
+// נשמר בפועל תחת אותו enum, אז שליחת ערך שלא תואם נשמרת/מוצגת לא נכון
 export const BugStatus = {
-  Open: 0,
-  InProgress: 1,
-  Resolved: 2,
+  New: 1,
+  UnderInvestigation: 2,
+  RootCauseIdentified: 3,
+  RemediationPendingApproval: 4,
+  Remediated: 5,
+  Closed: 6,
 } as const;
 
 export type BugStatus = (typeof BugStatus)[keyof typeof BugStatus];
