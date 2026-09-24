@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { SystemIncident } from '../types/bug.types';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, tenantHeaders } from '../config';
 
 export const useIncidents = () => {
   const [incidents, setIncidents] = useState<SystemIncident[]>([]);
@@ -24,7 +24,7 @@ export const useIncidents = () => {
       console.log('Sending GET to:', targetUrl);
       const res = await fetch(targetUrl, {
         method: 'GET',
-        headers: { 'Accept': 'application/json' }
+        headers: tenantHeaders({ 'Accept': 'application/json' })
       });
 
       if (!res.ok) {
@@ -46,7 +46,7 @@ export const useIncidents = () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/Incidents/${id}/resolve`, {
         method: 'PATCH',
-        headers: { 'Accept': 'application/json' }
+        headers: tenantHeaders({ 'Accept': 'application/json' })
       });
 
       if (!res.ok) {
