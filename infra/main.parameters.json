@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "israelcentral"
+    },
+    "appServiceName": {
+      "value": "bugtracker-api-aharon"
+    },
+    "appServicePlanName": {
+      "value": "ASP-rgbugtracker-8517"
+    },
+    "appServicePlanSku": {
+      "value": "B1"
+    },
+    "sqlServerName": {
+      "value": "sql-aharon-bugs-app"
+    },
+    "sqlDatabaseName": {
+      "value": "BugReportsDb"
+    },
+    "sqlDatabaseSku": {
+      "value": "Basic"
+    },
+    "staticWebAppName": {
+      "value": "bugtracker-web-aharon"
+    },
+    "staticWebAppLocation": {
+      "value": "centralus"
+    },
+    "appInsightsName": {
+      "value": "appi-bugtracker"
+    },
+    "logAnalyticsName": {
+      "value": "law-bugtracker"
+    },
+    "actionGroupName": {
+      "value": "email-notifications"
+    },
+    "openAiModelId": {
+      "value": "gpt-4o-mini"
+    }
+  }
+}
