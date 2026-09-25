@@ -58,6 +58,9 @@ param openAiApiKey string
 @description('מודל ה-OpenAI בשימוש')
 param openAiModelId string = 'gpt-4o-mini'
 
+@description('שם ה-Key Vault לניהול סודות')
+param keyVaultName string = 'kv-bugtracker-aharon'
+
 // ==========================================
 // Log Analytics Workspace
 // ==========================================
@@ -109,6 +112,10 @@ resource appService 'Microsoft.Web/sites@2022-09-01' = {
   name: appServiceName
   location: location
   kind: 'app,linux'
+  identity: {
+    // Managed Identity - כך ה-App Service "מזדהה" מול Key Vault בלי עוד סוד לנהל
+    type: 'SystemAssigned'
+  }
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
@@ -117,12 +124,14 @@ resource appService 'Microsoft.Web/sites@2022-09-01' = {
       healthCheckPath: '/health'
       appSettings: [
         {
+          // הפניה ל-Key Vault (לא הערך הגולמי) - Azure App Service מפענח את זה
+          // בזמן ריצה, בתנאי שלמנוהל-identity יש הרשאת קריאה על ה-Vault
           name: 'ConnectionStrings__DefaultConnection'
-          value: 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Database=${sqlDatabaseName};User ID=${sqlAdminLogin};Password=${sqlAdminPassword};Encrypt=true;TrustServerCertificate=false;Connection Timeout=30;'
+          value: '@Microsoft.KeyVault(VaultName=${keyVaultName};SecretName=${sqlConnectionSecret.name})'
         }
         {
           name: 'OpenAI__ApiKey'
-          value: openAiApiKey
+          value: '@Microsoft.KeyVault(VaultName=${keyVaultName};SecretName=${openAiSecret.name})'
         }
         {
           name: 'OpenAI__ModelId'
@@ -138,6 +147,50 @@ resource appService 'Microsoft.Web/sites@2022-09-01' = {
         }
       ]
     }
+  }
+}
+
+// ==========================================
+// Key Vault - ניהול סודות מרכזי (Standard tier, RBAC)
+// ==========================================
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
+  name: keyVaultName
+  location: location
+  properties: {
+    sku: {
+      family: 'A'
+      name: 'standard'
+    }
+    tenantId: subscription().tenantId
+    enableRbacAuthorization: true
+  }
+}
+
+resource sqlConnectionSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'SqlConnectionString'
+  properties: {
+    value: 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Database=${sqlDatabaseName};User ID=${sqlAdminLogin};Password=${sqlAdminPassword};Encrypt=true;TrustServerCertificate=false;Connection Timeout=30;'
+  }
+}
+
+resource openAiSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'OpenAiApiKey'
+  properties: {
+    value: openAiApiKey
+  }
+}
+
+// מעניק ל-Managed Identity של ה-App Service הרשאת קריאה בלבד על סודות ה-Vault
+// (Role ID קבוע של Azure עבור "Key Vault Secrets User")
+resource keyVaultSecretsUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(keyVault.id, appService.id, 'KeyVaultSecretsUser')
+  scope: keyVault
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
+    principalId: appService.identity.principalId
+    principalType: 'ServicePrincipal'
   }
 }
 

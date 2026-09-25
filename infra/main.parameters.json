@@ -35,6 +35,9 @@
     "logAnalyticsName": {
       "value": "law-bugtracker"
     },
+    "keyVaultName": {
+      "value": "kv-bugtracker-aharon"
+    },
     "actionGroupName": {
       "value": "email-notifications"
     },
