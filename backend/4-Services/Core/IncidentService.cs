@@ -65,8 +65,12 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
         var fingerprint = deduplicationService.GenerateFingerprint(dto.ErrorCode, dto.ErrorMessage, dto.StackTrace);
 
         // בדיקת כפילות לפי האינדקס המורכב (TenantId, ErrorFingerprintHash) - אם
-        // התקרית כבר קיימת ללקוח הזה, סופרים הישנות נוספת במקום ליצור שורה כפולה
+        // התקרית כבר קיימת ללקוח הזה, סופרים הישנות נוספת במקום ליצור שורה כפולה.
+        // IgnoreQueryFilters כי אנחנו בתוך ה-Background Worker (בלי HttpContext) -
+        // הסינון הרגיל היה מנסה להעריך CurrentTenantId ונופל; מסננים ידנית לפי
+        // dto.TenantId שכבר הוחלף בערך המהימן ב-Controller
         var existing = await context.SystemErrorIncidents
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(i => i.TenantId == dto.TenantId && i.ErrorFingerprintHash == fingerprint, ct);
 
         if (existing is not null)
