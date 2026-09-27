@@ -20,8 +20,7 @@ export const useIncidents = () => {
 
       const query = params.toString() ? `?${params.toString()}` : '';
       const targetUrl = `${API_BASE_URL}/api/Incidents${query}`;
-      
-      console.log('Sending GET to:', targetUrl);
+
       const res = await fetch(targetUrl, {
         method: 'GET',
         headers: tenantHeaders({ 'Accept': 'application/json' })
@@ -32,7 +31,6 @@ export const useIncidents = () => {
       }
 
       const data = await res.json();
-      console.log('Incidents from server:', data);
       setIncidents(Array.isArray(data) ? data : []);
     } catch (err: any) {
       console.error('Error fetching incidents:', err);

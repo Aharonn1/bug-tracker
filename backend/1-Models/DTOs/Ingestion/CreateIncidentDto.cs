@@ -11,6 +11,5 @@ public record CreateIncidentDto(
     string? UserId,
     [Required] string ErrorMessage,
     string? StackTrace,
-    string? RawPayload,
-    string? ErrorFingerprintHash
+    string? RawPayload
 );

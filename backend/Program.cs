@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.SemanticKernel;
 using MyBackendApi.Data;
 using MyBackendApi.Middleware;
 using MyBackendApi.Services.Agent;
@@ -87,26 +86,12 @@ builder.Services.AddSingleton<ErrorDeduplicationService>();
 builder.Services.AddHostedService<IncidentIngestionWorker>();
 
 // ==========================================
-// 6. שירותי סוכן AI וכלי חקירה (Semantic Kernel / Plugins)
+// 6. שירותי סוכן AI וכלי חקירה - RcaAgentService פונה ל-OpenAI ישירות דרך
+// HTTP (לא דרך Semantic Kernel), ולכן אין כאן רישום Kernel
 // ==========================================
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<DiagnosticPlugins>();
-builder.Services.AddScoped<RemediationPlugins>();
 builder.Services.AddScoped<IRcaAgentService, RcaAgentService>();
-
-var openAiApiKey = builder.Configuration["OpenAI:ApiKey"] ?? "sk-placeholder-key";
-var openAiModelId = builder.Configuration["OpenAI:ModelId"] ?? "gpt-4o-mini";
-
-builder.Services.AddTransient(sp =>
-{
-    var diagnosticPlugins = sp.GetRequiredService<DiagnosticPlugins>();
-
-    var kernelBuilder = Kernel.CreateBuilder();
-    kernelBuilder.AddOpenAIChatCompletion(openAiModelId, openAiApiKey);
-    kernelBuilder.Plugins.AddFromObject(diagnosticPlugins, nameof(DiagnosticPlugins));
-
-    return kernelBuilder.Build();
-});
 
 var app = builder.Build();
 

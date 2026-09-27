@@ -5,11 +5,12 @@ using MyBackendApi.Models.Common;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Responses;
 using MyBackendApi.Models.Entities;
+using MyBackendApi.Services.Deduplication;
 using MyBackendApi.Services.Interfaces;
 
 namespace MyBackendApi.Services.Core;
 
-public class IncidentService(AppDbContext context) : IIncidentService
+public class IncidentService(AppDbContext context, ErrorDeduplicationService deduplicationService) : IIncidentService
 {
     public async Task<IEnumerable<IncidentResponseDto>> GetAllIncidentsAsync(
         bool? unresolvedOnly = null,
@@ -59,6 +60,28 @@ public class IncidentService(AppDbContext context) : IIncidentService
 
     public async Task<IncidentResponseDto> IngestIncidentAsync(CreateIncidentDto dto, CancellationToken ct = default)
     {
+        // חתימת ה-Fingerprint מחושבת בשרת (לא נלקחת מהלקוח) - כך שני לקוחות שונים
+        // שמדווחים אותה שגיאה בדיוק מקבלים תמיד את אותה חתימה
+        var fingerprint = deduplicationService.GenerateFingerprint(dto.ErrorCode, dto.ErrorMessage, dto.StackTrace);
+
+        // בדיקת כפילות לפי האינדקס המורכב (TenantId, ErrorFingerprintHash) - אם
+        // התקרית כבר קיימת ללקוח הזה, סופרים הישנות נוספת במקום ליצור שורה כפולה
+        var existing = await context.SystemErrorIncidents
+            .FirstOrDefaultAsync(i => i.TenantId == dto.TenantId && i.ErrorFingerprintHash == fingerprint, ct);
+
+        if (existing is not null)
+        {
+            existing.OccurrencesCount++;
+            existing.LastSeenAt = DateTime.UtcNow;
+            await context.SaveChangesAsync(ct);
+
+            var existingCatalog = await context.ErrorCatalogs
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.ErrorCode == existing.ErrorCode, ct);
+
+            return MapToResponseDto(existing, existingCatalog);
+        }
+
         var incident = new SystemErrorIncident
         {
             // הערה: dto.TenantId כבר "הוחלף" ב-Controller בזמן שהיה HttpContext
@@ -71,7 +94,7 @@ public class IncidentService(AppDbContext context) : IIncidentService
             ExternalReferenceId = dto.ExternalReferenceId,
             ClientStationId = dto.ClientStationId,
             UserId = dto.UserId,
-            ErrorFingerprintHash = dto.ErrorFingerprintHash ?? string.Empty,
+            ErrorFingerprintHash = fingerprint,
             Status = IncidentStatus.New,
             Details = new IncidentDetailPayload
             {

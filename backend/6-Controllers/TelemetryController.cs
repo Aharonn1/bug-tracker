@@ -3,6 +3,7 @@ using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Telemetry;
 using MyBackendApi.Services.Core;
 using MyBackendApi.Services.Queues;
+using MyBackendApi.Services.Tenancy;
 
 namespace MyBackendApi.Controllers;
 
@@ -11,7 +12,8 @@ namespace MyBackendApi.Controllers;
 public class TelemetryController(
     TelemetryAnalysisService analysisService,
     IncidentChannelQueue queue,
-    OpsInsightsService opsInsightsService) : ControllerBase
+    OpsInsightsService opsInsightsService,
+    ICurrentTenantProvider tenantProvider) : ControllerBase
 {
     [HttpPost("probe")]
     [ProducesResponseType(typeof(TelemetryDiagnosticReport), StatusCodes.Status200OK)]
@@ -23,8 +25,10 @@ public class TelemetryController(
 
         if (report.StatusColor == "Red")
         {
+            // TenantId נלקח מה-header המהימן (כמו ב-IncidentsController), לא מגוף
+            // הבקשה - כאן היה אותו פער אמון שתוקן כבר בנתיב הקליטה הרגיל
             await queue.QueueIncidentAsync(new CreateIncidentDto(
-                TenantId: dto.TenantId,
+                TenantId: tenantProvider.TenantId,
                 ErrorCode: "CLIENT_NETWORK_DEGRADED",
                 CaseNumber: null,
                 ExternalReferenceId: null,
@@ -32,8 +36,7 @@ public class TelemetryController(
                 UserId: null,
                 ErrorMessage: $"Client network latency spike: {dto.LatencyMs}ms ({dto.EffectiveConnectionType})",
                 StackTrace: null,
-                RawPayload: null,
-                ErrorFingerprintHash: null
+                RawPayload: null
             ), ct);
         }
 

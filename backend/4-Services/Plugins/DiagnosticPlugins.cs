@@ -1,12 +1,13 @@
 using System.ComponentModel;
-using Microsoft.SemanticKernel;
 using MyBackendApi.Models.Common;
 
 namespace MyBackendApi.Services.Plugins;
 
 public class DiagnosticPlugins(ILogger<DiagnosticPlugins> logger)
 {
-    [KernelFunction, Description("בודק זמינות, שיהוי וקוד סטטוס של שערי ממשלה")]
+    // נקראות ישירות ע"י RcaAgentService (Function Calling ידני מול OpenAI, לא דרך
+    // Semantic Kernel) - [Description] נשאר כתיעוד קריא, לא לצורך פונקציונלי
+    [Description("בודק זמינות, שיהוי וקוד סטטוס של שערי ממשלה")]
     public async Task<GatewayDiagnosticResult> CheckGovernmentGatewayLatencyAsync(
         [Description("שער היעד לבדיקה")] TargetGateway targetGateway)
     {
@@ -21,7 +22,7 @@ public class DiagnosticPlugins(ILogger<DiagnosticPlugins> logger)
         return new GatewayDiagnosticResult("Healthy", 45, 200, "0%");
     }
 
-    [KernelFunction, Description("בודק תוקף חתימה דיגיטלית וכרטיס חכם בעמדת עורך הדין")]
+    [Description("בודק תוקף חתימה דיגיטלית וכרטיס חכם בעמדת עורך הדין")]
     public Task<SmartCardDiagnosticResult> InspectSmartCardCertificateAsync(
         [Description("טביעת אצבע של התעודה")] string? thumbprint = null)
     {
