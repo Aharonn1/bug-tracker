@@ -27,6 +27,13 @@ public class TelemetryController(
         {
             // TenantId נלקח מה-header המהימן (כמו ב-IncidentsController), לא מגוף
             // הבקשה - כאן היה אותו פער אמון שתוקן כבר בנתיב הקליטה הרגיל
+            // ה-ErrorMessage מוצג למשתמש, אבל הוא גם הקלט לחישוב ה-Fingerprint של
+            // מניעת הכפילויות (ErrorDeduplicationService) - latency מדויק (עם
+            // עשרות ספרות אחרי הנקודה) שונה כמעט בכל בדיקה, ולכן כל בדיקה יצרה
+            // תקרית נפרדת במקום שתקריות חוזרות מאותה עמדה יצטברו לתקרית אחת.
+            // עיגול ל-500ms הקרוב שומר על חומרה משמעותית תוך כדי איפשור צבירה
+            var latencyBucket = Math.Round(dto.LatencyMs / 500.0) * 500;
+
             await queue.QueueIncidentAsync(new CreateIncidentDto(
                 TenantId: tenantProvider.TenantId,
                 ErrorCode: "CLIENT_NETWORK_DEGRADED",
@@ -34,9 +41,9 @@ public class TelemetryController(
                 ExternalReferenceId: null,
                 ClientStationId: dto.StationId,
                 UserId: null,
-                ErrorMessage: $"Client network latency spike: {dto.LatencyMs}ms ({dto.EffectiveConnectionType})",
+                ErrorMessage: $"Client network latency spike: ~{latencyBucket:0}ms ({dto.EffectiveConnectionType}), station {dto.StationId ?? "unknown"}",
                 StackTrace: null,
-                RawPayload: null
+                RawPayload: $"Exact latency: {dto.LatencyMs}ms"
             ), ct);
         }
 
