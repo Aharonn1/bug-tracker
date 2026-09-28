@@ -2,16 +2,43 @@ import React, { useState } from 'react';
 import { Navbar } from './components/Navbar';
 import type { DashboardView } from './components/Navbar';
 import { useIncidents } from './hooks/useIncidents';
+import { useAuth } from './hooks/useAuth';
+import type { AuthUser } from './types/auth.types';
 import { IncidentMetrics } from './components/IncidentMetrics';
 import BugForm from './components/BugForm';
 import { BugList } from './components/BugList';
 import { IncidentTable } from './components/IncidentTable';
 import { ConnectionDiagnosticBanner } from './components/ConnectionDiagnosticBanner';
 import { OpsSummaryPanel } from './components/OpsSummaryPanel';
+import { LoginForm } from './components/LoginForm';
+import { RegisterForm } from './components/RegisterForm';
 
-export const App: React.FC = () => {
+const AuthGate: React.FC = () => {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#0b0f19',
+      direction: 'rtl',
+      padding: '20px',
+      boxSizing: 'border-box',
+    }}>
+      {mode === 'login' ? (
+        <LoginForm onSwitchToRegister={() => setMode('register')} />
+      ) : (
+        <RegisterForm onSwitchToLogin={() => setMode('login')} />
+      )}
+    </div>
+  );
+};
+
+const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, onLogout }) => {
   const [currentView, setCurrentView] = useState<DashboardView>('incidents');
-  
+
   const {
     incidents,
     loading,
@@ -32,6 +59,8 @@ export const App: React.FC = () => {
         currentView={currentView}
         onViewChange={setCurrentView}
         openIncidentsCount={openIncidentsCount}
+        user={user}
+        onLogout={onLogout}
       />
 
       <main style={{ flex: 1, padding: '28px', maxWidth: '1440px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
@@ -136,6 +165,16 @@ export const App: React.FC = () => {
       </main>
     </div>
   );
+};
+
+export const App: React.FC = () => {
+  const { user, logout } = useAuth();
+
+  if (!user) {
+    return <AuthGate />;
+  }
+
+  return <Dashboard user={user} onLogout={logout} />;
 };
 
 export default App;

@@ -1,4 +1,6 @@
 import React from 'react';
+import type { AuthUser } from '../types/auth.types';
+import { UserRole } from '../types/auth.types';
 
 export type DashboardView = 'incidents' | 'bugs' | 'new-bug';
 
@@ -6,9 +8,11 @@ interface NavbarProps {
   currentView: DashboardView;
   onViewChange: (view: DashboardView) => void;
   openIncidentsCount: number;
+  user: AuthUser;
+  onLogout: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openIncidentsCount }) => {
+export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openIncidentsCount, user, onLogout }) => {
   const getNavBtnStyle = (view: DashboardView): React.CSSProperties => {
     const isActive = currentView === view;
     return {
@@ -90,6 +94,37 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
           <span>+ דיווח תקלה חדשה</span>
         </button>
       </nav>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '13px', color: '#e2e8f0', fontWeight: 600 }}>{user.fullName}</span>
+          <span style={{
+            fontSize: '11px',
+            fontWeight: 700,
+            padding: '2px 8px',
+            borderRadius: '999px',
+            backgroundColor: user.role === UserRole.Admin ? '#7c3aed' : '#334155',
+            color: user.role === UserRole.Admin ? '#f3e8ff' : '#cbd5e1',
+          }}>
+            {user.role === UserRole.Admin ? 'מנהל מערכת' : 'משתמש'}
+          </span>
+        </div>
+
+        <button
+          onClick={onLogout}
+          style={{
+            padding: '7px 14px',
+            borderRadius: '8px',
+            border: '1px solid #334155',
+            backgroundColor: 'transparent',
+            color: '#94a3b8',
+            fontSize: '13px',
+            cursor: 'pointer',
+          }}
+        >
+          התנתקות
+        </button>
+      </div>
     </header>
   );
 };
