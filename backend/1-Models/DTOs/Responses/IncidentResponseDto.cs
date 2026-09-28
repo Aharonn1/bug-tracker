@@ -20,6 +20,8 @@ public record IncidentResponseDto(
     string? RecommendedAction,
     string? RootCauseSummary,
     bool IsResolved,
+    int OccurrencesCount,
     DateTime CreatedAt,
+    DateTime LastSeenAt,
     DateTime? ResolvedAt
 );

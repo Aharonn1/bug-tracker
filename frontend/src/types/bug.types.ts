@@ -75,7 +75,9 @@ export interface SystemIncident {
   errorMessage: string;
   resolutionPlaybook: string | null;
   isResolved: boolean;
+  occurrencesCount: number;
   createdAt: string;
+  lastSeenAt: string;
   resolvedAt: string | null;
 }
 

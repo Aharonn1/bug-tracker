@@ -55,6 +55,7 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
               <th style={{ padding: '12px' }}>מספר תיק</th>
               <th style={{ padding: '12px' }}>תיאור התקלה</th>
               <th style={{ padding: '12px' }}>הנחיות לפתרון (Playbook)</th>
+              <th style={{ padding: '12px', textAlign: 'center' }}>הופעות</th>
               <th style={{ padding: '12px' }}>זמן רישום</th>
               <th style={{ padding: '12px' }}>סטטוס</th>
               <th style={{ padding: '12px', textAlign: 'center' }}>פעולות</th>
@@ -63,7 +64,7 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
           <tbody>
             {incidents.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                <td colSpan={10} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
                   אין אירועי תקלות להצגה
                 </td>
               </tr>
@@ -82,6 +83,23 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                     </td>
                     <td style={{ padding: '12px', fontSize: '12px', color: '#fbbf24', maxWidth: '280px' }}>
                       {i.resolutionPlaybook || '—'}
+                    </td>
+                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                      <span
+                        title={`נראה לאחרונה: ${new Date(i.lastSeenAt).toLocaleString('he-IL')}`}
+                        style={{
+                          display: 'inline-block',
+                          minWidth: '28px',
+                          padding: '3px 8px',
+                          borderRadius: '999px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          background: i.occurrencesCount > 1 ? '#78350f' : '#1e293b',
+                          color: i.occurrencesCount > 1 ? '#fde047' : '#94a3b8',
+                        }}
+                      >
+                        × {i.occurrencesCount}
+                      </span>
                     </td>
                     <td style={{ padding: '12px', whiteSpace: 'nowrap', fontSize: '12px' }}>
                       {new Date(i.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}

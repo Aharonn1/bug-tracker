@@ -152,7 +152,9 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
             RecommendedAction: null,
             RootCauseSummary: null,
             i.IsResolved,
+            i.OccurrencesCount,
             i.CreatedAt,
+            i.LastSeenAt,
             i.ResolvedAt
         );
 }
