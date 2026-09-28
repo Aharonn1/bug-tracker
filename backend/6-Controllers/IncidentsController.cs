@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Responses;
@@ -9,6 +10,7 @@ namespace MyBackendApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class IncidentsController(
     IIncidentService incidentService,
     IncidentChannelQueue queue,

@@ -61,6 +61,19 @@ param openAiModelId string = 'gpt-4o-mini'
 @description('שם ה-Key Vault לניהול סודות')
 param keyVaultName string = 'kv-bugtracker-aharon'
 
+@secure()
+@description('מפתח החתימה של JWT - להעביר בזמן deploy בלבד, לא לשמור בקובץ')
+param jwtSecretKey string
+
+@description('Issuer של ה-JWT')
+param jwtIssuer string = 'BugReportsApi'
+
+@description('Audience של ה-JWT')
+param jwtAudience string = 'BugReportsClient'
+
+@description('תוקף ה-JWT בדקות')
+param jwtExpiryMinutes int = 480
+
 // ==========================================
 // Log Analytics Workspace
 // ==========================================
@@ -138,6 +151,22 @@ resource appService 'Microsoft.Web/sites@2022-09-01' = {
           value: openAiModelId
         }
         {
+          name: 'Jwt__SecretKey'
+          value: '@Microsoft.KeyVault(VaultName=${keyVaultName};SecretName=${jwtSecretKeySecret.name})'
+        }
+        {
+          name: 'Jwt__Issuer'
+          value: jwtIssuer
+        }
+        {
+          name: 'Jwt__Audience'
+          value: jwtAudience
+        }
+        {
+          name: 'Jwt__ExpiryMinutes'
+          value: string(jwtExpiryMinutes)
+        }
+        {
           name: 'ApplicationInsights__ConnectionString'
           value: appInsights.properties.ConnectionString
         }
@@ -179,6 +208,14 @@ resource openAiSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   name: 'OpenAiApiKey'
   properties: {
     value: openAiApiKey
+  }
+}
+
+resource jwtSecretKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'JwtSecretKey'
+  properties: {
+    value: jwtSecretKey
   }
 }
 

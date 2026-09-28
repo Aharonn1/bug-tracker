@@ -1,8 +1,12 @@
+using System.Text;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using MyBackendApi.Data;
 using MyBackendApi.Middleware;
 using MyBackendApi.Services.Agent;
+using MyBackendApi.Services.Auth;
 using MyBackendApi.Services.Core;
 using MyBackendApi.Services.Deduplication;
 using MyBackendApi.Services.Interfaces;
@@ -79,6 +83,32 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentTenantProvider, HttpContextTenantProvider>();
 
 // ==========================================
+// 4.5. הזדהות משתמשים - JWT (לא Cookies, כי ה-frontend וה-backend רצים על
+// שני דומיינים שונים: Static Web App מול App Service)
+// ==========================================
+builder.Services.AddScoped<IAuthService, AuthService>();
+
+var jwtSecretKey = builder.Configuration["Jwt:SecretKey"];
+if (!string.IsNullOrEmpty(jwtSecretKey))
+{
+    builder.Services
+        .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "BugReportsApi",
+                ValidAudience = builder.Configuration["Jwt:Audience"] ?? "BugReportsClient",
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey))
+            };
+        });
+}
+
+// ==========================================
 // 5. תשתית High-Throughput Ingestion & Deduplication
 // ==========================================
 builder.Services.AddSingleton<IncidentChannelQueue>();
@@ -108,6 +138,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowReactApp");
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHealthChecks("/health");

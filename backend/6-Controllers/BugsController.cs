@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MyBackendApi.Models.Common;
 using MyBackendApi.Models.DTOs.Ingestion;
@@ -8,6 +9,7 @@ namespace MyBackendApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class BugsController(IBugService bugService) : ControllerBase
 {
     [HttpGet]

@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenant
     public DbSet<ErrorCatalog> ErrorCatalogs => Set<ErrorCatalog>();
     public DbSet<SystemErrorIncident> SystemErrorIncidents => Set<SystemErrorIncident>();
     public DbSet<IncidentDetailPayload> IncidentDetailPayloads => Set<IncidentDetailPayload>();
+    public DbSet<User> Users => Set<User>();
 
     // חשוף כ-property על ה-Context עצמו (ולא כקריאה ישירה ל-tenantProvider בתוך ה-lambda)
     // כי כך EF Core יודע לתרגם את ה-Global Query Filter למשתנה שמוערך בזמן ריצת השאילתה
@@ -33,5 +34,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenant
         // עם SystemErrorIncident שכבר מסונן - בלי סינון תואם כאן EF Core מזהיר
         // (ותיעודית ממליץ) שאפשר לקבל תוצאות לא עקביות בטעינת הניווט ביניהם
         modelBuilder.Entity<IncidentDetailPayload>().HasQueryFilter(d => d.Incident.TenantId == CurrentTenantId);
+
+        // משתמשים מסוננים לפי אותו header מהימן כמו שאר הישויות - כך שחיפוש
+        // לפי אימייל בזמן login לא "יטעה" בין לקוחות שונים בעתיד. הבדיקה עצמה
+        // (AuthService) חייבת להשתמש ב-IgnoreQueryFilters אם היא רצה בלי בקשת
+        // HTTP פעילה (כרגע אינה, כך שאין בכך צורך)
+        modelBuilder.Entity<User>().HasQueryFilter(u => u.TenantId == CurrentTenantId);
     }
 }
