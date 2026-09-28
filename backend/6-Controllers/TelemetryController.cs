@@ -26,14 +26,14 @@ public class TelemetryController(
         if (report.StatusColor == "Red")
         {
             // TenantId נלקח מה-header המהימן (כמו ב-IncidentsController), לא מגוף
-            // הבקשה - כאן היה אותו פער אמון שתוקן כבר בנתיב הקליטה הרגיל
-            // ה-ErrorMessage מוצג למשתמש, אבל הוא גם הקלט לחישוב ה-Fingerprint של
-            // מניעת הכפילויות (ErrorDeduplicationService) - latency מדויק (עם
-            // עשרות ספרות אחרי הנקודה) שונה כמעט בכל בדיקה, ולכן כל בדיקה יצרה
-            // תקרית נפרדת במקום שתקריות חוזרות מאותה עמדה יצטברו לתקרית אחת.
-            // עיגול ל-500ms הקרוב שומר על חומרה משמעותית תוך כדי איפשור צבירה
-            var latencyBucket = Math.Round(dto.LatencyMs / 500.0) * 500;
-
+            // הבקשה - כאן היה אותו פער אמון שתוקן כבר בנתיב הקליטה הרגיל.
+            //
+            // ה-ErrorMessage הוא גם הקלט לחישוב ה-Fingerprint (ErrorDeduplicationService).
+            // בעבר כלל את ה-latency המדויק (או אפילו מעוגל ל-500ms) - מספר ששונה
+            // כמעט בכל בדיקה, ולכן כל בדיקה יצרה תקרית נפרדת במקום שדיווחים חוזרים
+            // על אותה בעיה יצטברו לתקרית אחת. ה-station עדיין לא ממומש בפועל בפרונט
+            // (תמיד null) כך שגם הוא לא עזר לבידול. ההודעה עכשיו קבועה וגנרית -
+            // המספר המדויק עדיין נשמר, רק ב-RawPayload, שלא משפיע על ה-Fingerprint
             await queue.QueueIncidentAsync(new CreateIncidentDto(
                 TenantId: tenantProvider.TenantId,
                 ErrorCode: "CLIENT_NETWORK_DEGRADED",
@@ -41,9 +41,9 @@ public class TelemetryController(
                 ExternalReferenceId: null,
                 ClientStationId: dto.StationId,
                 UserId: null,
-                ErrorMessage: $"Client network latency spike: ~{latencyBucket:0}ms ({dto.EffectiveConnectionType}), station {dto.StationId ?? "unknown"}",
+                ErrorMessage: "Client network latency degraded",
                 StackTrace: null,
-                RawPayload: $"Exact latency: {dto.LatencyMs}ms"
+                RawPayload: $"Exact latency: {dto.LatencyMs}ms ({dto.EffectiveConnectionType}), station: {dto.StationId ?? "unknown"}"
             ), ct);
         }
 
