@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { incidentService } from '../api/incidentService';
 import { AgentDiagnosisModal } from './AgentDiagnosisModal';
+import { IncidentDetailsModal } from './IncidentDetailsModal';
 import { IncidentSeverity, type SystemIncident } from '../types/bug.types';
 
 interface Props {
@@ -13,6 +14,7 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
   const [activeIncident, setActiveIncident] = useState<SystemIncident | null>(null);
   const [agentReport, setAgentReport] = useState<string | null>(null);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [detailsIncident, setDetailsIncident] = useState<SystemIncident | null>(null);
 
   const handleRunAgent = async (incident: SystemIncident) => {
     setActiveIncident(incident);
@@ -54,7 +56,6 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
               <th style={{ padding: '12px' }}>מערכת</th>
               <th style={{ padding: '12px' }}>מספר תיק</th>
               <th style={{ padding: '12px' }}>תיאור התקלה</th>
-              <th style={{ padding: '12px' }}>הנחיות לפתרון (Playbook)</th>
               <th style={{ padding: '12px', textAlign: 'center' }}>הופעות</th>
               <th style={{ padding: '12px' }}>זמן רישום</th>
               <th style={{ padding: '12px' }}>דווח על ידי</th>
@@ -65,7 +66,7 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
           <tbody>
             {incidents.length === 0 ? (
               <tr>
-                <td colSpan={11} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                <td colSpan={10} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
                   אין אירועי תקלות להצגה
                 </td>
               </tr>
@@ -78,12 +79,41 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                     <td style={{ padding: '12px' }}>{getSeverityBadge(i.severity)}</td>
                     <td style={{ padding: '12px', fontWeight: 'bold', color: '#38bdf8' }}>{i.subsystem}</td>
                     <td style={{ padding: '12px', fontFamily: 'monospace', color: '#f8fafc' }}>{i.caseNumber || '—'}</td>
-                    <td style={{ padding: '12px' }}>
-                      <div style={{ fontWeight: 'bold', color: '#fff' }}>{i.hebrewDescription}</div>
-                      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{i.errorMessage}</div>
-                    </td>
-                    <td style={{ padding: '12px', fontSize: '12px', color: '#fbbf24', maxWidth: '280px' }}>
-                      {i.resolutionPlaybook || '—'}
+                    <td style={{ padding: '12px', maxWidth: '320px' }}>
+                      <div style={{
+                        fontWeight: 'bold',
+                        color: '#fff',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {i.hebrewDescription}
+                      </div>
+                      <div style={{
+                        fontSize: '11px',
+                        color: '#94a3b8',
+                        marginTop: '2px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {i.errorMessage}
+                      </div>
+                      <button
+                        onClick={() => setDetailsIncident(i)}
+                        style={{
+                          marginTop: '6px',
+                          padding: '3px 9px',
+                          background: 'transparent',
+                          border: '1px solid #334155',
+                          borderRadius: '6px',
+                          color: '#94a3b8',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        פרטים והנחיות ›
+                      </button>
                     </td>
                     <td style={{ padding: '12px', textAlign: 'center' }}>
                       <span
@@ -105,28 +135,33 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                     <td style={{ padding: '12px', whiteSpace: 'nowrap', fontSize: '12px' }}>
                       {new Date(i.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
                     </td>
-                    <td style={{ padding: '12px', fontSize: '12px', maxWidth: '220px' }}>
+                    <td style={{ padding: '12px', fontSize: '12px' }}>
                       {i.reportedByUsers.length === 0 ? (
                         <span style={{ color: '#64748b' }}>לא מזוהה</span>
+                      ) : i.reportedByUsers.length === 1 ? (
+                        <span style={{ color: '#e2e8f0', whiteSpace: 'nowrap' }}>
+                          {i.reportedByUsers[0].userName}
+                          {i.reportedByUsers[0].occurrenceCount > 1 && (
+                            <span style={{ color: '#94a3b8' }}> ×{i.reportedByUsers[0].occurrenceCount}</span>
+                          )}
+                        </span>
                       ) : (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                          {i.reportedByUsers.map((r) => (
-                            <span
-                              key={r.userId}
-                              title={`נראה לאחרונה: ${new Date(r.lastSeenAt).toLocaleString('he-IL')}`}
-                              style={{
-                                padding: '2px 7px',
-                                borderRadius: '999px',
-                                background: '#1e293b',
-                                color: '#e2e8f0',
-                                fontSize: '11px',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {r.userName} {r.occurrenceCount > 1 && <span style={{ color: '#94a3b8' }}>×{r.occurrenceCount}</span>}
-                            </span>
-                          ))}
-                        </div>
+                        <span
+                          title={i.reportedByUsers.map((r) => `${r.userName} — ${r.occurrenceCount} פעמים`).join('\n')}
+                          style={{
+                            display: 'inline-block',
+                            padding: '3px 9px',
+                            borderRadius: '999px',
+                            background: '#1e293b',
+                            color: '#e2e8f0',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            whiteSpace: 'nowrap',
+                            cursor: 'default',
+                          }}
+                        >
+                          {i.reportedByUsers.length} משתמשים
+                        </span>
                       )}
                     </td>
                     <td style={{ padding: '12px' }}>
@@ -196,6 +231,11 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
         errorCode={activeIncident?.errorCode ?? null}
         report={agentReport}
         isLoading={isDiagnosing}
+      />
+
+      <IncidentDetailsModal
+        incident={detailsIncident}
+        onClose={() => setDetailsIncident(null)}
       />
     </>
   );
