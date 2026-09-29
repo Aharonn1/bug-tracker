@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Responses;
+using MyBackendApi.Services.Auth;
 using MyBackendApi.Services.Interfaces;
 using MyBackendApi.Services.Queues;
 using MyBackendApi.Services.Tenancy;
@@ -15,7 +16,8 @@ public class IncidentsController(
     IIncidentService incidentService,
     IncidentChannelQueue queue,
     IRcaAgentService rcaAgentService,
-    ICurrentTenantProvider tenantProvider) : ControllerBase
+    ICurrentTenantProvider tenantProvider,
+    ICurrentUserProvider currentUserProvider) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<IncidentResponseDto>), StatusCodes.Status200OK)]
@@ -24,7 +26,9 @@ public class IncidentsController(
         [FromQuery] string? subsystem,
         CancellationToken ct)
     {
-        var incidents = await incidentService.GetAllIncidentsAsync(unresolvedOnly, subsystem, ct);
+        // Admin רואה את כל התקריות; משתמש רגיל רואה רק את אלו שקשורות לפעילות שלו
+        var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
+        var incidents = await incidentService.GetAllIncidentsAsync(unresolvedOnly, subsystem, restrictToUserId, ct);
         return Ok(incidents);
     }
 
@@ -35,7 +39,8 @@ public class IncidentsController(
         [FromRoute] long id,
         CancellationToken ct)
     {
-        var incident = await incidentService.GetIncidentByIdAsync(id, ct);
+        var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
+        var incident = await incidentService.GetIncidentByIdAsync(id, restrictToUserId, ct);
         return Ok(incident);
     }
 
@@ -51,8 +56,9 @@ public class IncidentsController(
     {
         // מחליפים כאן (בזמן שיש עדיין HttpContext) את ה-TenantId שהלקוח שלח בגוף
         // הבקשה בזה שמזוהה מה-header המהימן - כך שה-Worker שמעבד את התור מאוחר
-        // יותר (בלי HttpContext משלו) יקבל כבר ערך מהימן ולא צריך "לנחש" מי הלקוח
-        var trustedDto = dto with { TenantId = tenantProvider.TenantId };
+        // יותר (בלי HttpContext משלו) יקבל כבר ערך מהימן ולא צריך "לנחש" מי הלקוח.
+        // אותו הדבר לגבי ReportedByUserId - נלקח מה-JWT כאן ולא מגוף הבקשה
+        var trustedDto = dto with { TenantId = tenantProvider.TenantId, ReportedByUserId = currentUserProvider.UserId };
 
         // כתיבה לערוץ זיכרון מהיר ללא חסימת ה-HTTP Pipeline
         await queue.QueueIncidentAsync(trustedDto, ct);
@@ -78,7 +84,8 @@ public class IncidentsController(
         [FromRoute] long id,
         CancellationToken ct)
     {
-        var incident = await incidentService.GetIncidentByIdAsync(id, ct);
+        var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
+        var incident = await incidentService.GetIncidentByIdAsync(id, restrictToUserId, ct);
 
         var report = await rcaAgentService.AnalyzeAndRemediateIncidentAsync(
             incident!.ErrorCode,

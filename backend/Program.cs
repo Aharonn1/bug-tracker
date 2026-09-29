@@ -87,6 +87,7 @@ builder.Services.AddScoped<ICurrentTenantProvider, HttpContextTenantProvider>();
 // שני דומיינים שונים: Static Web App מול App Service)
 // ==========================================
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ICurrentUserProvider, HttpContextCurrentUserProvider>();
 
 var jwtSecretKey = builder.Configuration["Jwt:SecretKey"];
 if (!string.IsNullOrEmpty(jwtSecretKey))

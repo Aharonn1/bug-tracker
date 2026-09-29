@@ -15,6 +15,7 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
     public async Task<IEnumerable<IncidentResponseDto>> GetAllIncidentsAsync(
         bool? unresolvedOnly = null,
         string? subsystem = null,
+        int? restrictToUserId = null,
         CancellationToken ct = default)
     {
         // Join "רך" מול הקטלוג (ולא Include על קשר FK אמיתי) - כי תקרית עם קוד
@@ -23,7 +24,9 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
             from i in context.SystemErrorIncidents.AsNoTracking()
             join c in context.ErrorCatalogs.AsNoTracking() on i.ErrorCode equals c.ErrorCode into catalogJoin
             from catalog in catalogJoin.DefaultIfEmpty()
-            select new { Incident = i, Catalog = catalog };
+            join u in context.Users.AsNoTracking() on i.ReportedByUserId equals u.Id into userJoin
+            from reporter in userJoin.DefaultIfEmpty()
+            select new { Incident = i, Catalog = catalog, ReporterName = reporter.FullName };
 
         if (unresolvedOnly == true)
         {
@@ -35,27 +38,44 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
             query = query.Where(x => x.Catalog != null && x.Catalog.Subsystem == subsystem);
         }
 
+        // כל משתמש רואה רק את התקריות שנוצרו בפעילות שלו - restrictToUserId מגיע
+        // null רק כשהמזמין הוא Admin (נקבע ב-Controller)
+        if (restrictToUserId.HasValue)
+        {
+            query = query.Where(x => x.Incident.ReportedByUserId == restrictToUserId.Value);
+        }
+
         var rows = await query
             .OrderByDescending(x => x.Incident.CreatedAt)
             .ToListAsync(ct);
 
-        return rows.Select(x => MapToResponseDto(x.Incident, x.Catalog));
+        return rows.Select(x => MapToResponseDto(x.Incident, x.Catalog, x.ReporterName));
     }
 
-    public async Task<IncidentResponseDto?> GetIncidentByIdAsync(long id, CancellationToken ct = default)
+    public async Task<IncidentResponseDto?> GetIncidentByIdAsync(long id, int? restrictToUserId = null, CancellationToken ct = default)
     {
         var incident = await context.SystemErrorIncidents
             .AsNoTracking()
             .Include(i => i.Details)
             .FirstOrDefaultAsync(i => i.IncidentId == id, ct);
 
-        if (incident is null) throw new IncidentNotFoundException(id);
+        if (incident is null || (restrictToUserId.HasValue && incident.ReportedByUserId != restrictToUserId.Value))
+        {
+            throw new IncidentNotFoundException(id);
+        }
 
         var catalog = await context.ErrorCatalogs
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.ErrorCode == incident.ErrorCode, ct);
 
-        return MapToResponseDto(incident, catalog);
+        var reporterName = incident.ReportedByUserId.HasValue
+            ? await context.Users.AsNoTracking()
+                .Where(u => u.Id == incident.ReportedByUserId.Value)
+                .Select(u => u.FullName)
+                .FirstOrDefaultAsync(ct)
+            : null;
+
+        return MapToResponseDto(incident, catalog, reporterName);
     }
 
     public async Task<IncidentResponseDto> IngestIncidentAsync(CreateIncidentDto dto, CancellationToken ct = default)
@@ -83,7 +103,14 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.ErrorCode == existing.ErrorCode, ct);
 
-            return MapToResponseDto(existing, existingCatalog);
+            var existingReporterName = existing.ReportedByUserId.HasValue
+                ? await context.Users.AsNoTracking()
+                    .Where(u => u.Id == existing.ReportedByUserId.Value)
+                    .Select(u => u.FullName)
+                    .FirstOrDefaultAsync(ct)
+                : null;
+
+            return MapToResponseDto(existing, existingCatalog, existingReporterName);
         }
 
         var incident = new SystemErrorIncident
@@ -98,6 +125,7 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
             ExternalReferenceId = dto.ExternalReferenceId,
             ClientStationId = dto.ClientStationId,
             UserId = dto.UserId,
+            ReportedByUserId = dto.ReportedByUserId,
             ErrorFingerprintHash = fingerprint,
             Status = IncidentStatus.New,
             Details = new IncidentDetailPayload
@@ -115,7 +143,14 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.ErrorCode == incident.ErrorCode, ct);
 
-        return MapToResponseDto(incident, catalog);
+        var reporterName = incident.ReportedByUserId.HasValue
+            ? await context.Users.AsNoTracking()
+                .Where(u => u.Id == incident.ReportedByUserId.Value)
+                .Select(u => u.FullName)
+                .FirstOrDefaultAsync(ct)
+            : null;
+
+        return MapToResponseDto(incident, catalog, reporterName);
     }
 
     public async Task MarkAsResolvedAsync(long id, CancellationToken ct = default)
@@ -133,7 +168,7 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
         await context.SaveChangesAsync(ct);
     }
 
-    private static IncidentResponseDto MapToResponseDto(SystemErrorIncident i, ErrorCatalog? catalog) =>
+    private static IncidentResponseDto MapToResponseDto(SystemErrorIncident i, ErrorCatalog? catalog, string? reporterName = null) =>
         new(
             i.IncidentId,
             i.TenantId,
@@ -155,6 +190,8 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
             i.OccurrencesCount,
             i.CreatedAt,
             i.LastSeenAt,
-            i.ResolvedAt
+            i.ResolvedAt,
+            i.ReportedByUserId,
+            reporterName
         );
 }

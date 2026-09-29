@@ -12,6 +12,7 @@ import { ConnectionDiagnosticBanner } from './components/ConnectionDiagnosticBan
 import { OpsSummaryPanel } from './components/OpsSummaryPanel';
 import { LoginForm } from './components/LoginForm';
 import { RegisterForm } from './components/RegisterForm';
+import { UserActivitySummary } from './components/UserActivitySummary';
 
 const AuthGate: React.FC = () => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -126,6 +127,8 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
             </div>
 
             <OpsSummaryPanel />
+
+            <UserActivitySummary title="פילוח תקלות לפי משתמש" items={incidents} />
 
             <IncidentMetrics incidents={incidents} />
 

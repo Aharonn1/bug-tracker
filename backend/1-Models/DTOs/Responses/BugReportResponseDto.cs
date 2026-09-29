@@ -11,5 +11,7 @@ public record BugReportResponseDto(
     IncidentSeverity Priority,
     IncidentStatus Status,
     DateTime CreatedAt,
-    DateTime? ResolvedAt
+    DateTime? ResolvedAt,
+    int? ReportedByUserId,
+    string? ReportedByUserName
 );

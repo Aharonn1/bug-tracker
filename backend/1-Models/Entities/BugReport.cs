@@ -24,4 +24,10 @@ public class BugReport : AuditableEntity
     public IncidentStatus Status { get; set; } = IncidentStatus.New;
 
     public DateTime? ResolvedAt { get; set; }
+
+    // המשתמש המחובר שדיווח על הבאג - nullable כדי לא לשבור רשומות היסטוריות
+    // שנוצרו לפני שהייתה מערכת התחברות
+    public int? ReportedByUserId { get; set; }
+
+    public virtual User? ReportedByUser { get; set; }
 }

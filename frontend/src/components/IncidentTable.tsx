@@ -57,6 +57,7 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
               <th style={{ padding: '12px' }}>הנחיות לפתרון (Playbook)</th>
               <th style={{ padding: '12px', textAlign: 'center' }}>הופעות</th>
               <th style={{ padding: '12px' }}>זמן רישום</th>
+              <th style={{ padding: '12px' }}>דווח על ידי</th>
               <th style={{ padding: '12px' }}>סטטוס</th>
               <th style={{ padding: '12px', textAlign: 'center' }}>פעולות</th>
             </tr>
@@ -64,7 +65,7 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
           <tbody>
             {incidents.length === 0 ? (
               <tr>
-                <td colSpan={10} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                <td colSpan={11} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
                   אין אירועי תקלות להצגה
                 </td>
               </tr>
@@ -103,6 +104,9 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                     </td>
                     <td style={{ padding: '12px', whiteSpace: 'nowrap', fontSize: '12px' }}>
                       {new Date(i.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                    </td>
+                    <td style={{ padding: '12px', fontSize: '12px', color: i.reportedByUserName ? '#e2e8f0' : '#64748b' }}>
+                      {i.reportedByUserName || 'לא מזוהה'}
                     </td>
                     <td style={{ padding: '12px' }}>
                       {resolved ? (

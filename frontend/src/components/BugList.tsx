@@ -1,6 +1,7 @@
 import React from 'react';
 import { useBugs } from '../hooks/useBugs';
 import { BugStatus, BugPriority } from '../types/bug.types';
+import { UserActivitySummary } from './UserActivitySummary';
 
 export const BugList: React.FC = () => {
   const { bugs, loading, error, refreshBugs, removeBug, updateBugStatus } = useBugs();
@@ -34,7 +35,10 @@ export const BugList: React.FC = () => {
   }
 
   return (
-    <div style={{ background: '#0f172a', borderRadius: '12px', border: '1px solid #1e293b', overflow: 'hidden' }}>
+    <>
+      <UserActivitySummary title="פילוח באגים לפי משתמש" items={bugs} />
+
+      <div style={{ background: '#0f172a', borderRadius: '12px', border: '1px solid #1e293b', overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #1e293b' }}>
         <span style={{ fontSize: '14px', color: '#94a3b8' }}>סך הכל באגים רשומים: <strong style={{ color: '#f8fafc' }}>{bugs.length}</strong></span>
         <button
@@ -70,13 +74,14 @@ export const BugList: React.FC = () => {
               <th style={{ padding: '12px' }}>תיאור</th>
               <th style={{ padding: '12px' }}>סטטוס</th>
               <th style={{ padding: '12px' }}>תאריך דיווח</th>
+              <th style={{ padding: '12px' }}>דווח על ידי</th>
               <th style={{ padding: '12px' }}>פעולות</th>
             </tr>
           </thead>
           <tbody>
             {bugs.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
                   אין באגים מדווחים במערכת
                 </td>
               </tr>
@@ -91,6 +96,9 @@ export const BugList: React.FC = () => {
                   <td style={{ padding: '12px' }}>{getStatusBadge(bug.status)}</td>
                   <td style={{ padding: '12px', whiteSpace: 'nowrap', fontSize: '12px' }}>
                     {new Date(bug.createdAt).toLocaleDateString('he-IL')}
+                  </td>
+                  <td style={{ padding: '12px', fontSize: '12px', color: bug.reportedByUserName ? '#e2e8f0' : '#64748b' }}>
+                    {bug.reportedByUserName || 'לא מזוהה'}
                   </td>
                   <td style={{ padding: '12px' }}>
                     <div style={{ display: 'flex', gap: '8px' }}>
@@ -132,7 +140,8 @@ export const BugList: React.FC = () => {
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

@@ -5,32 +5,56 @@ using MyBackendApi.Models.Common;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Responses;
 using MyBackendApi.Models.Entities;
+using MyBackendApi.Services.Auth;
 using MyBackendApi.Services.Interfaces;
 
 namespace MyBackendApi.Services.Core;
 
-public class BugService(AppDbContext context) : IBugService
+public class BugService(AppDbContext context, ICurrentUserProvider currentUserProvider) : IBugService
 {
-    public async Task<IEnumerable<BugReportResponseDto>> GetAllBugsAsync(IncidentStatus? statusFilter = null, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<BugReportResponseDto>> GetAllBugsAsync(IncidentStatus? statusFilter = null, int? restrictToUserId = null, CancellationToken cancellationToken = default)
     {
-        var query = context.BugReports.AsNoTracking().AsQueryable();
+        var query =
+            from b in context.BugReports.AsNoTracking()
+            join u in context.Users.AsNoTracking() on b.ReportedByUserId equals u.Id into userJoin
+            from reporter in userJoin.DefaultIfEmpty()
+            select new { Bug = b, ReporterName = reporter.FullName };
 
         if (statusFilter.HasValue)
         {
-            query = query.Where(b => b.Status == statusFilter.Value);
+            query = query.Where(x => x.Bug.Status == statusFilter.Value);
         }
 
-        var bugs = await query.ToListAsync(cancellationToken);
-        return bugs.Select(MapToResponseDto);
+        // כל משתמש רואה רק את הבאגים שהוא עצמו דיווח - restrictToUserId מגיע null
+        // רק כשהמזמין הוא Admin (נקבע ב-Controller)
+        if (restrictToUserId.HasValue)
+        {
+            query = query.Where(x => x.Bug.ReportedByUserId == restrictToUserId.Value);
+        }
+
+        var rows = await query.ToListAsync(cancellationToken);
+        return rows.Select(x => MapToResponseDto(x.Bug, x.ReporterName));
     }
 
-    public async Task<BugReportResponseDto> GetBugByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async Task<BugReportResponseDto> GetBugByIdAsync(int id, int? restrictToUserId = null, CancellationToken cancellationToken = default)
     {
         var bug = await context.BugReports
             .AsNoTracking()
             .FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
 
-        return bug is not null ? MapToResponseDto(bug) : throw new BugNotFoundException(id);
+        if (bug is null || (restrictToUserId.HasValue && bug.ReportedByUserId != restrictToUserId.Value))
+        {
+            throw new BugNotFoundException(id);
+        }
+
+        var reporterName = bug.ReportedByUserId.HasValue
+            ? await context.Users.AsNoTracking()
+                .Where(u => u.Id == bug.ReportedByUserId.Value)
+                .Select(u => u.FullName)
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
+
+        return MapToResponseDto(bug, reporterName);
     }
 
     public async Task<BugReportResponseDto> CreateBugAsync(CreateBugReportDto dto, CancellationToken cancellationToken = default)
@@ -44,13 +68,21 @@ public class BugService(AppDbContext context) : IBugService
             Description = dto.Description,
             SystemModule = dto.SystemModule,
             Priority = dto.Priority,
-            Status = IncidentStatus.New
+            Status = IncidentStatus.New,
+            ReportedByUserId = currentUserProvider.UserId
         };
 
         context.BugReports.Add(bug);
         await context.SaveChangesAsync(cancellationToken);
 
-        return MapToResponseDto(bug);
+        var reporterName = bug.ReportedByUserId.HasValue
+            ? await context.Users.AsNoTracking()
+                .Where(u => u.Id == bug.ReportedByUserId.Value)
+                .Select(u => u.FullName)
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
+
+        return MapToResponseDto(bug, reporterName);
     }
 
     public async Task<BugReportResponseDto> UpdateBugStatusAsync(int id, IncidentStatus status, CancellationToken cancellationToken = default)
@@ -62,7 +94,15 @@ public class BugService(AppDbContext context) : IBugService
         bug.ResolvedAt = status == IncidentStatus.Closed ? DateTime.UtcNow : null;
 
         await context.SaveChangesAsync(cancellationToken);
-        return MapToResponseDto(bug);
+
+        var reporterName = bug.ReportedByUserId.HasValue
+            ? await context.Users.AsNoTracking()
+                .Where(u => u.Id == bug.ReportedByUserId.Value)
+                .Select(u => u.FullName)
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
+
+        return MapToResponseDto(bug, reporterName);
     }
 
     public async Task<bool> DeleteBugAsync(int id, CancellationToken cancellationToken = default)
@@ -77,7 +117,7 @@ public class BugService(AppDbContext context) : IBugService
         return true;
     }
 
-    private static BugReportResponseDto MapToResponseDto(BugReport bug) =>
+    private static BugReportResponseDto MapToResponseDto(BugReport bug, string? reporterName = null) =>
         new(
             bug.Id,
             bug.TenantId,
@@ -87,6 +127,8 @@ public class BugService(AppDbContext context) : IBugService
             bug.Priority,
             bug.Status,
             bug.CreatedAt,
-            bug.ResolvedAt
+            bug.ResolvedAt,
+            bug.ReportedByUserId,
+            reporterName
         );
 }

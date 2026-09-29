@@ -30,6 +30,10 @@ public class SystemErrorIncident : AuditableEntity
     [MaxLength(100)]
     public string? UserId { get; set; }
 
+    // המשתמש המחובר (מתוך Users) שהתקרית נוצרה במהלך הפעילות שלו - nullable כי
+    // חלק מהתקריות (בדיקות רשת אוטומטיות, שגיאות לפני התחברות) קורות בלי משתמש מזוהה
+    public int? ReportedByUserId { get; set; }
+
     [Required]
     public string ErrorMessage { get; set; } = null!;
 
@@ -48,4 +52,6 @@ public class SystemErrorIncident : AuditableEntity
     // כ"חיפוש רך" לפי ErrorCode (ראו IncidentService), כי אילוץ FK אמיתי ידחה
     // תקרית עם קוד שגיאה שעוד לא תועד בקטלוג
     public virtual IncidentDetailPayload? Details { get; set; }
+
+    public virtual User? ReportedByUser { get; set; }
 }

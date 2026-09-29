@@ -23,5 +23,7 @@ public record IncidentResponseDto(
     int OccurrencesCount,
     DateTime CreatedAt,
     DateTime LastSeenAt,
-    DateTime? ResolvedAt
+    DateTime? ResolvedAt,
+    int? ReportedByUserId,
+    string? ReportedByUserName
 );

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MyBackendApi.Data;
 
@@ -11,9 +12,11 @@ using MyBackendApi.Data;
 namespace MyBackendApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260928140110_AddReportedByUserToBugsAndIncidents")]
+    partial class AddReportedByUserToBugsAndIncidents
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -312,7 +315,7 @@ namespace MyBackendApi.Migrations
                             Email = "aharon.halevy@lawfirm.co.il",
                             FullName = "אהרון הלוי",
                             IsActive = true,
-                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            PasswordHash = "AQAAAAIAAYagAAAAEAt+3mQSMdu/YjNwFNRAoKQPzrPHCiBy6jbcVrU/Dh2CdHbUZKP8k1nl8aHyS/tNlw==",
                             Role = (byte)2,
                             TenantId = "default-tenant"
                         },
@@ -323,7 +326,7 @@ namespace MyBackendApi.Migrations
                             Email = "noa.cohen@lawfirm.co.il",
                             FullName = "נועה כהן",
                             IsActive = true,
-                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            PasswordHash = "AQAAAAIAAYagAAAAEGOk1i23I7wFdF4/JghwnSBqHBpyq82LGeRAMWySOjMG87NM176R89AIqj8OzBaOxg==",
                             Role = (byte)1,
                             TenantId = "default-tenant"
                         },
@@ -334,7 +337,7 @@ namespace MyBackendApi.Migrations
                             Email = "itai.mizrahi@lawfirm.co.il",
                             FullName = "איתי מזרחי",
                             IsActive = true,
-                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            PasswordHash = "AQAAAAIAAYagAAAAEBF1/j0+Myd5iGA4pjqi9VcT8rLEMolpP1ufT69h/B9Lol3vsyZOG+z8Kxa4sMOf2Q==",
                             Role = (byte)1,
                             TenantId = "default-tenant"
                         },
@@ -345,7 +348,7 @@ namespace MyBackendApi.Migrations
                             Email = "shira.bendavid@lawfirm.co.il",
                             FullName = "שירה בן-דוד",
                             IsActive = true,
-                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            PasswordHash = "AQAAAAIAAYagAAAAEO/Hir2rnamThvop9sj1mf/9ICH3TZzuEariJUgHemP9tg+QdS2lTkAjlzVW2UmZDQ==",
                             Role = (byte)1,
                             TenantId = "default-tenant"
                         });

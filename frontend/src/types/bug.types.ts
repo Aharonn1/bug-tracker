@@ -32,6 +32,8 @@ export interface BugReport {
   status: BugStatus;
   createdAt: string;
   resolvedAt: string | null;
+  reportedByUserId: number | null;
+  reportedByUserName: string | null;
 }
 
 export interface CreateBugDto {
@@ -79,6 +81,8 @@ export interface SystemIncident {
   createdAt: string;
   lastSeenAt: string;
   resolvedAt: string | null;
+  reportedByUserId: number | null;
+  reportedByUserName: string | null;
 }
 
 export interface CreateIncidentDto {

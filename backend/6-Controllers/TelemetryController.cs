@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Telemetry;
+using MyBackendApi.Services.Auth;
 using MyBackendApi.Services.Core;
 using MyBackendApi.Services.Queues;
 using MyBackendApi.Services.Tenancy;
@@ -13,7 +14,8 @@ public class TelemetryController(
     TelemetryAnalysisService analysisService,
     IncidentChannelQueue queue,
     OpsInsightsService opsInsightsService,
-    ICurrentTenantProvider tenantProvider) : ControllerBase
+    ICurrentTenantProvider tenantProvider,
+    ICurrentUserProvider currentUserProvider) : ControllerBase
 {
     [HttpPost("probe")]
     [ProducesResponseType(typeof(TelemetryDiagnosticReport), StatusCodes.Status200OK)]
@@ -43,7 +45,8 @@ public class TelemetryController(
                 UserId: null,
                 ErrorMessage: "Client network latency degraded",
                 StackTrace: null,
-                RawPayload: $"Exact latency: {dto.LatencyMs}ms ({dto.EffectiveConnectionType}), station: {dto.StationId ?? "unknown"}"
+                RawPayload: $"Exact latency: {dto.LatencyMs}ms ({dto.EffectiveConnectionType}), station: {dto.StationId ?? "unknown"}",
+                ReportedByUserId: currentUserProvider.UserId
             ), ct);
         }
 
