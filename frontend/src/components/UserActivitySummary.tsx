@@ -4,22 +4,18 @@ import { UserRole } from '../types/auth.types';
 
 interface Props {
   title: string;
-  items: Array<{ reportedByUserName: string | null }>;
+  counts: Record<string, number>;
 }
 
-// גלוי רק ל-Admin - מציג פילוח כמה תקלות/באגים כל משתמש דיווח, כדי לזהות
+// גלוי רק ל-Admin - מציג פילוח כמה תקלות/באגים כל משתמש חווה, כדי לזהות
 // במבט אחד איזה משתמש חווה הכי הרבה בעיות
-export const UserActivitySummary: React.FC<Props> = ({ title, items }) => {
+export const UserActivitySummary: React.FC<Props> = ({ title, counts: countsMap }) => {
   const { user } = useAuth();
 
-  const counts = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const item of items) {
-      const name = item.reportedByUserName || 'לא מזוהה';
-      map.set(name, (map.get(name) || 0) + 1);
-    }
-    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
-  }, [items]);
+  const counts = useMemo(
+    () => Object.entries(countsMap).sort((a, b) => b[1] - a[1]),
+    [countsMap]
+  );
 
   if (user?.role !== UserRole.Admin || counts.length === 0) return null;
 

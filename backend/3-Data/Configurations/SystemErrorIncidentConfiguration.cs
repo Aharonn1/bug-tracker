@@ -42,13 +42,6 @@ public class SystemErrorIncidentConfiguration : IEntityTypeConfiguration<SystemE
             .HasForeignKey<IncidentDetailPayload>(d => d.IncidentId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // SetNull ולא Cascade/Restrict - אם משתמש יימחק בעתיד, התקריות שדיווח
-        // צריכות להישאר (היסטוריית שגיאות היא נתון תפעולי), רק בלי שיוך למשתמש
-        builder.HasOne(i => i.ReportedByUser)
-            .WithMany()
-            .HasForeignKey(i => i.ReportedByUserId)
-            .OnDelete(DeleteBehavior.SetNull);
-
         // אין קשר EF/FK אמיתי לקטלוג השגיאות בכוונה - ראו הערה ב-SystemErrorIncident.cs
     }
 }

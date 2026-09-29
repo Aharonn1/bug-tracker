@@ -18,38 +18,39 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
         int? restrictToUserId = null,
         CancellationToken ct = default)
     {
-        // Join "רך" מול הקטלוג (ולא Include על קשר FK אמיתי) - כי תקרית עם קוד
-        // שגיאה שעוד לא תועד בקטלוג עדיין חייבת להישמר ולהיות גלויה כאן
-        var query =
-            from i in context.SystemErrorIncidents.AsNoTracking()
-            join c in context.ErrorCatalogs.AsNoTracking() on i.ErrorCode equals c.ErrorCode into catalogJoin
-            from catalog in catalogJoin.DefaultIfEmpty()
-            join u in context.Users.AsNoTracking() on i.ReportedByUserId equals u.Id into userJoin
-            from reporter in userJoin.DefaultIfEmpty()
-            select new { Incident = i, Catalog = catalog, ReporterName = reporter.FullName };
+        var query = context.SystemErrorIncidents
+            .AsNoTracking()
+            .Include(i => i.Reporters).ThenInclude(r => r.User)
+            .AsQueryable();
 
         if (unresolvedOnly == true)
         {
-            query = query.Where(x => !x.Incident.IsResolved);
+            query = query.Where(i => !i.IsResolved);
         }
 
-        if (!string.IsNullOrWhiteSpace(subsystem))
-        {
-            query = query.Where(x => x.Catalog != null && x.Catalog.Subsystem == subsystem);
-        }
-
-        // כל משתמש רואה רק את התקריות שנוצרו בפעילות שלו - restrictToUserId מגיע
+        // כל משתמש רואה רק תקריות שהוא עצמו נתקל בהן; restrictToUserId מגיע
         // null רק כשהמזמין הוא Admin (נקבע ב-Controller)
         if (restrictToUserId.HasValue)
         {
-            query = query.Where(x => x.Incident.ReportedByUserId == restrictToUserId.Value);
+            query = query.Where(i => i.Reporters.Any(r => r.UserId == restrictToUserId.Value));
         }
 
-        var rows = await query
-            .OrderByDescending(x => x.Incident.CreatedAt)
+        var incidents = await query
+            .OrderByDescending(i => i.CreatedAt)
             .ToListAsync(ct);
 
-        return rows.Select(x => MapToResponseDto(x.Incident, x.Catalog, x.ReporterName));
+        // Join "רך" מול הקטלוג (לא FK אמיתי) - כי תקרית עם קוד שגיאה שעוד לא
+        // תועד בקטלוג עדיין חייבת להישמר ולהיות גלויה כאן. נעשה בזיכרון כי אין
+        // הרבה שורות בקטלוג, ומאפשר לשלב עם ה-Include של Reporters למעלה
+        var catalogs = await context.ErrorCatalogs.AsNoTracking().ToDictionaryAsync(c => c.ErrorCode, ct);
+
+        IEnumerable<SystemErrorIncident> filtered = incidents;
+        if (!string.IsNullOrWhiteSpace(subsystem))
+        {
+            filtered = filtered.Where(i => catalogs.TryGetValue(i.ErrorCode, out var cat) && cat.Subsystem == subsystem);
+        }
+
+        return filtered.Select(i => MapToResponseDto(i, catalogs.GetValueOrDefault(i.ErrorCode)));
     }
 
     public async Task<IncidentResponseDto?> GetIncidentByIdAsync(long id, int? restrictToUserId = null, CancellationToken ct = default)
@@ -57,9 +58,10 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
         var incident = await context.SystemErrorIncidents
             .AsNoTracking()
             .Include(i => i.Details)
+            .Include(i => i.Reporters).ThenInclude(r => r.User)
             .FirstOrDefaultAsync(i => i.IncidentId == id, ct);
 
-        if (incident is null || (restrictToUserId.HasValue && incident.ReportedByUserId != restrictToUserId.Value))
+        if (incident is null || (restrictToUserId.HasValue && incident.Reporters.All(r => r.UserId != restrictToUserId.Value)))
         {
             throw new IncidentNotFoundException(id);
         }
@@ -68,14 +70,7 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.ErrorCode == incident.ErrorCode, ct);
 
-        var reporterName = incident.ReportedByUserId.HasValue
-            ? await context.Users.AsNoTracking()
-                .Where(u => u.Id == incident.ReportedByUserId.Value)
-                .Select(u => u.FullName)
-                .FirstOrDefaultAsync(ct)
-            : null;
-
-        return MapToResponseDto(incident, catalog, reporterName);
+        return MapToResponseDto(incident, catalog);
     }
 
     public async Task<IncidentResponseDto> IngestIncidentAsync(CreateIncidentDto dto, CancellationToken ct = default)
@@ -91,76 +86,82 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
         // dto.TenantId שכבר הוחלף בערך המהימן ב-Controller
         var existing = await context.SystemErrorIncidents
             .IgnoreQueryFilters()
+            .Include(i => i.Reporters)
             .FirstOrDefaultAsync(i => i.TenantId == dto.TenantId && i.ErrorFingerprintHash == fingerprint, ct);
+
+        long incidentId;
 
         if (existing is not null)
         {
             existing.OccurrencesCount++;
             existing.LastSeenAt = DateTime.UtcNow;
 
-            // מעדכנים את המשתמש המשויך גם בהופעה חוזרת (לא רק ביצירה) - אחרת
-            // תקרית שכבר קיימת (למשל "רשת איטית", שחוזרת עשרות פעמים) לעולם לא
-            // הייתה מקבלת שיוך למשתמש אחרי ההופעה הראשונה שלה, גם אם כל מי
-            // שנתקל בה לאחר מכן כן היה מחובר. לא דורסים שיוך ידוע בדיווח אנונימי
+            // מוסיפים/מעדכנים את המשתמש הזה ברשימת המדווחים - כל משתמש חדש
+            // שנתקל בתקרית נשמר, ולא רק "האחרון" (רבים-לרבים, לא דריסה)
             if (dto.ReportedByUserId.HasValue)
             {
-                existing.ReportedByUserId = dto.ReportedByUserId;
+                var reporter = existing.Reporters.FirstOrDefault(r => r.UserId == dto.ReportedByUserId.Value);
+                if (reporter is not null)
+                {
+                    reporter.OccurrenceCount++;
+                    reporter.LastSeenAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    existing.Reporters.Add(new IncidentReporter { UserId = dto.ReportedByUserId.Value });
+                }
             }
 
             await context.SaveChangesAsync(ct);
+            incidentId = existing.IncidentId;
+        }
+        else
+        {
+            var incident = new SystemErrorIncident
+            {
+                // הערה: dto.TenantId כבר "הוחלף" ב-Controller בזמן שהיה HttpContext
+                // זמין (לפני שנכנס לתור) בערך המהימן מה-header - כאן, בתוך ה-Background
+                // Worker, אין HttpContext, ולכן לא ניתן להשתמש ב-context.CurrentTenantId
+                TenantId = dto.TenantId,
+                ErrorCode = dto.ErrorCode,
+                ErrorMessage = dto.ErrorMessage,
+                CaseNumber = dto.CaseNumber,
+                ExternalReferenceId = dto.ExternalReferenceId,
+                ClientStationId = dto.ClientStationId,
+                UserId = dto.UserId,
+                ErrorFingerprintHash = fingerprint,
+                Status = IncidentStatus.New,
+                Details = new IncidentDetailPayload
+                {
+                    StackTrace = dto.StackTrace,
+                    RawPayload = dto.RawPayload
+                }
+            };
 
-            var existingCatalog = await context.ErrorCatalogs
-                .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.ErrorCode == existing.ErrorCode, ct);
+            if (dto.ReportedByUserId.HasValue)
+            {
+                incident.Reporters.Add(new IncidentReporter { UserId = dto.ReportedByUserId.Value });
+            }
 
-            var existingReporterName = existing.ReportedByUserId.HasValue
-                ? await context.Users.AsNoTracking()
-                    .Where(u => u.Id == existing.ReportedByUserId.Value)
-                    .Select(u => u.FullName)
-                    .FirstOrDefaultAsync(ct)
-                : null;
-
-            return MapToResponseDto(existing, existingCatalog, existingReporterName);
+            context.SystemErrorIncidents.Add(incident);
+            await context.SaveChangesAsync(ct);
+            incidentId = incident.IncidentId;
         }
 
-        var incident = new SystemErrorIncident
-        {
-            // הערה: dto.TenantId כבר "הוחלף" ב-Controller בזמן שהיה HttpContext
-            // זמין (לפני שנכנס לתור) בערך המהימן מה-header - כאן, בתוך ה-Background
-            // Worker, אין HttpContext, ולכן לא ניתן להשתמש ב-context.CurrentTenantId
-            TenantId = dto.TenantId,
-            ErrorCode = dto.ErrorCode,
-            ErrorMessage = dto.ErrorMessage,
-            CaseNumber = dto.CaseNumber,
-            ExternalReferenceId = dto.ExternalReferenceId,
-            ClientStationId = dto.ClientStationId,
-            UserId = dto.UserId,
-            ReportedByUserId = dto.ReportedByUserId,
-            ErrorFingerprintHash = fingerprint,
-            Status = IncidentStatus.New,
-            Details = new IncidentDetailPayload
-            {
-                StackTrace = dto.StackTrace,
-                RawPayload = dto.RawPayload
-            }
-        };
+        // טוענים מחדש עם ה-Include-ים הדרושים לתשובה, כדי לא להסתמך על fix-up
+        // של navigation properties אחרי SaveChanges על ישויות שלא נטענו מראש.
+        // IgnoreQueryFilters מאותה סיבה כמו למעלה - עדיין בתוך ה-Background Worker
+        var saved = await context.SystemErrorIncidents
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Include(i => i.Reporters).ThenInclude(r => r.User)
+            .FirstAsync(i => i.IncidentId == incidentId, ct);
 
-        context.SystemErrorIncidents.Add(incident);
-        await context.SaveChangesAsync(ct);
-
-        // חיפוש רך בקטלוג במידה וקיים עבור התשובה - לא חוסם שמירה אם עדיין לא תועד
         var catalog = await context.ErrorCatalogs
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.ErrorCode == incident.ErrorCode, ct);
+            .FirstOrDefaultAsync(c => c.ErrorCode == saved.ErrorCode, ct);
 
-        var reporterName = incident.ReportedByUserId.HasValue
-            ? await context.Users.AsNoTracking()
-                .Where(u => u.Id == incident.ReportedByUserId.Value)
-                .Select(u => u.FullName)
-                .FirstOrDefaultAsync(ct)
-            : null;
-
-        return MapToResponseDto(incident, catalog, reporterName);
+        return MapToResponseDto(saved, catalog);
     }
 
     public async Task MarkAsResolvedAsync(long id, CancellationToken ct = default)
@@ -178,7 +179,7 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
         await context.SaveChangesAsync(ct);
     }
 
-    private static IncidentResponseDto MapToResponseDto(SystemErrorIncident i, ErrorCatalog? catalog, string? reporterName = null) =>
+    private static IncidentResponseDto MapToResponseDto(SystemErrorIncident i, ErrorCatalog? catalog) =>
         new(
             i.IncidentId,
             i.TenantId,
@@ -201,7 +202,9 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
             i.CreatedAt,
             i.LastSeenAt,
             i.ResolvedAt,
-            i.ReportedByUserId,
-            reporterName
+            i.Reporters
+                .OrderByDescending(r => r.LastSeenAt)
+                .Select(r => new IncidentReporterDto(r.UserId, r.User.FullName, r.OccurrenceCount, r.LastSeenAt))
+                .ToList()
         );
 }

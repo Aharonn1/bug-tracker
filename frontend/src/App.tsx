@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Navbar } from './components/Navbar';
 import type { DashboardView } from './components/Navbar';
 import { useIncidents } from './hooks/useIncidents';
@@ -53,6 +53,20 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
   } = useIncidents();
 
   const openIncidentsCount = incidents.filter(i => !i.isResolved).length;
+
+  const incidentUserCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const incident of incidents) {
+      if (incident.reportedByUsers.length === 0) {
+        counts['לא מזוהה'] = (counts['לא מזוהה'] || 0) + 1;
+        continue;
+      }
+      for (const reporter of incident.reportedByUsers) {
+        counts[reporter.userName] = (counts[reporter.userName] || 0) + reporter.occurrenceCount;
+      }
+    }
+    return counts;
+  }, [incidents]);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#0b0f19' }}>
@@ -128,7 +142,7 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
 
             <OpsSummaryPanel />
 
-            <UserActivitySummary title="פילוח תקלות לפי משתמש" items={incidents} />
+            <UserActivitySummary title="פילוח תקלות לפי משתמש" counts={incidentUserCounts} />
 
             <IncidentMetrics incidents={incidents} />
 

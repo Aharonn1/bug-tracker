@@ -35,6 +35,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenant
         // (ותיעודית ממליץ) שאפשר לקבל תוצאות לא עקביות בטעינת הניווט ביניהם
         modelBuilder.Entity<IncidentDetailPayload>().HasQueryFilter(d => d.Incident.TenantId == CurrentTenantId);
 
+        // אותו הגיון כמו IncidentDetailPayload למעלה - IncidentReporter הוא הצד
+        // "החובה" ביחס לתקרית המסוננת, וצריך סינון תואם
+        modelBuilder.Entity<IncidentReporter>().HasQueryFilter(r => r.Incident.TenantId == CurrentTenantId);
+
         // משתמשים מסוננים לפי אותו header מהימן כמו שאר הישויות - כך שחיפוש
         // לפי אימייל בזמן login לא "יטעה" בין לקוחות שונים בעתיד. הבדיקה עצמה
         // (AuthService) חייבת להשתמש ב-IgnoreQueryFilters אם היא רצה בלי בקשת

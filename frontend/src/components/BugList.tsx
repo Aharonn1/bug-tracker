@@ -1,10 +1,19 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useBugs } from '../hooks/useBugs';
 import { BugStatus, BugPriority } from '../types/bug.types';
 import { UserActivitySummary } from './UserActivitySummary';
 
 export const BugList: React.FC = () => {
   const { bugs, loading, error, refreshBugs, removeBug, updateBugStatus } = useBugs();
+
+  const userCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const bug of bugs) {
+      const name = bug.reportedByUserName || 'לא מזוהה';
+      counts[name] = (counts[name] || 0) + 1;
+    }
+    return counts;
+  }, [bugs]);
 
   const getPriorityBadge = (priority: number) => {
     switch (priority) {
@@ -36,7 +45,7 @@ export const BugList: React.FC = () => {
 
   return (
     <>
-      <UserActivitySummary title="פילוח באגים לפי משתמש" items={bugs} />
+      <UserActivitySummary title="פילוח באגים לפי משתמש" counts={userCounts} />
 
       <div style={{ background: '#0f172a', borderRadius: '12px', border: '1px solid #1e293b', overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #1e293b' }}>

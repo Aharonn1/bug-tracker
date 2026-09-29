@@ -63,6 +63,13 @@ export const SubsystemType = {
 
 export type SubsystemType = (typeof SubsystemType)[keyof typeof SubsystemType];
 
+export interface IncidentReporter {
+  userId: number;
+  userName: string;
+  occurrenceCount: number;
+  lastSeenAt: string;
+}
+
 export interface SystemIncident {
   incidentId: number;
   errorCode: string;
@@ -81,8 +88,7 @@ export interface SystemIncident {
   createdAt: string;
   lastSeenAt: string;
   resolvedAt: string | null;
-  reportedByUserId: number | null;
-  reportedByUserName: string | null;
+  reportedByUsers: IncidentReporter[];
 }
 
 export interface CreateIncidentDto {

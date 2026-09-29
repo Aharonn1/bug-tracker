@@ -105,8 +105,29 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                     <td style={{ padding: '12px', whiteSpace: 'nowrap', fontSize: '12px' }}>
                       {new Date(i.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
                     </td>
-                    <td style={{ padding: '12px', fontSize: '12px', color: i.reportedByUserName ? '#e2e8f0' : '#64748b' }}>
-                      {i.reportedByUserName || 'לא מזוהה'}
+                    <td style={{ padding: '12px', fontSize: '12px', maxWidth: '220px' }}>
+                      {i.reportedByUsers.length === 0 ? (
+                        <span style={{ color: '#64748b' }}>לא מזוהה</span>
+                      ) : (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {i.reportedByUsers.map((r) => (
+                            <span
+                              key={r.userId}
+                              title={`נראה לאחרונה: ${new Date(r.lastSeenAt).toLocaleString('he-IL')}`}
+                              style={{
+                                padding: '2px 7px',
+                                borderRadius: '999px',
+                                background: '#1e293b',
+                                color: '#e2e8f0',
+                                fontSize: '11px',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {r.userName} {r.occurrenceCount > 1 && <span style={{ color: '#94a3b8' }}>×{r.occurrenceCount}</span>}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '12px' }}>
                       {resolved ? (

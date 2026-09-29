@@ -24,6 +24,13 @@ public record IncidentResponseDto(
     DateTime CreatedAt,
     DateTime LastSeenAt,
     DateTime? ResolvedAt,
-    int? ReportedByUserId,
-    string? ReportedByUserName
+    IReadOnlyList<IncidentReporterDto> ReportedByUsers
+);
+
+// כל משתמש שנתקל בתקרית הזו לפחות פעם אחת, כמה פעמים, ומתי לאחרונה
+public record IncidentReporterDto(
+    int UserId,
+    string UserName,
+    int OccurrenceCount,
+    DateTime LastSeenAt
 );
