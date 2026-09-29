@@ -97,6 +97,16 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
         {
             existing.OccurrencesCount++;
             existing.LastSeenAt = DateTime.UtcNow;
+
+            // מעדכנים את המשתמש המשויך גם בהופעה חוזרת (לא רק ביצירה) - אחרת
+            // תקרית שכבר קיימת (למשל "רשת איטית", שחוזרת עשרות פעמים) לעולם לא
+            // הייתה מקבלת שיוך למשתמש אחרי ההופעה הראשונה שלה, גם אם כל מי
+            // שנתקל בה לאחר מכן כן היה מחובר. לא דורסים שיוך ידוע בדיווח אנונימי
+            if (dto.ReportedByUserId.HasValue)
+            {
+                existing.ReportedByUserId = dto.ReportedByUserId;
+            }
+
             await context.SaveChangesAsync(ct);
 
             var existingCatalog = await context.ErrorCatalogs
