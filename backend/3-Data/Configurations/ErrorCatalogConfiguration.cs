@@ -35,5 +35,32 @@ public class ErrorCatalogConfiguration : IEntityTypeConfiguration<ErrorCatalog>
             TenantId = string.Empty,
             CreatedAt = new DateTime(2026, 9, 28, 0, 0, 0, DateTimeKind.Utc)
         });
+
+        // שני קודים חדשים - מכסים שגיאות שה-ErrorBoundary של React לא תופס בכלל,
+        // כי הוא תופס רק שגיאות שקורות בתוך שלב ה-render: שגיאת סקריפט גלובלית
+        // (handler רגיל, setTimeout, קוד חיצוני) ו-Promise שנדחה בלי .catch
+        builder.HasData(new ErrorCatalog
+        {
+            ErrorCode = "CLIENT_UNHANDLED_ERROR",
+            Category = "Client-Side/Runtime",
+            Subsystem = "WebClient",
+            SeverityLevel = IncidentSeverity.High,
+            HebrewDescription = "שגיאת JavaScript גלובלית בלתי צפויה בדפדפן הלקוח, מחוץ למחזור ה-render של React (למשל בתוך event handler או setTimeout) - מזוהה אוטומטית",
+            ResolutionPlaybook = "1. לבדוק את ה-Stack Trace ואת השורה המדויקת שבה קרתה השגיאה. 2. לשחזר את הפעולה שהובילה לשגיאה לפי RawPayload (URL, User Agent). 3. אם זו שגיאה חוזרת, לשקול הוספת בדיקת תקינות (guard clause) בקוד הרלוונטי.",
+            TenantId = string.Empty,
+            CreatedAt = new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc)
+        });
+
+        builder.HasData(new ErrorCatalog
+        {
+            ErrorCode = "CLIENT_UNHANDLED_REJECTION",
+            Category = "Client-Side/Runtime",
+            Subsystem = "WebClient",
+            SeverityLevel = IncidentSeverity.High,
+            HebrewDescription = "הבטחה (Promise) בקוד הלקוח נדחתה בלי טיפול (.catch) - לרוב מעיד על קריאת API או פעולה אסינכרונית שנכשלה בלי הודעה למשתמש",
+            ResolutionPlaybook = "1. לבדוק את הודעת השגיאה ואת ה-Stack Trace אם קיים. 2. לאתר את הקריאה האסינכרונית החסרה בטיפול (fetch/Promise) ולהוסיף .catch מתאים. 3. לוודא שהמשתמש מקבל הודעת שגיאה ברורה במקום שהאפליקציה פשוט 'נתקעת' בשקט.",
+            TenantId = string.Empty,
+            CreatedAt = new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc)
+        });
     }
 }
