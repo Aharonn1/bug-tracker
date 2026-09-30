@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { type BugReport, type CreateBugDto, BugStatus } from '../types/bug.types';
 import { bugService } from '../api/bugService';
+import { reportSilentError } from '../utils/errorReporting';
 
 export function useBugs() {
   const [bugs, setBugs] = useState<BugReport[]>([]);
@@ -15,6 +16,7 @@ export function useBugs() {
       setBugs(data);
     } catch (err: any) {
       setError(err.message || 'שגיאה בשליפת הבאגים');
+      reportSilentError('CLIENT_HANDLED_API_FAILURE', err.message, err.stack);
     } finally {
       setLoading(false);
     }
@@ -31,6 +33,7 @@ export function useBugs() {
       await fetchBugs();
     } catch (err: any) {
       setError(err.message || 'שגיאה ביצירת הבאג');
+      reportSilentError('CLIENT_HANDLED_API_FAILURE', err.message, err.stack);
       throw err;
     } finally {
       setLoading(false);
@@ -43,6 +46,7 @@ export function useBugs() {
       setBugs((prev) => prev.filter((bug) => bug.id !== id));
     } catch (err: any) {
       setError(err.message || 'שגיאה במחיקת הבאג');
+      reportSilentError('CLIENT_HANDLED_API_FAILURE', err.message, err.stack);
     }
   };
 
@@ -52,6 +56,7 @@ export function useBugs() {
       setBugs((prev) => prev.map((bug) => (bug.id === id ? updated : bug)));
     } catch (err: any) {
       setError(err.message || 'שגיאה בעדכון הסטטוס');
+      reportSilentError('CLIENT_HANDLED_API_FAILURE', err.message, err.stack);
     }
   };
 

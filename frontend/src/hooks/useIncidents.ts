@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { SystemIncident } from '../types/bug.types';
 import { API_BASE_URL, tenantHeaders } from '../config';
+import { reportSilentError } from '../utils/errorReporting';
 
 export const useIncidents = () => {
   const [incidents, setIncidents] = useState<SystemIncident[]>([]);
@@ -35,6 +36,7 @@ export const useIncidents = () => {
     } catch (err: any) {
       console.error('Error fetching incidents:', err);
       setError(err.message || 'כשל בתקשורת מול שרת ה-API');
+      reportSilentError('CLIENT_HANDLED_API_FAILURE', err.message, err.stack);
     } finally {
       setLoading(false);
     }
@@ -56,6 +58,7 @@ export const useIncidents = () => {
       ));
     } catch (err: any) {
       alert(`שגיאה: ${err.message}`);
+      reportSilentError('CLIENT_HANDLED_API_FAILURE', err.message, err.stack);
     }
   };
 

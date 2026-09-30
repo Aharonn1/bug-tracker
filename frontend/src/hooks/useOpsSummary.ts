@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { telemetryService } from '../api/telemetryService';
 import type { OpsSummaryDto } from '../types/telemetry.types';
+import { reportSilentError } from '../utils/errorReporting';
 
 const AUTO_REFRESH_MS = 45_000;
 
@@ -16,6 +17,7 @@ export const useOpsSummary = (minutes: number = 60) => {
       setSummary(await telemetryService.getOpsSummary(minutes));
     } catch (err: any) {
       setError(err.message || 'כשל בטעינת נתוני ניטור');
+      reportSilentError('CLIENT_HANDLED_API_FAILURE', err.message, err.stack);
     } finally {
       setLoading(false);
     }
