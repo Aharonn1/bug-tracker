@@ -2,14 +2,19 @@ using System.Net;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using MyBackendApi.Exceptions;
 using MyBackendApi.Models.DTOs.Ingestion;
+using MyBackendApi.Services.Diagnostics;
 using MyBackendApi.Services.Queues;
 
 namespace MyBackendApi.Middleware;
 
-public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger, IncidentChannelQueue incidentQueue) : IExceptionHandler
+public class GlobalExceptionHandler(
+    ILogger<GlobalExceptionHandler> logger,
+    IncidentChannelQueue incidentQueue,
+    DbOutageLog dbOutageLog) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
@@ -53,6 +58,19 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger, Inci
         // נחשבות "תקלה" ראויה למעקב - אחרת כל 404/401 צפוי היה מציף את הטבלה
         if (statusCode == HttpStatusCode.InternalServerError)
         {
+            // תיעוד ל-DbOutageLog הוא סינכרוני וב-זיכרון בלבד (לא נוגע ב-DB) -
+            // בכוונה נפרד מ-TryQueueIncidentAsync למטה, כי אם זו באמת תקלת DB,
+            // הניסיון לתעד תקרית רגילה שם עומד להיכשל מאותה סיבה בדיוק
+            if (IsDatabaseConnectivityException(exception))
+            {
+                dbOutageLog.Record(new DbOutageEntry(
+                    OccurredAt: DateTime.UtcNow,
+                    ExceptionType: exception.GetType().Name,
+                    Message: exception.Message,
+                    RequestPath: $"{httpContext.Request.Method} {httpContext.Request.Path}"
+                ));
+            }
+
             await TryQueueIncidentAsync(httpContext, exception, cancellationToken);
         }
 
@@ -92,4 +110,11 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger, Inci
             logger.LogError(queueEx, "כשל בתיעוד אוטומטי של תקרית עבור חריגה בלתי צפויה");
         }
     }
+
+    // SqlException ישירה, או עטופה ע"י RetryLimitExceededException אחרי
+    // שמדיניות ה-Retry של EF Core (EnableRetryOnFailure) כבר מיצתה את הניסיונות
+    private static bool IsDatabaseConnectivityException(Exception exception) =>
+        exception is SqlException
+        || exception.InnerException is SqlException
+        || exception.GetType().Name == "RetryLimitExceededException";
 }

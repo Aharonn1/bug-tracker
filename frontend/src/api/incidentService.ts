@@ -1,4 +1,4 @@
-import type { CreateIncidentDto, SystemIncident } from "../types/bug.types";
+import type { CreateIncidentDto, DbOutageEntry, SystemIncident } from "../types/bug.types";
 import { API_BASE_URL, tenantHeaders } from '../config';
 
 const BASE_URL = `${API_BASE_URL}/api/Incidents`;
@@ -15,6 +15,17 @@ export const incidentService = {
     });
 
     if (!res.ok) throw new Error(`שגיאה בטעינת אירועי מערכת (${res.status})`);
+    return res.json();
+  },
+
+  // לא נוגע ב-DB בכלל בצד השרת - עובד גם כשבסיס הנתונים לגמרי לא זמין,
+  // כל עוד יש טוקן תקף (אימות JWT לא דורש DB)
+  async getDbOutageLog(): Promise<DbOutageEntry[]> {
+    const res = await fetch(`${BASE_URL}/db-outage-log`, {
+      headers: tenantHeaders({ 'Accept': 'application/json' })
+    });
+
+    if (!res.ok) throw new Error(`שגיאה בטעינת יומן זמינות בסיס הנתונים (${res.status})`);
     return res.json();
   },
 

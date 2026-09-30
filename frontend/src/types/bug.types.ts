@@ -91,6 +91,13 @@ export interface SystemIncident {
   reportedByUsers: IncidentReporter[];
 }
 
+export interface DbOutageEntry {
+  occurredAt: string;
+  exceptionType: string;
+  message: string;
+  requestPath: string;
+}
+
 export interface CreateIncidentDto {
   tenantId: string;
   errorCode: string;

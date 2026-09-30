@@ -89,5 +89,19 @@ public class ErrorCatalogConfiguration : IEntityTypeConfiguration<ErrorCatalog>
             TenantId = string.Empty,
             CreatedAt = new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc)
         });
+
+        // תיעוד "בדיעבד" של תקלות שנרשמו קודם ב-DbOutageLog (יומן זיכרון-בלבד,
+        // כי אי אפשר לכתוב ל-DB בזמן שהוא לא זמין) ונפרקו לכאן ברגע שה-DB חזר
+        builder.HasData(new ErrorCatalog
+        {
+            ErrorCode = "SERVER_DATABASE_UNAVAILABLE",
+            Category = "Server-Side/Database",
+            Subsystem = "SqlServer",
+            SeverityLevel = IncidentSeverity.Critical,
+            HebrewDescription = "בסיס הנתונים לא היה נגיש לשרת (חריגת SQL/timeout בחיבור) - נרשם זמנית בזיכרון ונשמר כתקרית קבועה ברגע שהחיבור חזר",
+            ResolutionPlaybook = "1. לבדוק ב-Azure Portal את מצב שרת ה-SQL (Firewall, DTU/vCore throttling, תחזוקה מתוכננת). 2. לבדוק את RawPayload לזמן המדויק ואת הנתיב שנכשל. 3. אם זה חוזר, לשקול Connection Pooling/Retry policy אגרסיביים יותר או שדרוג tier.",
+            TenantId = string.Empty,
+            CreatedAt = new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc)
+        });
     }
 }

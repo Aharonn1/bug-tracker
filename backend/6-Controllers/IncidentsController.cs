@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Responses;
 using MyBackendApi.Services.Auth;
+using MyBackendApi.Services.Diagnostics;
 using MyBackendApi.Services.Interfaces;
 using MyBackendApi.Services.Queues;
 using MyBackendApi.Services.Tenancy;
@@ -17,8 +18,21 @@ public class IncidentsController(
     IncidentChannelQueue queue,
     IRcaAgentService rcaAgentService,
     ICurrentTenantProvider tenantProvider,
-    ICurrentUserProvider currentUserProvider) : ControllerBase
+    ICurrentUserProvider currentUserProvider,
+    DbOutageLog dbOutageLog) : ControllerBase
 {
+    /// <summary>
+    /// יומן זיכרון-בלבד של תקלות "אין גישה ל-DB" - לא נוגע ב-EF Core/SQL בכלל,
+    /// כדי שיישאר זמין גם כשבסיס הנתונים עצמו למטה. אימות ה-JWT לא דורש DB
+    /// (חתימה קריפטוגרפית בלבד), אז זה עובד כל עוד יש למשתמש טוקן תקף מלפני התקלה
+    /// </summary>
+    [HttpGet("db-outage-log")]
+    [ProducesResponseType(typeof(IEnumerable<DbOutageEntry>), StatusCodes.Status200OK)]
+    public IActionResult GetDbOutageLog()
+    {
+        return Ok(dbOutageLog.Snapshot());
+    }
+
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<IncidentResponseDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<IncidentResponseDto>>> GetIncidents(

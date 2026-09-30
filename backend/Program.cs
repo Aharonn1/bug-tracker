@@ -9,6 +9,7 @@ using MyBackendApi.Services.Agent;
 using MyBackendApi.Services.Auth;
 using MyBackendApi.Services.Core;
 using MyBackendApi.Services.Deduplication;
+using MyBackendApi.Services.Diagnostics;
 using MyBackendApi.Services.Interfaces;
 using MyBackendApi.Services.Plugins;
 using MyBackendApi.Services.Queues;
@@ -115,6 +116,12 @@ if (!string.IsNullOrEmpty(jwtSecretKey))
 builder.Services.AddSingleton<IncidentChannelQueue>();
 builder.Services.AddSingleton<ErrorDeduplicationService>();
 builder.Services.AddHostedService<IncidentIngestionWorker>();
+
+// יומן זיכרון-בלבד לתקריות "אין גישה ל-DB" - ראו הערה ב-DbOutageLog.cs.
+// חייב Singleton כדי לשרוד בין בקשות; ה-Worker מנסה "לפרוק" אותו ל-DB
+// תקופתית ברגע שהחיבור חוזר
+builder.Services.AddSingleton<DbOutageLog>();
+builder.Services.AddHostedService<DbOutageFlushWorker>();
 
 // ==========================================
 // 6. שירותי סוכן AI וכלי חקירה - RcaAgentService פונה ל-OpenAI ישירות דרך

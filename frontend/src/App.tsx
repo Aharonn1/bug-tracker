@@ -9,6 +9,7 @@ import BugForm from './components/BugForm';
 import { BugList } from './components/BugList';
 import { IncidentTable } from './components/IncidentTable';
 import { ConnectionDiagnosticBanner } from './components/ConnectionDiagnosticBanner';
+import { DbOutageBanner } from './components/DbOutageBanner';
 import { OpsSummaryPanel } from './components/OpsSummaryPanel';
 import { LoginForm } from './components/LoginForm';
 import { RegisterForm } from './components/RegisterForm';
@@ -79,6 +80,7 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
       />
 
       <main style={{ flex: 1, padding: '28px', maxWidth: '1440px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+        <DbOutageBanner />
         <ConnectionDiagnosticBanner />
 
         {currentView === 'incidents' && (
