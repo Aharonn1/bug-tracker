@@ -53,6 +53,18 @@ public class ErrorCatalogConfiguration : IEntityTypeConfiguration<ErrorCatalog>
 
         builder.HasData(new ErrorCatalog
         {
+            ErrorCode = "SERVER_UNHANDLED_EXCEPTION",
+            Category = "Server-Side/Runtime",
+            Subsystem = "BackendApi",
+            SeverityLevel = IncidentSeverity.Critical,
+            HebrewDescription = "חריגה בלתי צפויה נלכדה ב-GlobalExceptionHandler בשרת - קוד השתבש בדרך שלא טופלה מראש (לא NotFound/ולידציה/קונפליקט ידוע). מזוהה אוטומטית מכל בקשת API",
+            ResolutionPlaybook = "1. לבדוק את ה-Stack Trace המלא ואת סוג החריגה המדויק (RawPayload כולל את הנתיב והמתודה של הבקשה). 2. לבדוק בלוגים של Application Insights את אותו חלון זמן לפי IncidentId. 3. לתקן את הקוד ולהוסיף טיפול חריגה ספציפי ב-GlobalExceptionHandler אם מדובר בתרחיש שחוזר ועדיין ראוי ל-400/404 ולא ל-500.",
+            TenantId = string.Empty,
+            CreatedAt = new DateTime(2026, 9, 30, 0, 0, 0, DateTimeKind.Utc)
+        });
+
+        builder.HasData(new ErrorCatalog
+        {
             ErrorCode = "CLIENT_UNHANDLED_REJECTION",
             Category = "Client-Side/Runtime",
             Subsystem = "WebClient",

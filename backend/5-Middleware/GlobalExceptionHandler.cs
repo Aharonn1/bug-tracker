@@ -1,12 +1,15 @@
 using System.Net;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyBackendApi.Exceptions;
+using MyBackendApi.Models.DTOs.Ingestion;
+using MyBackendApi.Services.Queues;
 
 namespace MyBackendApi.Middleware;
 
-public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
+public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger, IncidentChannelQueue incidentQueue) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
@@ -46,7 +49,47 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
 
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 
+        // רק חריגות שבאמת נפלו ל-500 (לא NotFound/ולידציה/קונפליקט ידועים)
+        // נחשבות "תקלה" ראויה למעקב - אחרת כל 404/401 צפוי היה מציף את הטבלה
+        if (statusCode == HttpStatusCode.InternalServerError)
+        {
+            await TryQueueIncidentAsync(httpContext, exception, cancellationToken);
+        }
+
         // מחזיר true כדי לסמן לצינור שהחריגה טופלה במלואה
         return true;
+    }
+
+    private async Task TryQueueIncidentAsync(HttpContext httpContext, Exception exception, CancellationToken ct)
+    {
+        try
+        {
+            // ה-header המהימן, כמו בכל שאר הבקרים - בלי הוא אין למי לשייך את התקרית,
+            // אז פשוט מדלגים על תיעוד (התגובה למשתמש כבר נשלחה בכל מקרה)
+            var tenantId = httpContext.Request.Headers["X-Tenant-Id"].FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(tenantId)) return;
+
+            var userIdValue = httpContext.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var reportedByUserId = int.TryParse(userIdValue, out var uid) ? uid : (int?)null;
+
+            await incidentQueue.QueueIncidentAsync(new CreateIncidentDto(
+                TenantId: tenantId,
+                ErrorCode: "SERVER_UNHANDLED_EXCEPTION",
+                CaseNumber: null,
+                ExternalReferenceId: null,
+                ClientStationId: null,
+                UserId: null,
+                ErrorMessage: $"{exception.GetType().Name}: {exception.Message}",
+                StackTrace: exception.StackTrace,
+                RawPayload: $"{httpContext.Request.Method} {httpContext.Request.Path}{httpContext.Request.QueryString}",
+                ReportedByUserId: reportedByUserId
+            ), ct);
+        }
+        catch (Exception queueEx)
+        {
+            // כישלון בתיעוד התקרית לא יכול להפיל את הטיפול בחריגה המקורית -
+            // התגובה למשתמש כבר נשלחה, זו רק "בונוס" אם זה נכשל
+            logger.LogError(queueEx, "כשל בתיעוד אוטומטי של תקרית עבור חריגה בלתי צפויה");
+        }
     }
 }
