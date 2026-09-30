@@ -1,10 +1,14 @@
 import { useState, useCallback } from 'react';
 import { telemetryService } from '../api/telemetryService';
 import type { ClientTelemetryProbeDto, TelemetryDiagnosticReport } from '../types/telemetry.types';
-import { API_BASE_URL, TENANT_ID, tenantHeaders } from '../config';
+import { API_BASE_URL, TENANT_ID } from '../config';
 
-const LATENCY_PING_URL = `${API_BASE_URL}/api/Bugs`;
-const PING_ATTEMPTS = 15;
+// /health ולא /api/Bugs בכוונה - זה endpoint קליל וללא אימות, בדיוק בשביל
+// מדידת latency טהורה. פינג ל-endpoint עסקי כבד (עם אימות ושאילתת DB מלאה)
+// גרם בעבר ל"לולאה עצמית": 15 בקשות כבדות ומקבילות מנפחות את זמן התגובה,
+// שגורם לזיהוי שגוי של "רשת איטית", שיוצר תקרית - בכל טעינת דף מחדש
+const LATENCY_PING_URL = `${API_BASE_URL}/health`;
+const PING_ATTEMPTS = 5;
 const PING_TIMEOUT_MS = 4000;
 
 function measureExecutionLagMs(): Promise<number> {
@@ -24,7 +28,6 @@ async function pingOnce(): Promise<number | null> {
     await fetch(LATENCY_PING_URL, {
       method: 'GET',
       cache: 'no-store',
-      headers: tenantHeaders({ Accept: 'application/json' }),
       signal: controller.signal,
     });
     return performance.now() - start;
