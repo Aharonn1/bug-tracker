@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { ApiConnectivityError } from '../api/ApiConnectivityError';
+import { reportSilentError } from '../utils/errorReporting';
 
 interface RegisterFormProps {
   onSwitchToLogin: () => void;
@@ -25,6 +27,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) =
       await register({ fullName, email, password });
     } catch (err: any) {
       setLocalError(err.message || 'כשל בהרשמה למערכת');
+
+      // כשל תקשורתי (אין חיבור לשרת/לענן) הוא בעיה שלנו, לא של המשתמש -
+      // מדווחים עליו בשקט. אימייל כפול/ולידציה הם תגובה צפויה ולא מדווחים
+      if (err instanceof ApiConnectivityError) {
+        reportSilentError('CLIENT_HANDLED_API_FAILURE', err.message, err.stack);
+      }
     }
   };
 

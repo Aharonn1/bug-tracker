@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { ApiConnectivityError } from '../api/ApiConnectivityError';
+import { reportSilentError } from '../utils/errorReporting';
 
 interface LoginFormProps {
   onSwitchToRegister: () => void;
@@ -18,6 +20,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
       await login({ email, password });
     } catch (err: any) {
       setLocalError(err.message || 'אימייל או סיסמה שגויים');
+
+      // כשל תקשורתי (אין חיבור לשרת/לענן) הוא בעיה שלנו, לא של המשתמש -
+      // מדווחים עליו בשקט. סיסמה שגויה היא תגובה צפויה ולא מדווחים עליה
+      if (err instanceof ApiConnectivityError) {
+        reportSilentError('CLIENT_HANDLED_API_FAILURE', err.message, err.stack);
+      }
     }
   };
 
