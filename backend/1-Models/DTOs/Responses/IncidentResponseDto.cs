@@ -24,6 +24,7 @@ public record IncidentResponseDto(
     DateTime CreatedAt,
     DateTime LastSeenAt,
     DateTime? ResolvedAt,
+    string? RawPayload,
     IReadOnlyList<IncidentReporterDto> ReportedByUsers
 );
 

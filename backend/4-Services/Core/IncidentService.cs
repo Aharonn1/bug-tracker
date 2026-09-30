@@ -20,6 +20,7 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
     {
         var query = context.SystemErrorIncidents
             .AsNoTracking()
+            .Include(i => i.Details)
             .Include(i => i.Reporters).ThenInclude(r => r.User)
             .AsQueryable();
 
@@ -154,6 +155,7 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
         var saved = await context.SystemErrorIncidents
             .IgnoreQueryFilters()
             .AsNoTracking()
+            .Include(i => i.Details)
             .Include(i => i.Reporters).ThenInclude(r => r.User)
             .FirstAsync(i => i.IncidentId == incidentId, ct);
 
@@ -202,6 +204,7 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
             i.CreatedAt,
             i.LastSeenAt,
             i.ResolvedAt,
+            i.Details?.RawPayload,
             i.Reporters
                 .OrderByDescending(r => r.LastSeenAt)
                 .Select(r => new IncidentReporterDto(r.UserId, r.User.FullName, r.OccurrenceCount, r.LastSeenAt))

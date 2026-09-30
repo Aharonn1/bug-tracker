@@ -6,8 +6,21 @@ interface Props {
   onClose: () => void;
 }
 
+function parseRawPayload(raw: string | null): Record<string, unknown> | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => {
   if (!incident) return null;
+
+  const payload = parseRawPayload(incident.rawPayload);
+  const attemptedEmail = typeof payload?.attemptedEmail === 'string' ? payload.attemptedEmail : null;
 
   return (
     <div
@@ -86,12 +99,36 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
             </section>
           )}
 
+          {attemptedEmail && (
+            <section>
+              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>
+                אימייל שניסה להתחבר בזמן התקלה
+              </div>
+              <div style={{
+                background: '#450a0a',
+                border: '1px solid #991b1b',
+                borderRadius: '8px',
+                padding: '10px 12px',
+                color: '#fca5a5',
+                fontSize: '13px',
+                fontFamily: 'monospace',
+              }}>
+                {attemptedEmail}
+              </div>
+              <div style={{ color: '#64748b', fontSize: '11px', marginTop: '4px' }}>
+                נלכד לפני שהיה למשתמש חשבון מחובר - זה מה שהוא הקליד, לא זהות מאומתת
+              </div>
+            </section>
+          )}
+
           <section>
             <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>
               משתמשים שנתקלו בתקלה ({incident.reportedByUsers.length})
             </div>
             {incident.reportedByUsers.length === 0 ? (
-              <div style={{ color: '#64748b', fontSize: '13px' }}>לא זוהה משתמש מחובר עבור תקלה זו</div>
+              <div style={{ color: '#64748b', fontSize: '13px' }}>
+                {attemptedEmail ? 'אף חשבון מחובר לא נתקל בתקלה - ראו את האימייל שהוקלד למעלה' : 'לא זוהה משתמש מחובר עבור תקלה זו'}
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {incident.reportedByUsers.map((r) => (

@@ -31,7 +31,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) =
       // כשל תקשורתי (אין חיבור לשרת/לענן) הוא בעיה שלנו, לא של המשתמש -
       // מדווחים עליו בשקט. אימייל כפול/ולידציה הם תגובה צפויה ולא מדווחים
       if (err instanceof ApiConnectivityError) {
-        reportSilentError('CLIENT_HANDLED_API_FAILURE', err.message, err.stack);
+        reportSilentError('CLIENT_HANDLED_API_FAILURE', err.message, err.stack, { attemptedEmail: email, attemptedFullName: fullName });
       }
     }
   };

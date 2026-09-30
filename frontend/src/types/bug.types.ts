@@ -88,6 +88,7 @@ export interface SystemIncident {
   createdAt: string;
   lastSeenAt: string;
   resolvedAt: string | null;
+  rawPayload: string | null;
   reportedByUsers: IncidentReporter[];
 }
 

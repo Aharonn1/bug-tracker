@@ -60,7 +60,12 @@ async function trySend(dto: CreateIncidentDto): Promise<boolean> {
   }
 }
 
-function buildDto(errorCode: SilentErrorCode, message: string, stack?: string | null): CreateIncidentDto {
+function buildDto(
+  errorCode: SilentErrorCode,
+  message: string,
+  stack?: string | null,
+  extraContext?: Record<string, unknown>
+): CreateIncidentDto {
   return {
     tenantId: TENANT_ID,
     errorCode,
@@ -69,17 +74,25 @@ function buildDto(errorCode: SilentErrorCode, message: string, stack?: string | 
     rawPayload: JSON.stringify({
       url: window.location.href,
       userAgent: navigator.userAgent,
+      ...extraContext,
     }),
   };
 }
 
 // מדווח בשקט ברקע על תקלה - לא משנה את מה שהמשתמש רואה (ההודעה הידידותית
 // שכבר מוצגת לו נשארת כמו שהיא). אם השרת עצמו לא נגיש כרגע (למשל נפילה
-// מוחלטת), הדיווח נשמר מקומית וייעשה עליו ניסיון חוזר כשהחיבור יחזור
-export function reportSilentError(errorCode: SilentErrorCode, message: string | null | undefined, stack?: string | null) {
+// מוחלטת), הדיווח נשמר מקומית וייעשה עליו ניסיון חוזר כשהחיבור יחזור.
+// extraContext מאפשר לצרף פרטים ספציפיים למקרה - למשל איזה אימייל ניסה
+// להתחבר כשהכשל קרה לפני שהיה למשתמש טוקן (כדי לדעת "אצל מי" קרתה הבעיה)
+export function reportSilentError(
+  errorCode: SilentErrorCode,
+  message: string | null | undefined,
+  stack?: string | null,
+  extraContext?: Record<string, unknown>
+) {
   if (!message || isNoise(message)) return;
 
-  const dto = buildDto(errorCode, message, stack);
+  const dto = buildDto(errorCode, message, stack, extraContext);
 
   trySend(dto).then((ok) => {
     if (!ok) enqueue(dto);

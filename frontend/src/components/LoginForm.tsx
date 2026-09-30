@@ -24,7 +24,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
       // כשל תקשורתי (אין חיבור לשרת/לענן) הוא בעיה שלנו, לא של המשתמש -
       // מדווחים עליו בשקט. סיסמה שגויה היא תגובה צפויה ולא מדווחים עליה
       if (err instanceof ApiConnectivityError) {
-        reportSilentError('CLIENT_HANDLED_API_FAILURE', err.message, err.stack);
+        // מצרפים את האימייל שהוקלד - זה הדבר היחיד שיש לנו כדי לדעת "אצל מי"
+        // קרתה הבעיה, כי אין עדיין טוקן/זהות מאומתת בשלב הזה
+        reportSilentError('CLIENT_HANDLED_API_FAILURE', err.message, err.stack, { attemptedEmail: email });
       }
     }
   };

@@ -9,6 +9,16 @@ interface Props {
   onResolve: (id: number) => void;
 }
 
+function extractAttemptedEmail(rawPayload: string | null): string | null {
+  if (!rawPayload) return null;
+  try {
+    const parsed = JSON.parse(rawPayload);
+    return typeof parsed?.attemptedEmail === 'string' ? parsed.attemptedEmail : null;
+  } catch {
+    return null;
+  }
+}
+
 export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [activeIncident, setActiveIncident] = useState<SystemIncident | null>(null);
@@ -137,7 +147,13 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                     </td>
                     <td style={{ padding: '12px', fontSize: '12px' }}>
                       {i.reportedByUsers.length === 0 ? (
-                        <span style={{ color: '#64748b' }}>לא מזוהה</span>
+                        extractAttemptedEmail(i.rawPayload) ? (
+                          <span style={{ color: '#fca5a5' }} title="אימייל שהוקלד בניסיון התחברות, לפני שהייתה זהות מאומתת">
+                            {extractAttemptedEmail(i.rawPayload)}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#64748b' }}>לא מזוהה</span>
+                        )
                       ) : i.reportedByUsers.length === 1 ? (
                         <span style={{ color: '#e2e8f0', whiteSpace: 'nowrap' }}>
                           {i.reportedByUsers[0].userName}
