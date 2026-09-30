@@ -59,9 +59,15 @@ public class IncidentsController(
     }
 
     /// <summary>
-    /// שער כניסה אסינכרוני (Fast Ingestion Gate) - קולט אירוע, דוחף לתור ומחזיר 202
+    /// שער כניסה אסינכרוני (Fast Ingestion Gate) - קולט אירוע, דוחף לתור ומחזיר 202.
+    /// AllowAnonymous בכוונה, על אף ש-[Authorize] חל על שאר הבקר: בדיוק תקלות
+    /// חיבור/קריסה שקורות למי שעוד לא (או כבר לא) מחובר - למשל כשל בזמן ניסיון
+    /// login עצמו - חייבות להצליח להתדווח, אחרת הן היו נעולות לנצח בתור המקומי
+    /// (retry queue) של הלקוח בלי אפשרות אמיתית להגיע אלינו. ReportedByUserId
+    /// פשוט נשאר null במקרה כזה - "לא מזוהה" בממשק, לא שגיאת דיווח
     /// </summary>
     [HttpPost("ingest")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> IngestIncident(
