@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MyBackendApi.Data;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Services.Diagnostics;
@@ -47,6 +48,15 @@ public class DbOutageFlushWorker(
             {
                 try
                 {
+                    // JSON (לא טקסט חופשי) כדי שאותו parser בפרונטנד שכבר
+                    // קורא attemptedEmail מ-RawPayload יעבוד גם כאן בלי שינוי
+                    var rawPayload = JsonSerializer.Serialize(new
+                    {
+                        requestPath = entry.RequestPath,
+                        occurredAt = entry.OccurredAt,
+                        attemptedEmail = entry.AttemptedEmail
+                    });
+
                     await incidentService.IngestIncidentAsync(new CreateIncidentDto(
                         TenantId: "default-tenant",
                         ErrorCode: "SERVER_DATABASE_UNAVAILABLE",
@@ -56,7 +66,7 @@ public class DbOutageFlushWorker(
                         UserId: null,
                         ErrorMessage: $"{entry.ExceptionType}: {entry.Message}",
                         StackTrace: null,
-                        RawPayload: $"{entry.RequestPath} | נרשם ב-{entry.OccurredAt:o}",
+                        RawPayload: rawPayload,
                         ReportedByUserId: null
                     ), stoppingToken);
 

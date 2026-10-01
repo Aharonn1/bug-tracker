@@ -2,12 +2,12 @@ using System.Net;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using MyBackendApi.Exceptions;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Services.Diagnostics;
 using MyBackendApi.Services.Queues;
+using static MyBackendApi.Services.Diagnostics.DatabaseExceptionDetector;
 
 namespace MyBackendApi.Middleware;
 
@@ -60,8 +60,11 @@ public class GlobalExceptionHandler(
         {
             // תיעוד ל-DbOutageLog הוא סינכרוני וב-זיכרון בלבד (לא נוגע ב-DB) -
             // בכוונה נפרד מ-TryQueueIncidentAsync למטה, כי אם זו באמת תקלת DB,
-            // הניסיון לתעד תקרית רגילה שם עומד להיכשל מאותה סיבה בדיוק
-            if (IsDatabaseConnectivityException(exception))
+            // הניסיון לתעד תקרית רגילה שם עומד להיכשל מאותה סיבה בדיוק.
+            // מדלגים כאן על /api/Auth - AuthService כבר מתעד שם בעצמו, עם
+            // האימייל שהוקלד בניסיון, כדי לא ליצור שתי רשומות לאותו כשל
+            var isAuthEndpoint = httpContext.Request.Path.StartsWithSegments("/api/Auth");
+            if (!isAuthEndpoint && IsDatabaseConnectivityException(exception))
             {
                 dbOutageLog.Record(new DbOutageEntry(
                     OccurredAt: DateTime.UtcNow,
@@ -110,11 +113,4 @@ public class GlobalExceptionHandler(
             logger.LogError(queueEx, "כשל בתיעוד אוטומטי של תקרית עבור חריגה בלתי צפויה");
         }
     }
-
-    // SqlException ישירה, או עטופה ע"י RetryLimitExceededException אחרי
-    // שמדיניות ה-Retry של EF Core (EnableRetryOnFailure) כבר מיצתה את הניסיונות
-    private static bool IsDatabaseConnectivityException(Exception exception) =>
-        exception is SqlException
-        || exception.InnerException is SqlException
-        || exception.GetType().Name == "RetryLimitExceededException";
 }

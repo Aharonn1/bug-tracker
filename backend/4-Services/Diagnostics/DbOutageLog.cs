@@ -2,7 +2,9 @@ using System.Collections.Concurrent;
 
 namespace MyBackendApi.Services.Diagnostics;
 
-public record DbOutageEntry(DateTime OccurredAt, string ExceptionType, string Message, string RequestPath);
+// AttemptedEmail - כשהתקלה קרתה בזמן ניסיון login/register, זה היחיד שיש לנו
+// כדי לדעת "אצל מי" קרתה הבעיה, כי עוד אין זהות מאומתת באותו רגע
+public record DbOutageEntry(DateTime OccurredAt, string ExceptionType, string Message, string RequestPath, string? AttemptedEmail = null);
 
 // יומן זיכרון-בלבד (לא נוגע ב-DB) לתיעוד תקריות "אין גישה לבסיס הנתונים" -
 // בכוונה לא כותב ל-SQL, כי בדיוק ברגע שצריך אותו הכי הרבה, ה-SQL הוא מה

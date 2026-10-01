@@ -9,11 +9,13 @@ using MyBackendApi.Exceptions;
 using MyBackendApi.Models.Common;
 using MyBackendApi.Models.DTOs.Auth;
 using MyBackendApi.Models.Entities;
+using MyBackendApi.Services.Diagnostics;
 using MyBackendApi.Services.Interfaces;
+using static MyBackendApi.Services.Diagnostics.DatabaseExceptionDetector;
 
 namespace MyBackendApi.Services.Auth;
 
-public class AuthService(AppDbContext context, IConfiguration configuration) : IAuthService
+public class AuthService(AppDbContext context, IConfiguration configuration, DbOutageLog dbOutageLog) : IAuthService
 {
     // PasswordHasher הוא stateless ובטוח לשימוש חוזר - חלק מ-Microsoft.AspNetCore.Identity
     // (מגיע דרך ה-Shared Framework של Microsoft.NET.Sdk.Web, בלי צורך בחבילה נפרדת)
@@ -21,8 +23,19 @@ public class AuthService(AppDbContext context, IConfiguration configuration) : I
 
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto dto, CancellationToken ct = default)
     {
-        var user = await context.Users
-            .FirstOrDefaultAsync(u => u.Email == dto.Email && u.IsActive, ct);
+        User? user;
+        try
+        {
+            user = await context.Users
+                .FirstOrDefaultAsync(u => u.Email == dto.Email && u.IsActive, ct);
+        }
+        catch (Exception ex) when (IsDatabaseConnectivityException(ex))
+        {
+            // כאן, ולא ב-GlobalExceptionHandler הגנרי, כי יש לנו את האימייל
+            // שהוקלד - אחרת "אצל מי" הייתה נשארת "לא מזוהה" תמיד בכשל כזה
+            RecordDbOutage(ex, "ניסיון התחברות", dto.Email);
+            throw;
+        }
 
         // אותה שגיאה בדיוק בין "משתמש לא קיים" ל"סיסמה שגויה" בכוונה - כדי לא
         // לחשוף לתוקף פוטנציאלי אילו כתובות אימייל בכלל רשומות במערכת
@@ -36,22 +49,41 @@ public class AuthService(AppDbContext context, IConfiguration configuration) : I
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto dto, CancellationToken ct = default)
     {
-        var emailTaken = await context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == dto.Email, ct);
-        if (emailTaken) throw new EmailAlreadyExistsException(dto.Email);
-
-        var user = new User
+        try
         {
-            FullName = dto.FullName,
-            Email = dto.Email,
-            Role = UserRole.User,
-            TenantId = context.CurrentTenantId
-        };
-        user.PasswordHash = Hasher.HashPassword(user, dto.Password);
+            var emailTaken = await context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == dto.Email, ct);
+            if (emailTaken) throw new EmailAlreadyExistsException(dto.Email);
 
-        context.Users.Add(user);
-        await context.SaveChangesAsync(ct);
+            var user = new User
+            {
+                FullName = dto.FullName,
+                Email = dto.Email,
+                Role = UserRole.User,
+                TenantId = context.CurrentTenantId
+            };
+            user.PasswordHash = Hasher.HashPassword(user, dto.Password);
 
-        return BuildAuthResponse(user);
+            context.Users.Add(user);
+            await context.SaveChangesAsync(ct);
+
+            return BuildAuthResponse(user);
+        }
+        catch (Exception ex) when (IsDatabaseConnectivityException(ex))
+        {
+            RecordDbOutage(ex, "ניסיון הרשמה", dto.Email);
+            throw;
+        }
+    }
+
+    private void RecordDbOutage(Exception ex, string action, string email)
+    {
+        dbOutageLog.Record(new DbOutageEntry(
+            OccurredAt: DateTime.UtcNow,
+            ExceptionType: ex.GetType().Name,
+            Message: ex.Message,
+            RequestPath: action,
+            AttemptedEmail: email
+        ));
     }
 
     private AuthResponseDto BuildAuthResponse(User user)
