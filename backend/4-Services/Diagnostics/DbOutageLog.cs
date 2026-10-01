@@ -3,8 +3,16 @@ using System.Collections.Concurrent;
 namespace MyBackendApi.Services.Diagnostics;
 
 // AttemptedEmail - כשהתקלה קרתה בזמן ניסיון login/register, זה היחיד שיש לנו
-// כדי לדעת "אצל מי" קרתה הבעיה, כי עוד אין זהות מאומתת באותו רגע
-public record DbOutageEntry(DateTime OccurredAt, string ExceptionType, string Message, string RequestPath, string? AttemptedEmail = null);
+// כדי לדעת "אצל מי" קרתה הבעיה, כי עוד אין זהות מאומתת באותו רגע.
+// ReportedByUserId - לעומת זאת, כשמשתמש כבר מחובר (יש לו JWT תקף) וה-DB נופל
+// *תוך כדי* שהוא עובד, יש לנו זהות מאומתת אמיתית - אימות JWT לא דורש DB בכלל
+public record DbOutageEntry(
+    DateTime OccurredAt,
+    string ExceptionType,
+    string Message,
+    string RequestPath,
+    string? AttemptedEmail = null,
+    int? ReportedByUserId = null);
 
 // יומן זיכרון-בלבד (לא נוגע ב-DB) לתיעוד תקריות "אין גישה לבסיס הנתונים" -
 // בכוונה לא כותב ל-SQL, כי בדיוק ברגע שצריך אותו הכי הרבה, ה-SQL הוא מה

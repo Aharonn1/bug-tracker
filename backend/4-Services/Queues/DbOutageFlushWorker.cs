@@ -67,7 +67,7 @@ public class DbOutageFlushWorker(
                         ErrorMessage: $"{entry.ExceptionType}: {entry.Message}",
                         StackTrace: null,
                         RawPayload: rawPayload,
-                        ReportedByUserId: null
+                        ReportedByUserId: entry.ReportedByUserId
                     ), stoppingToken);
 
                     flushedCount++;

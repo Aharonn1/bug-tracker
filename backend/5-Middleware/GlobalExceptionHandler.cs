@@ -66,11 +66,15 @@ public class GlobalExceptionHandler(
             var isAuthEndpoint = httpContext.Request.Path.StartsWithSegments("/api/Auth");
             if (!isAuthEndpoint && IsDatabaseConnectivityException(exception))
             {
+                // אם המשתמש כבר מחובר (יש לו JWT תקף) וה-DB נופל *תוך כדי*
+                // שהוא עובד - יש לנו זהות מאומתת אמיתית, לא רק אימייל שהוקלד.
+                // אימות ה-JWT לא דורש DB בכלל, אז זה עובד גם עכשיו
                 dbOutageLog.Record(new DbOutageEntry(
                     OccurredAt: DateTime.UtcNow,
                     ExceptionType: exception.GetType().Name,
                     Message: exception.Message,
-                    RequestPath: $"{httpContext.Request.Method} {httpContext.Request.Path}"
+                    RequestPath: $"{httpContext.Request.Method} {httpContext.Request.Path}",
+                    ReportedByUserId: GetAuthenticatedUserId(httpContext)
                 ));
             }
 
@@ -90,8 +94,7 @@ public class GlobalExceptionHandler(
             var tenantId = httpContext.Request.Headers["X-Tenant-Id"].FirstOrDefault();
             if (string.IsNullOrWhiteSpace(tenantId)) return;
 
-            var userIdValue = httpContext.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var reportedByUserId = int.TryParse(userIdValue, out var uid) ? uid : (int?)null;
+            var reportedByUserId = GetAuthenticatedUserId(httpContext);
 
             await incidentQueue.QueueIncidentAsync(new CreateIncidentDto(
                 TenantId: tenantId,
@@ -112,5 +115,11 @@ public class GlobalExceptionHandler(
             // התגובה למשתמש כבר נשלחה, זו רק "בונוס" אם זה נכשל
             logger.LogError(queueEx, "כשל בתיעוד אוטומטי של תקרית עבור חריגה בלתי צפויה");
         }
+    }
+
+    private static int? GetAuthenticatedUserId(HttpContext httpContext)
+    {
+        var userIdValue = httpContext.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return int.TryParse(userIdValue, out var uid) ? uid : null;
     }
 }
