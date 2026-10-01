@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useTelemetryProbe } from '../hooks/useTelemetryProbe';
 import type { TelemetryStatusColor } from '../types/telemetry.types';
 
@@ -68,7 +68,14 @@ function formatMetric(value: number | null | undefined, unit: string): string {
 export const ConnectionDiagnosticBanner: React.FC = () => {
   const { report, metrics, loading, error, runProbe } = useTelemetryProbe();
 
+  // מגן מפני הרצה כפולה ב-StrictMode (dev בלבד - React מדמה mount→unmount→
+  // mount כדי לתפוס תלויות ניקוי חסרות). ה-ref שורד את הדימוי הזה, אז בפועל
+  // הבדיקה רצה פעם אחת אמיתית - בלי זה כל login/מעבר דף היה שולח 2 פינגים
+  const hasRunRef = useRef(false);
+
   useEffect(() => {
+    if (hasRunRef.current) return;
+    hasRunRef.current = true;
     runProbe();
   }, [runProbe]);
 
