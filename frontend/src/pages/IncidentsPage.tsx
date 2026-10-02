@@ -3,6 +3,7 @@ import { IncidentSeverity, type SystemIncident } from '../types/bug.types';
 import { colors, radius } from '../styles/theme';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { OpsSummaryPanel } from '../components/OpsSummaryPanel';
+import { UnhandledErrorsPanel } from '../components/UnhandledErrorsPanel';
 import { UserActivitySummary } from '../components/UserActivitySummary';
 import { KeyMetricsRow } from '../components/metrics/KeyMetricsRow';
 import { SeverityBreakdownCard } from '../components/metrics/SeverityBreakdownCard';
@@ -128,6 +129,11 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
       />
 
       <OpsSummaryPanel />
+
+      <div style={{ marginBottom: '20px' }}>
+        <UnhandledErrorsPanel incidents={incidents} />
+      </div>
+
       <UserActivitySummary
         title="פילוח תקלות לפי משתמש"
         counts={incidentUserCounts}

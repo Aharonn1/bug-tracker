@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { incidentService } from '../api/incidentService';
 import { AgentDiagnosisModal } from './AgentDiagnosisModal';
 import { IncidentDetailsModal } from './IncidentDetailsModal';
 import { IncidentSeverity, type SystemIncident } from '../types/bug.types';
+import { useAgentDiagnosis } from '../hooks/useAgentDiagnosis';
 
 interface Props {
   incidents: SystemIncident[];
@@ -20,27 +20,8 @@ function extractAttemptedEmail(rawPayload: string | null): string | null {
 }
 
 export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [activeIncident, setActiveIncident] = useState<SystemIncident | null>(null);
-  const [agentReport, setAgentReport] = useState<string | null>(null);
-  const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [detailsIncident, setDetailsIncident] = useState<SystemIncident | null>(null);
-
-  const handleRunAgent = async (incident: SystemIncident) => {
-    setActiveIncident(incident);
-    setAgentReport(null);
-    setIsDiagnosing(true);
-    setModalOpen(true);
-
-    try {
-      const result = await incidentService.diagnoseWithAgent(incident.incidentId);
-      setAgentReport(result.agentReport);
-    } catch (err: any) {
-      setAgentReport(`שגיאה בהפעלת הסוכן: ${err.message}`);
-    } finally {
-      setIsDiagnosing(false);
-    }
-  };
+  const { runAgent, modalProps } = useAgentDiagnosis();
 
   const getSeverityBadge = (level: number) => {
     switch (level) {
@@ -191,7 +172,7 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         {/* כפתור חקירת הסוכן */}
                         <button
-                          onClick={() => handleRunAgent(i)}
+                          onClick={() => runAgent(i)}
                           title="הפעל סוכן AI לניתוח שורש התקלה"
                           style={{
                             padding: '6px 12px',
@@ -239,15 +220,7 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
       </div>
 
       {/* מודאל התובנות */}
-      <AgentDiagnosisModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        incidentId={activeIncident?.incidentId ?? null}
-        caseNumber={activeIncident?.caseNumber ?? null}
-        errorCode={activeIncident?.errorCode ?? null}
-        report={agentReport}
-        isLoading={isDiagnosing}
-      />
+      <AgentDiagnosisModal {...modalProps} />
 
       <IncidentDetailsModal
         incident={detailsIncident}
