@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# נוצר אוטומטית ב-prebuild (npm run build) - ייחודי לכל בנייה בכוונה
+public/build-version.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

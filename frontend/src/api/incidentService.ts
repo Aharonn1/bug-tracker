@@ -1,5 +1,6 @@
 import type { CreateIncidentDto, DbOutageEntry, SystemIncident } from "../types/bug.types";
 import { API_BASE_URL, tenantHeaders } from '../config';
+import { throwIfSessionExpired } from './sessionGuard';
 
 const BASE_URL = `${API_BASE_URL}/api/Incidents`;
 
@@ -14,7 +15,7 @@ export const incidentService = {
       headers: tenantHeaders({ 'Accept': 'application/json' })
     });
 
-    if (!res.ok) throw new Error(`שגיאה בטעינת אירועי מערכת (${res.status})`);
+    if (!res.ok) { throwIfSessionExpired(res); throw new Error(`שגיאה בטעינת אירועי מערכת (${res.status})`); }
     return res.json();
   },
 
@@ -25,7 +26,7 @@ export const incidentService = {
       headers: tenantHeaders({ 'Accept': 'application/json' })
     });
 
-    if (!res.ok) throw new Error(`שגיאה בטעינת יומן זמינות בסיס הנתונים (${res.status})`);
+    if (!res.ok) { throwIfSessionExpired(res); throw new Error(`שגיאה בטעינת יומן זמינות בסיס הנתונים (${res.status})`); }
     return res.json();
   },
 
@@ -34,7 +35,7 @@ export const incidentService = {
       headers: tenantHeaders({ 'Accept': 'application/json' })
     });
 
-    if (!res.ok) throw new Error(`אירוע #${id} לא נמצא (${res.status})`);
+    if (!res.ok) { throwIfSessionExpired(res); throw new Error(`אירוע #${id} לא נמצא (${res.status})`); }
     return res.json();
   },
 
@@ -49,6 +50,7 @@ export const incidentService = {
     });
 
     if (!res.ok) {
+      throwIfSessionExpired(res);
       const errorData = await res.json().catch(() => null);
       throw new Error(errorData?.message || `כשל בדיווח תקלת מערכת (${res.status})`);
     }
@@ -63,6 +65,7 @@ export const incidentService = {
     });
 
     if (!res.ok) {
+      throwIfSessionExpired(res);
       const errorData = await res.json().catch(() => null);
       throw new Error(errorData?.message || `כשל בסימון פתרון תקלה #${id} (${res.status})`);
     }
@@ -81,6 +84,7 @@ export const incidentService = {
     });
 
     if (!res.ok) {
+      throwIfSessionExpired(res);
       const errorData = await res.json().catch(() => null);
       throw new Error(errorData?.detail || errorData?.message || `כשל בהפעלת סוכן AI עבור אירוע #${id} (${res.status})`);
     }

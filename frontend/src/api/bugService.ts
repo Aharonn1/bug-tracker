@@ -2,6 +2,7 @@ import type { BugReport, CreateBugDto } from '../types/bug.types';
 import { BugStatus } from '../types/bug.types';
 
 import { API_BASE_URL, tenantHeaders } from '../config';
+import { throwIfSessionExpired } from './sessionGuard';
 
 const BASE_URL = `${API_BASE_URL}/api/Bugs`;
 
@@ -18,6 +19,7 @@ export const bugService = {
     });
 
     if (!res.ok) {
+      throwIfSessionExpired(res);
       throw new Error(`שגיאה בטעינת באגים (${res.status})`);
     }
 
@@ -32,6 +34,7 @@ export const bugService = {
     });
 
     if (!res.ok) {
+      throwIfSessionExpired(res);
       throw new Error(`באג #${id} לא נמצא (${res.status})`);
     }
 
@@ -49,6 +52,7 @@ export const bugService = {
     });
 
     if (!res.ok) {
+      throwIfSessionExpired(res);
       const errorData = await res.json().catch(() => null);
       throw new Error(errorData?.message || `כשל ביצירת באג חדש (${res.status})`);
     }
@@ -67,6 +71,7 @@ export const bugService = {
     });
 
     if (!res.ok) {
+      throwIfSessionExpired(res);
       const errorData = await res.json().catch(() => null);
       throw new Error(errorData?.message || `כשל בעדכון סטטוס באג #${id} (${res.status})`);
     }
@@ -81,6 +86,7 @@ export const bugService = {
     });
 
     if (!res.ok) {
+      throwIfSessionExpired(res);
       const errorData = await res.json().catch(() => null);
       throw new Error(errorData?.message || `כשל במחיקת באג #${id} (${res.status})`);
     }

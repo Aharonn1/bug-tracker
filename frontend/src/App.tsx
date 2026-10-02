@@ -6,6 +6,7 @@ import { useAuth } from './hooks/useAuth';
 import type { AuthUser } from './types/auth.types';
 import { ConnectionDiagnosticBanner } from './components/ConnectionDiagnosticBanner';
 import { DbOutageBanner } from './components/DbOutageBanner';
+import { NewVersionBanner } from './components/NewVersionBanner';
 import { LoginForm } from './components/LoginForm';
 import { RegisterForm } from './components/RegisterForm';
 import { IncidentsPage } from './pages/IncidentsPage';
@@ -16,18 +17,37 @@ import { colors } from './styles/theme';
 
 const AuthGate: React.FC = () => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const { sessionExpiredMessage } = useAuth();
 
   return (
     <div style={{
       minHeight: '100vh',
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.bg,
       direction: 'rtl',
       padding: '20px',
       boxSizing: 'border-box',
+      gap: '16px',
     }}>
+      {sessionExpiredMessage && (
+        <div style={{
+          padding: '10px 16px',
+          backgroundColor: colors.warningBg,
+          border: `1px solid ${colors.warning}`,
+          borderRadius: '8px',
+          color: colors.warningSoft,
+          fontSize: '13px',
+          maxWidth: '380px',
+          width: '100%',
+          textAlign: 'center',
+          boxSizing: 'border-box',
+        }}>
+          {sessionExpiredMessage}
+        </div>
+      )}
       {mode === 'login' ? (
         <LoginForm onSwitchToRegister={() => setMode('register')} />
       ) : (
@@ -66,6 +86,7 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
       />
 
       <main style={{ flex: 1, padding: '28px 40px', width: '100%', boxSizing: 'border-box' }}>
+        <NewVersionBanner />
         <DbOutageBanner />
         <ConnectionDiagnosticBanner />
 

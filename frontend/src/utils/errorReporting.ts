@@ -1,6 +1,7 @@
 import { incidentService } from '../api/incidentService';
 import { TENANT_ID } from '../config';
 import type { CreateIncidentDto } from '../types/bug.types';
+import { SessionExpiredError } from '../api/SessionExpiredError';
 
 export type SilentErrorCode =
   | 'CLIENT_UNHANDLED_ERROR'
@@ -97,6 +98,16 @@ export function reportSilentError(
   trySend(dto).then((ok) => {
     if (!ok) enqueue(dto);
   });
+}
+
+// עטיפה נוחה לכשלי API שה-UI כבר מטפל בהם בחן (מציג הודעת שגיאה, לא קורס) -
+// מרכזת גם את החילוץ של message/stack מה-catch וגם את הבדיקה שזו לא פקיעת
+// session (שם דיווח כתקרית הוא רעש: זו התנהגות צפויה, לא באג)
+export function reportHandledApiFailure(err: unknown) {
+  if (err instanceof SessionExpiredError) return;
+  const message = err instanceof Error ? err.message : String(err);
+  const stack = err instanceof Error ? err.stack : undefined;
+  reportSilentError('CLIENT_HANDLED_API_FAILURE', message, stack);
 }
 
 // מנסה לשלוח מחדש דיווחים שנתקעו בתור המקומי - נקרא בעליית האפליקציה

@@ -1,5 +1,6 @@
 import type { ClientTelemetryProbeDto, OpsSummaryDto, TelemetryDiagnosticReport } from '../types/telemetry.types';
 import { API_BASE_URL, tenantHeaders } from '../config';
+import { throwIfSessionExpired } from './sessionGuard';
 
 const BASE_URL = `${API_BASE_URL}/api/Telemetry`;
 
@@ -14,7 +15,7 @@ export const telemetryService = {
       body: JSON.stringify(dto),
     });
 
-    if (!res.ok) throw new Error(`כשל בבדיקת איכות החיבור (${res.status})`);
+    if (!res.ok) { throwIfSessionExpired(res); throw new Error(`כשל בבדיקת איכות החיבור (${res.status})`); }
     return res.json();
   },
 
@@ -24,7 +25,7 @@ export const telemetryService = {
     });
 
     if (res.status === 204) return null;
-    if (!res.ok) throw new Error(`כשל בטעינת נתוני ניטור (${res.status})`);
+    if (!res.ok) { throwIfSessionExpired(res); throw new Error(`כשל בטעינת נתוני ניטור (${res.status})`); }
     return res.json();
   },
 };

@@ -19,6 +19,15 @@ function extractAttemptedEmail(rawPayload: string | null): string | null {
   }
 }
 
+function isSuspectedStaleBundle(rawPayload: string | null): boolean {
+  if (!rawPayload) return false;
+  try {
+    return JSON.parse(rawPayload)?.suspectedStaleBundle === true;
+  } catch {
+    return false;
+  }
+}
+
 export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
   const [detailsIncident, setDetailsIncident] = useState<SystemIncident | null>(null);
   const { runAgent, modalProps } = useAgentDiagnosis();
@@ -90,6 +99,23 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                       }}>
                         {i.errorMessage}
                       </div>
+                      {isSuspectedStaleBundle(i.rawPayload) && (
+                        <span
+                          title="השגיאה נקלטה בזמן שהטאב טען גרסה ישנה של האתר - ייתכן שזה לא באג אמיתי, רק באנדל ישן שנשאר טעון אחרי דיפלוי"
+                          style={{
+                            display: 'inline-block',
+                            marginTop: '4px',
+                            padding: '2px 7px',
+                            background: '#1e293b',
+                            border: '1px solid #334155',
+                            borderRadius: '4px',
+                            color: '#94a3b8',
+                            fontSize: '10px',
+                          }}
+                        >
+                          ⚠ יתכן גרסה ישנה בדפדפן
+                        </span>
+                      )}
                       <button
                         onClick={() => setDetailsIncident(i)}
                         style={{

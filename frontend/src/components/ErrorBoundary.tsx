@@ -1,6 +1,7 @@
 import React from 'react';
 import { incidentService } from '../api/incidentService';
 import { TENANT_ID } from '../config';
+import { isStaleBundleSuspected } from '../utils/versionCheck';
 
 interface Props {
   children: React.ReactNode;
@@ -29,6 +30,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
           componentStack: info.componentStack,
           url: window.location.href,
           userAgent: navigator.userAgent,
+          ...(isStaleBundleSuspected() ? { suspectedStaleBundle: true } : {}),
         }),
       })
       .then(() => this.setState({ reported: true }))

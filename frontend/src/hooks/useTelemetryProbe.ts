@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { telemetryService } from '../api/telemetryService';
 import type { ClientTelemetryProbeDto, TelemetryDiagnosticReport } from '../types/telemetry.types';
 import { API_BASE_URL, TENANT_ID } from '../config';
-import { reportSilentError } from '../utils/errorReporting';
+import { reportHandledApiFailure } from '../utils/errorReporting';
 
 // /health ולא /api/Bugs בכוונה - זה endpoint קליל וללא אימות, בדיוק בשביל
 // מדידת latency טהורה. פינג ל-endpoint עסקי כבד (עם אימות ושאילתת DB מלאה)
@@ -148,7 +148,7 @@ export const useTelemetryProbe = () => {
       }
     } catch (err: any) {
       setError(err.message || 'כשל בבדיקת איכות החיבור');
-      reportSilentError('CLIENT_HANDLED_API_FAILURE', err.message, err.stack);
+      reportHandledApiFailure(err);
     } finally {
       setLoading(false);
     }
