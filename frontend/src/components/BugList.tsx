@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useBugs } from '../hooks/useBugs';
 import { BugStatus, BugPriority } from '../types/bug.types';
 import { UserActivitySummary } from './UserActivitySummary';
 
 export const BugList: React.FC = () => {
   const { bugs, loading, error, refreshBugs, removeBug, updateBugStatus } = useBugs();
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
   const userCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -14,6 +15,11 @@ export const BugList: React.FC = () => {
     }
     return counts;
   }, [bugs]);
+
+  const visibleBugs = useMemo(() => {
+    if (!selectedUser) return bugs;
+    return bugs.filter((bug) => (bug.reportedByUserName || 'לא מזוהה') === selectedUser);
+  }, [bugs, selectedUser]);
 
   const getPriorityBadge = (priority: number) => {
     switch (priority) {
@@ -45,7 +51,48 @@ export const BugList: React.FC = () => {
 
   return (
     <>
-      <UserActivitySummary title="פילוח באגים לפי משתמש" counts={userCounts} />
+      <UserActivitySummary
+        title="פילוח באגים לפי משתמש"
+        counts={userCounts}
+        selectedUser={selectedUser}
+        onSelectUser={setSelectedUser}
+      />
+
+      {selectedUser && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '10px 14px',
+            marginBottom: '14px',
+            backgroundColor: '#131f37',
+            border: '1px solid #38bdf8',
+            borderRadius: '8px',
+            fontSize: '13px',
+            color: '#cbd5e1',
+          }}
+        >
+          <span>
+            מציג באגים של <strong style={{ color: '#f8fafc' }}>{selectedUser}</strong> בלבד ({visibleBugs.length})
+          </span>
+          <button
+            onClick={() => setSelectedUser(null)}
+            style={{
+              marginRight: 'auto',
+              padding: '4px 10px',
+              background: 'transparent',
+              border: '1px solid #334155',
+              borderRadius: '999px',
+              color: '#94a3b8',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+          >
+            נקה סינון ×
+          </button>
+        </div>
+      )}
 
       <div style={{ background: '#0f172a', borderRadius: '12px', border: '1px solid #1e293b', overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #1e293b' }}>
@@ -88,14 +135,14 @@ export const BugList: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {bugs.length === 0 ? (
+            {visibleBugs.length === 0 ? (
               <tr>
                 <td colSpan={9} style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
-                  אין באגים מדווחים במערכת
+                  {selectedUser ? 'אין באגים של משתמש זה' : 'אין באגים מדווחים במערכת'}
                 </td>
               </tr>
             ) : (
-              bugs.map((bug) => (
+              visibleBugs.map((bug) => (
                 <tr key={bug.id} style={{ borderBottom: '1px solid #1e293b', background: bug.status === BugStatus.Closed ? 'rgba(15, 23, 42, 0.4)' : '#131f37' }}>
                   <td style={{ padding: '12px', fontFamily: 'monospace' }}>#{bug.id}</td>
                   <td style={{ padding: '12px' }}>{getPriorityBadge(bug.priority)}</td>

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { SystemIncident } from '../types/bug.types';
 import { colors, radius } from '../styles/theme';
 import { SectionHeader } from '../components/ui/SectionHeader';
@@ -32,6 +32,8 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
   resolveIncident,
   reload,
 }) => {
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+
   const incidentUserCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const incident of incidents) {
@@ -45,6 +47,14 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
     }
     return counts;
   }, [incidents]);
+
+  const visibleIncidents = useMemo(() => {
+    if (!selectedUser) return incidents;
+    if (selectedUser === 'לא מזוהה') {
+      return incidents.filter((i) => i.reportedByUsers.length === 0);
+    }
+    return incidents.filter((i) => i.reportedByUsers.some((r) => r.userName === selectedUser));
+  }, [incidents, selectedUser]);
 
   const selectStyle: React.CSSProperties = {
     backgroundColor: colors.card,
@@ -95,7 +105,12 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
       />
 
       <OpsSummaryPanel />
-      <UserActivitySummary title="פילוח תקלות לפי משתמש" counts={incidentUserCounts} />
+      <UserActivitySummary
+        title="פילוח תקלות לפי משתמש"
+        counts={incidentUserCounts}
+        selectedUser={selectedUser}
+        onSelectUser={setSelectedUser}
+      />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
         <KeyMetricsRow incidents={incidents} />
@@ -121,10 +136,46 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
         </div>
       )}
 
+      {selectedUser && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '10px 14px',
+            marginBottom: '14px',
+            backgroundColor: colors.surfaceRaised,
+            border: `1px solid ${colors.accentSoft}`,
+            borderRadius: radius.md,
+            fontSize: '13px',
+            color: colors.textSecondary,
+          }}
+        >
+          <span>
+            מציג תקלות של <strong style={{ color: colors.textPrimary }}>{selectedUser}</strong> בלבד ({visibleIncidents.length})
+          </span>
+          <button
+            onClick={() => setSelectedUser(null)}
+            style={{
+              marginRight: 'auto',
+              padding: '4px 10px',
+              background: 'transparent',
+              border: `1px solid ${colors.border}`,
+              borderRadius: '999px',
+              color: colors.textMuted,
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+          >
+            נקה סינון ×
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px', color: colors.textFaint }}>טוען נתונים ממסד הנתונים...</div>
       ) : (
-        <IncidentTable incidents={incidents} onResolve={resolveIncident} />
+        <IncidentTable incidents={visibleIncidents} onResolve={resolveIncident} />
       )}
     </section>
   );
