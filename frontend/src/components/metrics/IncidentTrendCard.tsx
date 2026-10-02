@@ -5,9 +5,17 @@ import { TrendAreaChart } from '../charts/TrendAreaChart';
 
 interface Props {
   incidents: SystemIncident[];
+  selectedDay: string | null;
+  onSelectDay: (dayKey: string | null) => void;
 }
 
 const TREND_DAYS = 14;
+
+export function dayKeyOf(dateIso: string) {
+  const d = new Date(dateIso);
+  d.setHours(0, 0, 0, 0);
+  return d.toDateString();
+}
 
 function buildTrendData(incidents: SystemIncident[]) {
   const dayCounts = new Map<string, number>();
@@ -21,27 +29,40 @@ function buildTrendData(incidents: SystemIncident[]) {
   }
 
   for (const incident of incidents) {
-    const created = new Date(incident.createdAt);
-    created.setHours(0, 0, 0, 0);
-    const key = created.toDateString();
+    const key = dayKeyOf(incident.createdAt);
     if (dayCounts.has(key)) {
       dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
     }
   }
 
-  return Array.from(dayCounts.entries()).map(([key, value]) => ({
-    label: new Date(key).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }),
+  // label הוא מה שמוצג בגרף (קריא לאדם); dayKey הוא מזהה יציב לסינון -
+  // לא תלוי בפורמט תצוגה, כדי למנוע התנגשות בין תאריכים שנראים דומים
+  return Array.from(dayCounts.entries()).map(([dayKey, value]) => ({
+    label: new Date(dayKey).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }),
+    dayKey,
     value,
   }));
 }
 
-// כרטיס מגמת תקריות בלבד - עצמאי, בונה את נתוני ציר הזמן בעצמו
-export const IncidentTrendCard: React.FC<Props> = ({ incidents }) => {
+// כרטיס מגמת תקריות בלבד - עצמאי, בונה את נתוני ציר הזמן בעצמו. לחיצה על
+// נקודה בוחרת את היום (ה-state עצמו מנוהל ב-IncidentsPage)
+export const IncidentTrendCard: React.FC<Props> = ({ incidents, selectedDay, onSelectDay }) => {
   const trendData = useMemo(() => buildTrendData(incidents), [incidents]);
+
+  const selectedLabel = useMemo(
+    () => trendData.find((d) => d.dayKey === selectedDay)?.label ?? null,
+    [trendData, selectedDay]
+  );
+
+  const handlePointClick = (label: string) => {
+    const point = trendData.find((d) => d.label === label);
+    if (!point) return;
+    onSelectDay(selectedDay === point.dayKey ? null : point.dayKey);
+  };
 
   return (
     <Card title={`מגמת תקריות - ${TREND_DAYS} ימים אחרונים`}>
-      <TrendAreaChart data={trendData} />
+      <TrendAreaChart data={trendData} selectedLabel={selectedLabel} onPointClick={handlePointClick} />
     </Card>
   );
 };

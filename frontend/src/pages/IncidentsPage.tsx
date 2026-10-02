@@ -1,13 +1,20 @@
 import React, { useMemo, useState } from 'react';
-import type { SystemIncident } from '../types/bug.types';
+import { IncidentSeverity, type SystemIncident } from '../types/bug.types';
 import { colors, radius } from '../styles/theme';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { OpsSummaryPanel } from '../components/OpsSummaryPanel';
 import { UserActivitySummary } from '../components/UserActivitySummary';
 import { KeyMetricsRow } from '../components/metrics/KeyMetricsRow';
 import { SeverityBreakdownCard } from '../components/metrics/SeverityBreakdownCard';
-import { IncidentTrendCard } from '../components/metrics/IncidentTrendCard';
+import { IncidentTrendCard, dayKeyOf } from '../components/metrics/IncidentTrendCard';
 import { IncidentTable } from '../components/IncidentTable';
+
+const SEVERITY_LABELS: Record<IncidentSeverity, string> = {
+  [IncidentSeverity.Critical]: 'קריטי',
+  [IncidentSeverity.High]: 'גבוה',
+  [IncidentSeverity.Medium]: 'בינוני',
+  [IncidentSeverity.Low]: 'נמוך',
+};
 
 interface IncidentsPageProps {
   incidents: SystemIncident[];
@@ -33,6 +40,8 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
   reload,
 }) => {
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [selectedSeverity, setSelectedSeverity] = useState<IncidentSeverity | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const incidentUserCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -49,12 +58,26 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
   }, [incidents]);
 
   const visibleIncidents = useMemo(() => {
-    if (!selectedUser) return incidents;
-    if (selectedUser === 'לא מזוהה') {
-      return incidents.filter((i) => i.reportedByUsers.length === 0);
+    let result = incidents;
+    if (selectedUser) {
+      result = selectedUser === 'לא מזוהה'
+        ? result.filter((i) => i.reportedByUsers.length === 0)
+        : result.filter((i) => i.reportedByUsers.some((r) => r.userName === selectedUser));
     }
-    return incidents.filter((i) => i.reportedByUsers.some((r) => r.userName === selectedUser));
-  }, [incidents, selectedUser]);
+    if (selectedSeverity !== null) {
+      result = result.filter((i) => i.severity === selectedSeverity);
+    }
+    if (selectedDay) {
+      result = result.filter((i) => dayKeyOf(i.createdAt) === selectedDay);
+    }
+    return result;
+  }, [incidents, selectedUser, selectedSeverity, selectedDay]);
+
+  const activeFilters = [
+    selectedUser && { key: 'user', label: `משתמש: ${selectedUser}`, clear: () => setSelectedUser(null) },
+    selectedSeverity !== null && { key: 'severity', label: `חומרה: ${SEVERITY_LABELS[selectedSeverity]}`, clear: () => setSelectedSeverity(null) },
+    selectedDay && { key: 'day', label: `יום: ${new Date(selectedDay).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' })}`, clear: () => setSelectedDay(null) },
+  ].filter((f): f is { key: string; label: string; clear: () => void } => !!f);
 
   const selectStyle: React.CSSProperties = {
     backgroundColor: colors.card,
@@ -115,8 +138,16 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
         <KeyMetricsRow incidents={incidents} />
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) minmax(280px, 1.4fr)', gap: '16px' }}>
-          <SeverityBreakdownCard incidents={incidents} />
-          <IncidentTrendCard incidents={incidents} />
+          <SeverityBreakdownCard
+            incidents={incidents}
+            selectedSeverity={selectedSeverity}
+            onSelectSeverity={setSelectedSeverity}
+          />
+          <IncidentTrendCard
+            incidents={incidents}
+            selectedDay={selectedDay}
+            onSelectDay={setSelectedDay}
+          />
         </div>
       </div>
 
@@ -136,12 +167,13 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
         </div>
       )}
 
-      {selectedUser && (
+      {activeFilters.length > 0 && (
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
+            flexWrap: 'wrap',
             padding: '10px 14px',
             marginBottom: '14px',
             backgroundColor: colors.surfaceRaised,
@@ -151,11 +183,45 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
             color: colors.textSecondary,
           }}
         >
-          <span>
-            מציג תקלות של <strong style={{ color: colors.textPrimary }}>{selectedUser}</strong> בלבד ({visibleIncidents.length})
-          </span>
+          <span>מציג {visibleIncidents.length} תקלות לפי:</span>
+          {activeFilters.map((f) => (
+            <span
+              key={f.key}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '3px 6px 3px 10px',
+                backgroundColor: colors.card,
+                border: `1px solid ${colors.border}`,
+                borderRadius: '999px',
+                fontSize: '12px',
+                color: colors.textPrimary,
+              }}
+            >
+              {f.label}
+              <button
+                onClick={f.clear}
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  color: colors.textMuted,
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  padding: 0,
+                }}
+              >
+                ×
+              </button>
+            </span>
+          ))}
           <button
-            onClick={() => setSelectedUser(null)}
+            onClick={() => { setSelectedUser(null); setSelectedSeverity(null); setSelectedDay(null); }}
             style={{
               marginRight: 'auto',
               padding: '4px 10px',
@@ -167,7 +233,7 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
               cursor: 'pointer',
             }}
           >
-            נקה סינון ×
+            נקה הכל ×
           </button>
         </div>
       )}

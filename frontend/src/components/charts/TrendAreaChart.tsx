@@ -5,14 +5,18 @@ interface TrendAreaChartProps {
   data: Array<{ label: string; value: number }>;
   height?: number;
   color?: string;
+  selectedLabel?: string | null;
+  onPointClick?: (label: string) => void;
 }
 
 // גרף שטח (area) פשוט למגמה לאורך זמן - SVG טהור. מניח שה-data כבר ממוין
 // כרונולוגית. מגיב לתזוזת עכבר: מוצא את הנקודה הקרובה ביותר לאצבע/סמן
-// ומציג עליה קו הנחיה אנכי וחלונית ערך
-export const TrendAreaChart: React.FC<TrendAreaChartProps> = ({ data, height = 110, color = colors.accentSoft }) => {
+// ומציג עליה קו הנחיה אנכי וחלונית ערך. לחיצה (אם onPointClick סופק)
+// בוחרת את הנקודה הקרובה ביותר בצורה קבועה
+export const TrendAreaChart: React.FC<TrendAreaChartProps> = ({ data, height = 110, color = colors.accentSoft, selectedLabel, onPointClick }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const clickable = !!onPointClick;
 
   if (data.length === 0) {
     return <div style={{ color: colors.textFaint, fontSize: '13px' }}>אין מספיק נתונים להצגת מגמה</div>;
@@ -47,7 +51,12 @@ export const TrendAreaChart: React.FC<TrendAreaChartProps> = ({ data, height = 1
     setHoverIndex(closest);
   };
 
-  const hovered = hoverIndex !== null ? points[hoverIndex] : null;
+  const handleClick = () => {
+    if (hoverIndex !== null) onPointClick?.(points[hoverIndex].label);
+  };
+
+  const selectedPoint = selectedLabel ? points.find((p) => p.label === selectedLabel) ?? null : null;
+  const hovered = hoverIndex !== null ? points[hoverIndex] : selectedPoint;
   const tooltipFlip = hovered && hovered.x > width - 22;
 
   return (
@@ -56,9 +65,10 @@ export const TrendAreaChart: React.FC<TrendAreaChartProps> = ({ data, height = 1
         ref={svgRef}
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none"
-        style={{ width: '100%', height: `${height}px`, display: 'block', cursor: 'crosshair' }}
+        style={{ width: '100%', height: `${height}px`, display: 'block', cursor: clickable ? 'pointer' : 'crosshair' }}
         onMouseMove={handleMove}
         onMouseLeave={() => setHoverIndex(null)}
+        onClick={handleClick}
       >
         <defs>
           <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
@@ -69,11 +79,11 @@ export const TrendAreaChart: React.FC<TrendAreaChartProps> = ({ data, height = 1
         <path d={areaPath} fill="url(#trendFill)" stroke="none" />
         <path d={linePath} fill="none" stroke={color} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
 
-        {hovered && (
+        {(hovered || selectedPoint) && (
           <line
-            x1={hovered.x}
+            x1={(hovered ?? selectedPoint)!.x}
             y1={0}
-            x2={hovered.x}
+            x2={(hovered ?? selectedPoint)!.x}
             y2={height}
             stroke={colors.border}
             strokeWidth={1}
@@ -82,19 +92,22 @@ export const TrendAreaChart: React.FC<TrendAreaChartProps> = ({ data, height = 1
           />
         )}
 
-        {points.map((p, i) => (
-          <circle
-            key={p.label}
-            cx={p.x}
-            cy={p.y}
-            r={hoverIndex === i ? 3 : 1.8}
-            fill={hoverIndex === i ? colors.textPrimary : color}
-            stroke={hoverIndex === i ? color : 'none'}
-            strokeWidth={hoverIndex === i ? 1.5 : 0}
-            vectorEffect="non-scaling-stroke"
-            style={{ transition: 'r 0.1s ease' }}
-          />
-        ))}
+        {points.map((p, i) => {
+          const isEmphasized = hoverIndex === i || selectedLabel === p.label;
+          return (
+            <circle
+              key={p.label}
+              cx={p.x}
+              cy={p.y}
+              r={isEmphasized ? 3 : 1.8}
+              fill={isEmphasized ? colors.textPrimary : color}
+              stroke={isEmphasized ? color : 'none'}
+              strokeWidth={isEmphasized ? 1.5 : 0}
+              vectorEffect="non-scaling-stroke"
+              style={{ transition: 'r 0.1s ease' }}
+            />
+          );
+        })}
       </svg>
 
       {hovered && (
