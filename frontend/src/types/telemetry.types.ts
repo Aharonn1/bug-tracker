@@ -30,3 +30,15 @@ export interface OpsSummaryDto {
   medianResponseTimeMs: number;
   generatedAt: string;
 }
+
+export interface MetricPointDto {
+  timestamp: string;
+  value: number | null;
+}
+
+export interface SqlHealthMetricsDto {
+  dtuPercent: MetricPointDto[];
+  workersPercent: MetricPointDto[];
+  sessionsPercent: MetricPointDto[];
+  generatedAt: string;
+}

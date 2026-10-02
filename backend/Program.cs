@@ -77,6 +77,7 @@ builder.Services.AddScoped<IBugService, BugService>();
 builder.Services.AddScoped<IIncidentService, IncidentService>();
 builder.Services.AddScoped<TelemetryAnalysisService>();
 builder.Services.AddSingleton<OpsInsightsService>();
+builder.Services.AddSingleton<AzureSqlMetricsService>();
 
 // זיהוי הלקוח (Tenant) הנוכחי מתוך ה-header של הבקשה - נדרש עבור ה-Global Query
 // Filter ב-AppDbContext שמבדיל בין לקוחות שונים

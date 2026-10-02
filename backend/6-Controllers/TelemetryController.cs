@@ -14,6 +14,7 @@ public class TelemetryController(
     TelemetryAnalysisService analysisService,
     IncidentChannelQueue queue,
     OpsInsightsService opsInsightsService,
+    AzureSqlMetricsService sqlMetricsService,
     ICurrentTenantProvider tenantProvider,
     ICurrentUserProvider currentUserProvider) : ControllerBase
 {
@@ -64,5 +65,25 @@ public class TelemetryController(
         var summary = await opsInsightsService.GetSummaryAsync(window, ct);
 
         return summary is not null ? Ok(summary) : NoContent();
+    }
+
+    // מנהלים בלבד - מדדי Azure SQL נחשבים מידע תשתיתי פנימי, לא רלוונטי למשתמש רגיל
+    [HttpGet("sql-health-metrics")]
+    [ProducesResponseType(typeof(SqlHealthMetricsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetSqlHealthMetrics(
+        [FromQuery] int hours,
+        CancellationToken ct)
+    {
+        if (!currentUserProvider.IsAdmin)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "רק מנהל מערכת יכול לגשת למדדי Azure" });
+        }
+
+        var window = TimeSpan.FromHours(hours <= 0 ? 24 : hours);
+        var metrics = await sqlMetricsService.GetSqlHealthAsync(window, ct);
+
+        return metrics is not null ? Ok(metrics) : NoContent();
     }
 }
