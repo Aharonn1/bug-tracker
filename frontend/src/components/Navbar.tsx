@@ -1,6 +1,7 @@
 import React from 'react';
 import type { AuthUser } from '../types/auth.types';
 import { UserRole } from '../types/auth.types';
+import { colors } from '../styles/theme';
 
 export type DashboardView = 'incidents' | 'bugs' | 'new-bug';
 
@@ -25,11 +26,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      transition: 'all 0.2s ease',
-      backgroundColor: isActive ? '#2563eb' : 'transparent',
-      color: isActive ? '#ffffff' : '#94a3b8',
+      transition: 'background-color 0.15s ease, color 0.15s ease',
+      backgroundColor: isActive ? colors.accent : 'transparent',
+      color: isActive ? '#ffffff' : colors.textMuted,
     };
   };
+
+  const initials = user.fullName.split(' ').map((p) => p[0]).slice(0, 2).join('');
 
   return (
     <header style={{
@@ -37,10 +40,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: '14px 28px',
-      backgroundColor: '#0f172a',
-      borderBottom: '1px solid #1e293b',
+      backgroundColor: colors.surface,
+      borderBottom: `1px solid ${colors.borderSubtle}`,
       boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-      direction: 'rtl'
+      direction: 'rtl',
+      flexWrap: 'wrap',
+      gap: '12px',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -48,19 +53,19 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
             width: '12px',
             height: '12px',
             borderRadius: '50%',
-            backgroundColor: openIncidentsCount > 0 ? '#ef4444' : '#22c55e',
-            boxShadow: openIncidentsCount > 0 ? '0 0 10px #ef4444' : '0 0 8px #22c55e',
+            backgroundColor: openIncidentsCount > 0 ? colors.danger : colors.success,
+            boxShadow: openIncidentsCount > 0 ? `0 0 10px ${colors.danger}` : `0 0 8px ${colors.success}`,
             animation: openIncidentsCount > 0 ? 'pulse 1.8s infinite' : 'none'
           }} />
-          <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#f8fafc', letterSpacing: '-0.3px' }}>
+          <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: colors.textPrimary, letterSpacing: '-0.3px' }}>
             מרכז ניטור ותקלות מערכת
           </h1>
         </div>
-        <span style={{ color: '#475569', fontSize: '14px' }}>|</span>
-        <span style={{ color: '#64748b', fontSize: '13px' }}>אינטגרציות ממשלתיות וליבה</span>
+        <span style={{ color: colors.border, fontSize: '14px' }}>|</span>
+        <span style={{ color: colors.textFaint, fontSize: '13px' }}>אינטגרציות ממשלתיות וליבה</span>
       </div>
 
-      <nav style={{ display: 'flex', gap: '8px', backgroundColor: '#1e293b', padding: '4px', borderRadius: '10px' }}>
+      <nav style={{ display: 'flex', gap: '8px', backgroundColor: colors.card, padding: '4px', borderRadius: '10px' }}>
         <button
           onClick={() => onViewChange('incidents')}
           style={getNavBtnStyle('incidents')}
@@ -68,7 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
           <span>ניטור שגיאות ממשלתיות</span>
           {openIncidentsCount > 0 && (
             <span style={{
-              backgroundColor: '#ef4444',
+              backgroundColor: colors.danger,
               color: '#fff',
               fontSize: '11px',
               fontWeight: 700,
@@ -96,18 +101,33 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
       </nav>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '13px', color: '#e2e8f0', fontWeight: 600 }}>{user.fullName}</span>
-          <span style={{
-            fontSize: '11px',
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '30px',
+            height: '30px',
+            borderRadius: '50%',
+            backgroundColor: user.role === UserRole.Admin ? colors.violet : colors.border,
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '12px',
             fontWeight: 700,
-            padding: '2px 8px',
-            borderRadius: '999px',
-            backgroundColor: user.role === UserRole.Admin ? '#7c3aed' : '#334155',
-            color: user.role === UserRole.Admin ? '#f3e8ff' : '#cbd5e1',
+            flexShrink: 0,
           }}>
-            {user.role === UserRole.Admin ? 'מנהל מערכת' : 'משתמש'}
-          </span>
+            {initials}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <span style={{ fontSize: '13px', color: colors.textSecondary, fontWeight: 600, lineHeight: 1 }}>{user.fullName}</span>
+            <span style={{
+              fontSize: '10.5px',
+              fontWeight: 600,
+              color: user.role === UserRole.Admin ? '#c4b5fd' : colors.textFaint,
+              lineHeight: 1,
+            }}>
+              {user.role === UserRole.Admin ? 'מנהל מערכת' : 'משתמש'}
+            </span>
+          </div>
         </div>
 
         <button
@@ -115,9 +135,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
           style={{
             padding: '7px 14px',
             borderRadius: '8px',
-            border: '1px solid #334155',
+            border: `1px solid ${colors.border}`,
             backgroundColor: 'transparent',
-            color: '#94a3b8',
+            color: colors.textMuted,
             fontSize: '13px',
             cursor: 'pointer',
           }}

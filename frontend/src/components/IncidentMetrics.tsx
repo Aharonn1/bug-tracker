@@ -1,46 +1,80 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { IncidentSeverity, type SystemIncident } from '../types/bug.types';
+import { colors } from '../styles/theme';
+import { StatCard } from './ui/StatCard';
+import { Card } from './ui/Card';
+import { DonutChart } from './charts/DonutChart';
+import { TrendAreaChart } from './charts/TrendAreaChart';
 
 interface Props {
   incidents: SystemIncident[];
 }
 
-export const IncidentMetrics: React.FC<Props> = ({ incidents }) => {
-  const totalOpen = incidents.filter(i => !i.isResolved).length;
-  const criticalCount = incidents.filter(i => i.severity === IncidentSeverity.Critical && !i.isResolved).length;
-  const netMishpatCount = incidents.filter(i => i.subsystem === 'NetHaMishpat').length;
-  const ecaCount = incidents.filter(i => i.subsystem === 'EcaGov').length;
+const TREND_DAYS = 14;
 
-  const cardStyle: React.CSSProperties = {
-    background: '#1e293b',
-    padding: '16px 20px',
-    borderRadius: '12px',
-    border: '1px solid #334155',
-    flex: '1',
-    minWidth: '200px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px'
-  };
+function buildTrendData(incidents: SystemIncident[]) {
+  const dayCounts = new Map<string, number>();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = TREND_DAYS - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dayCounts.set(d.toDateString(), 0);
+  }
+
+  for (const incident of incidents) {
+    const created = new Date(incident.createdAt);
+    created.setHours(0, 0, 0, 0);
+    const key = created.toDateString();
+    if (dayCounts.has(key)) {
+      dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
+    }
+  }
+
+  return Array.from(dayCounts.entries()).map(([key, value]) => ({
+    label: new Date(key).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }),
+    value,
+  }));
+}
+
+export const IncidentMetrics: React.FC<Props> = ({ incidents }) => {
+  const totalOpen = incidents.filter((i) => !i.isResolved).length;
+  const criticalCount = incidents.filter((i) => i.severity === IncidentSeverity.Critical && !i.isResolved).length;
+  const netMishpatCount = incidents.filter((i) => i.subsystem === 'NetHaMishpat').length;
+  const ecaCount = incidents.filter((i) => i.subsystem === 'EcaGov').length;
+
+  const severityData = useMemo(
+    () => [
+      { label: 'קריטי', value: incidents.filter((i) => i.severity === IncidentSeverity.Critical).length, color: '#ef4444' },
+      { label: 'גבוה', value: incidents.filter((i) => i.severity === IncidentSeverity.High).length, color: '#f59e0b' },
+      { label: 'בינוני', value: incidents.filter((i) => i.severity === IncidentSeverity.Medium).length, color: '#3b82f6' },
+      { label: 'נמוך', value: incidents.filter((i) => i.severity === IncidentSeverity.Low).length, color: '#64748b' },
+    ],
+    [incidents]
+  );
+
+  const trendData = useMemo(() => buildTrendData(incidents), [incidents]);
 
   return (
-    <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
-      <div style={cardStyle}>
-        <span style={{ fontSize: '13px', color: '#94a3b8' }}>אירועים פתוחים לטיפול</span>
-        <strong style={{ fontSize: '26px', color: totalOpen > 0 ? '#f87171' : '#4ade80' }}>{totalOpen}</strong>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+        <StatCard label="אירועים פתוחים לטיפול" value={totalOpen} valueColor={totalOpen > 0 ? colors.danger : colors.successSoft} />
+        <StatCard label="אירועים קריטיים (Level 4)" value={criticalCount} valueColor={criticalCount > 0 ? colors.danger : colors.textMuted} />
+        <StatCard label="נט המשפט (שערי תהיל״ה)" value={netMishpatCount} valueColor={colors.accentSoft} />
+        <StatCard label="הוצאה לפועל (ECA)" value={ecaCount} valueColor={colors.warningSoft} />
       </div>
-      <div style={cardStyle}>
-        <span style={{ fontSize: '13px', color: '#94a3b8' }}>אירועים קריטיים (Level 4)</span>
-        <strong style={{ fontSize: '26px', color: criticalCount > 0 ? '#ef4444' : '#94a3b8' }}>{criticalCount}</strong>
-      </div>
-      <div style={cardStyle}>
-        <span style={{ fontSize: '13px', color: '#94a3b8' }}>נט המשפט (שערי תהיל״ה)</span>
-        <strong style={{ fontSize: '26px', color: '#38bdf8' }}>{netMishpatCount}</strong>
-      </div>
-      <div style={cardStyle}>
-        <span style={{ fontSize: '13px', color: '#94a3b8' }}>הוצאה לפועל (ECA)</span>
-        <strong style={{ fontSize: '26px', color: '#facc15' }}>{ecaCount}</strong>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) minmax(280px, 1.4fr)', gap: '16px' }}>
+        <Card title="פילוח לפי חומרה">
+          <DonutChart data={severityData} />
+        </Card>
+        <Card title={`מגמת תקריות - ${TREND_DAYS} ימים אחרונים`}>
+          <TrendAreaChart data={trendData} />
+        </Card>
       </div>
     </div>
   );
 };
+
+export default IncidentMetrics;
