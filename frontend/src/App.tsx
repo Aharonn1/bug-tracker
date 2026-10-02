@@ -9,6 +9,7 @@ import { DbOutageBanner } from './components/DbOutageBanner';
 import { LoginForm } from './components/LoginForm';
 import { RegisterForm } from './components/RegisterForm';
 import { IncidentsPage } from './pages/IncidentsPage';
+import { TriagePage } from './pages/TriagePage';
 import { BugsPage } from './pages/BugsPage';
 import { NewBugPage } from './pages/NewBugPage';
 import { colors } from './styles/theme';
@@ -59,6 +60,7 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
         currentView={currentView}
         onViewChange={setCurrentView}
         openIncidentsCount={openIncidentsCount}
+        unhandledCount={openIncidentsCount}
         user={user}
         onLogout={onLogout}
       />
@@ -80,6 +82,8 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
             reload={reload}
           />
         )}
+
+        {currentView === 'triage' && <TriagePage incidents={incidents} />}
 
         {currentView === 'bugs' && <BugsPage />}
 
