@@ -26,7 +26,6 @@ export const AzureSqlHealthCard: React.FC = () => {
   const sessionsData = useMemo(() => (metrics ? toChartData(metrics.sessionsPercent) : []), [metrics]);
 
   if (user?.role !== UserRole.Admin) return null;
-  if (error) return null;
 
   return (
     <Card
@@ -50,7 +49,11 @@ export const AzureSqlHealthCard: React.FC = () => {
         </button>
       }
     >
-      {!loading && !metrics ? (
+      {error ? (
+        <div style={{ color: colors.dangerSoft, fontSize: '13px' }}>
+          שגיאה בטעינת מדדי Azure SQL: {error}
+        </div>
+      ) : !loading && !metrics ? (
         <div style={{ color: colors.textFaint, fontSize: '13px' }}>
           Azure Monitor למדדי SQL לא מוגדר כרגע עבור משתמש זה (חסרה הרשאת Monitoring Reader על משאב ה-SQL, או שהפרטים עדיין לא הוגדרו ב-App Settings).
         </div>
