@@ -4,7 +4,9 @@ import { colors, radius } from '../styles/theme';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { OpsSummaryPanel } from '../components/OpsSummaryPanel';
 import { UserActivitySummary } from '../components/UserActivitySummary';
-import { IncidentMetrics } from '../components/IncidentMetrics';
+import { KeyMetricsRow } from '../components/metrics/KeyMetricsRow';
+import { SeverityBreakdownCard } from '../components/metrics/SeverityBreakdownCard';
+import { IncidentTrendCard } from '../components/metrics/IncidentTrendCard';
 import { IncidentTable } from '../components/IncidentTable';
 
 interface IncidentsPageProps {
@@ -94,7 +96,14 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
 
       <OpsSummaryPanel />
       <UserActivitySummary title="פילוח תקלות לפי משתמש" counts={incidentUserCounts} />
-      <IncidentMetrics incidents={incidents} />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+        <KeyMetricsRow incidents={incidents} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) minmax(280px, 1.4fr)', gap: '16px' }}>
+          <SeverityBreakdownCard incidents={incidents} />
+          <IncidentTrendCard incidents={incidents} />
+        </div>
+      </div>
 
       {error && (
         <div

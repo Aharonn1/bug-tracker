@@ -8,7 +8,7 @@ interface StatCardProps {
   hint?: string;
 }
 
-// אריח מדד בודד - משמש גם ב-IncidentMetrics וגם ב-OpsSummaryPanel, כדי
+// אריח מדד בודד - משמש גם ב-KeyMetricsRow וגם ב-OpsSummaryPanel, כדי
 // שלכל המספרים הגדולים בדשבורד יהיה אותו מראה בדיוק
 export const StatCard: React.FC<StatCardProps> = ({ label, value, valueColor = colors.textPrimary, hint }) => (
   <div
