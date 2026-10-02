@@ -1,5 +1,6 @@
 // מזהה הבנייה שהטאב הנוכחי טוען - קבוע בזיכרון מרגע הטעינה, לא משתנה
-// כל עוד הטאב לא מרוענן
+// כל עוד הטאב לא מרוענן. כל build מקבל ערך חדש (ראו scripts/generate-build-version.mjs)
+// כך שגם שינוי טריוויאלי כמו השורה הזו מספיק כדי לייצר buildId שונה לבדיקה
 const CURRENT_BUILD_ID = __BUILD_ID__;
 
 let staleBundleDetected = false;
