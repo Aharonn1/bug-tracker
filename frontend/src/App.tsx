@@ -63,7 +63,7 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
         onLogout={onLogout}
       />
 
-      <main style={{ flex: 1, padding: '28px', maxWidth: '1440px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+      <main style={{ flex: 1, padding: '28px 40px', width: '100%', boxSizing: 'border-box' }}>
         <DbOutageBanner />
         <ConnectionDiagnosticBanner />
 
