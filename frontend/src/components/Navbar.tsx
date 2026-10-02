@@ -3,7 +3,7 @@ import type { AuthUser } from '../types/auth.types';
 import { UserRole } from '../types/auth.types';
 import { colors } from '../styles/theme';
 
-export type DashboardView = 'incidents' | 'triage' | 'bugs' | 'new-bug';
+export type DashboardView = 'incidents' | 'triage' | 'bugs' | 'new-bug' | 'about';
 
 interface NavbarProps {
   currentView: DashboardView;
@@ -117,6 +117,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
           style={getNavBtnStyle('new-bug')}
         >
           <span>+ דיווח תקלה חדשה</span>
+        </button>
+
+        <button
+          onClick={() => onViewChange('about')}
+          style={getNavBtnStyle('about')}
+        >
+          <span>מה המערכת מזהה?</span>
         </button>
       </nav>
 
