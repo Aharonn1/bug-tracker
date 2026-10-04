@@ -6,7 +6,16 @@ import { Card } from './ui/Card';
 const CONCURRENCY = 100;
 const DURATION_MS = 30_000;
 const TIMEOUT_MS = 8_000;
-const TARGET_URL = `${API_BASE_URL}/api/Incidents`;
+
+// שני יעדים לבידוד הבעיה: /api/Incidents נוגע ב-DB, /health לא נוגע בכלל
+// (endpoint קליל, בלי אימות, בלי שאילתה) - אם גם הוא נכשל תחת עומס, הבעיה
+// היא ב-App Service עצמו ולא רק ב-SQL
+const TARGETS = {
+  withDb: { label: 'עם DB (/api/Incidents)', path: '/api/Incidents' },
+  withoutDb: { label: 'בלי DB (/health)', path: '/health' },
+} as const;
+
+type TargetKey = keyof typeof TARGETS;
 
 interface Stats {
   total: number;
@@ -30,6 +39,8 @@ function percentile(sorted: number[], p: number): number | null {
 // באמצעות הטוקן המחובר שלו עצמו. התוצאות מוצגות באתר במקום רק בטרמינל -
 // כדי שאפשר יהיה לראות בעין מה קורה לזמני התגובה תחת עומס אמיתי
 export const LoadTestCard: React.FC = () => {
+  const [target, setTarget] = useState<TargetKey>('withDb');
+  const [lastTarget, setLastTarget] = useState<TargetKey | null>(null);
   const [running, setRunning] = useState(false);
   const [stats, setStats] = useState<Stats>(emptyStats());
   const [finished, setFinished] = useState(false);
@@ -37,13 +48,16 @@ export const LoadTestCard: React.FC = () => {
 
   const runTest = async () => {
     const confirmed = window.confirm(
-      `זה ישלח ${CONCURRENCY} בקשות במקביל לשרת הייצור למשך ${DURATION_MS / 1000} שניות, ועלול להאט את האתר זמנית לכל מי שמשתמש בו עכשיו. להמשיך?`
+      `זה ישלח ${CONCURRENCY} בקשות במקביל ל-${TARGETS[target].label} בשרת הייצור, למשך ${DURATION_MS / 1000} שניות, ועלול להאט את האתר זמנית לכל מי שמשתמש בו עכשיו. להמשיך?`
     );
     if (!confirmed) return;
+
+    const targetUrl = `${API_BASE_URL}${TARGETS[target].path}`;
 
     statsRef.current = emptyStats();
     setStats(emptyStats());
     setFinished(false);
+    setLastTarget(target);
     setRunning(true);
 
     const uiInterval = setInterval(() => {
@@ -58,7 +72,7 @@ export const LoadTestCard: React.FC = () => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
         try {
-          const res = await fetch(TARGET_URL, { headers: tenantHeaders({ Accept: 'application/json' }), signal: controller.signal });
+          const res = await fetch(targetUrl, { headers: tenantHeaders({ Accept: 'application/json' }), signal: controller.signal });
           const elapsed = performance.now() - start;
           statsRef.current.latencies.push(elapsed);
           if (res.ok) statsRef.current.success++; else statsRef.current.failed++;
@@ -108,9 +122,38 @@ export const LoadTestCard: React.FC = () => {
         </button>
       }
     >
-      <p style={{ margin: '0 0 14px 0', fontSize: '12px', color: colors.textFaint }}>
+      <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: colors.textFaint }}>
         שולח {CONCURRENCY} בקשות GET במקביל (קריאה בלבד, בלי כתיבה ל-DB) דרך הדפדפן שלך עצמו, במשך {DURATION_MS / 1000} שניות - כדי לראות בפועל מה קורה לזמני התגובה תחת עומס. בקשה שלא ענתה תוך {TIMEOUT_MS / 1000} שניות נספרת כ"נכשלה" (גם אם היא הייתה עונה בסוף) - כי משתמש אמיתי לא מחכה ככה.
       </p>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+        <span style={{ fontSize: '12px', color: colors.textMuted }}>יעד הבדיקה:</span>
+        {(Object.keys(TARGETS) as TargetKey[]).map((key) => (
+          <button
+            key={key}
+            onClick={() => setTarget(key)}
+            disabled={running}
+            style={{
+              padding: '5px 12px',
+              borderRadius: '999px',
+              border: `1px solid ${target === key ? colors.accentSoft : colors.border}`,
+              backgroundColor: target === key ? colors.surfaceRaised : 'transparent',
+              color: target === key ? colors.textPrimary : colors.textMuted,
+              fontSize: '12px',
+              fontWeight: target === key ? 700 : 400,
+              cursor: running ? 'default' : 'pointer',
+            }}
+          >
+            {TARGETS[key].label}
+          </button>
+        ))}
+      </div>
+
+      {(running || finished) && (
+        <div style={{ fontSize: '12px', color: colors.textFaint, marginBottom: '8px' }}>
+          תוצאות עבור: <strong style={{ color: colors.textSecondary }}>{lastTarget ? TARGETS[lastTarget].label : ''}</strong>
+        </div>
+      )}
 
       {(running || finished) && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
@@ -144,7 +187,10 @@ export const LoadTestCard: React.FC = () => {
             lineHeight: 1.6,
           }}
         >
-          ⚠ רוב הבקשות נכשלו תחת העומס הזה - סימן ברור שהתשתית הנוכחית (SQL S0 ו/או App Service) לא עומדת במשתמשים בו-זמנית בכמות הזו.
+          ⚠ רוב הבקשות נכשלו תחת העומס הזה.{' '}
+          {lastTarget === 'withoutDb'
+            ? 'זה היה מול /health, שלא נוגע ב-DB בכלל - כלומר הבעיה היא ב-App Service עצמו (CPU/thread pool), לא רק ב-SQL. גם שדרוג ה-SQL לבדו לא יפתור את זה.'
+            : 'זה היה מול /api/Incidents, שכן נוגע ב-DB. כדי לדעת אם זה ה-SQL או ה-App Service עצמו - הריצו את אותה בדיקה מול /health (בחירת היעד למעלה) ותשוו.'}
         </div>
       )}
     </Card>
