@@ -15,6 +15,7 @@ public class TelemetryController(
     IncidentChannelQueue queue,
     OpsInsightsService opsInsightsService,
     AzureSqlMetricsService sqlMetricsService,
+    AzureAppServiceMetricsService appServiceMetricsService,
     ICurrentTenantProvider tenantProvider,
     ICurrentUserProvider currentUserProvider) : ControllerBase
 {
@@ -83,6 +84,26 @@ public class TelemetryController(
 
         var window = TimeSpan.FromHours(hours <= 0 ? 24 : hours);
         var metrics = await sqlMetricsService.GetSqlHealthAsync(window, ct);
+
+        return metrics is not null ? Ok(metrics) : NoContent();
+    }
+
+    // מנהלים בלבד - אותו שיקול כמו sql-health-metrics
+    [HttpGet("app-service-health-metrics")]
+    [ProducesResponseType(typeof(AppServiceHealthMetricsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAppServiceHealthMetrics(
+        [FromQuery] int hours,
+        CancellationToken ct)
+    {
+        if (!currentUserProvider.IsAdmin)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "רק מנהל מערכת יכול לגשת למדדי Azure" });
+        }
+
+        var window = TimeSpan.FromHours(hours <= 0 ? 24 : hours);
+        var metrics = await appServiceMetricsService.GetAppServiceHealthAsync(window, ct);
 
         return metrics is not null ? Ok(metrics) : NoContent();
     }

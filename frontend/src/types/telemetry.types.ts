@@ -42,3 +42,12 @@ export interface SqlHealthMetricsDto {
   sessionsPercent: MetricPointDto[];
   generatedAt: string;
 }
+
+export interface AppServiceHealthMetricsDto {
+  cpuTimeSeconds: MetricPointDto[];
+  memoryWorkingSetBytes: MetricPointDto[];
+  requests: MetricPointDto[];
+  http5xx: MetricPointDto[];
+  averageResponseTimeSeconds: MetricPointDto[];
+  generatedAt: string;
+}

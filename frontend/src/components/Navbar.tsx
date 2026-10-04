@@ -3,7 +3,7 @@ import type { AuthUser } from '../types/auth.types';
 import { UserRole } from '../types/auth.types';
 import { colors } from '../styles/theme';
 
-export type DashboardView = 'incidents' | 'triage' | 'bugs' | 'new-bug' | 'about';
+export type DashboardView = 'incidents' | 'triage' | 'bugs' | 'new-bug' | 'about' | 'azure-health';
 
 interface NavbarProps {
   currentView: DashboardView;
@@ -125,6 +125,15 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
         >
           <span>מה המערכת מזהה?</span>
         </button>
+
+        {user.role === UserRole.Admin && (
+          <button
+            onClick={() => onViewChange('azure-health')}
+            style={getNavBtnStyle('azure-health')}
+          >
+            <span>בריאות תשתית Azure</span>
+          </button>
+        )}
       </nav>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

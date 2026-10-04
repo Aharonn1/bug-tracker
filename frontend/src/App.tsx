@@ -12,6 +12,7 @@ import { RegisterForm } from './components/RegisterForm';
 import { IncidentsPage } from './pages/IncidentsPage';
 import { TriagePage } from './pages/TriagePage';
 import { AboutMonitoringPage } from './pages/AboutMonitoringPage';
+import { AzureInfrastructureHealthPage } from './pages/AzureInfrastructureHealthPage';
 import { BugsPage } from './pages/BugsPage';
 import { NewBugPage } from './pages/NewBugPage';
 import { colors } from './styles/theme';
@@ -108,6 +109,8 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
         {currentView === 'triage' && <TriagePage incidents={incidents} />}
 
         {currentView === 'about' && <AboutMonitoringPage />}
+
+        {currentView === 'azure-health' && <AzureInfrastructureHealthPage />}
 
         {currentView === 'bugs' && <BugsPage />}
 

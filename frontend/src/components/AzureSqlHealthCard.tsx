@@ -1,34 +1,19 @@
 import React, { useMemo } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { UserRole } from '../types/auth.types';
 import { useSqlHealthMetrics } from '../hooks/useSqlHealthMetrics';
-import type { MetricPointDto } from '../types/telemetry.types';
+import { toMetricChartData } from '../utils/metricChartData';
 import { colors } from '../styles/theme';
 import { Card } from './ui/Card';
 import { TrendAreaChart } from './charts/TrendAreaChart';
 
-// כולל תאריך ולא רק שעה - הטווח הוא 24 שעות, כך שהנקודה הראשונה והאחרונה
-// הן כמעט תמיד בימים שונים. בלי התאריך שתי הנקודות נראות כמעט זהות (רק
-// שעה:דקה), כאילו כל הטווח הוא כמה דקות בודדות
-function toChartData(points: MetricPointDto[]) {
-  return points.map((p) => ({
-    label: new Date(p.timestamp).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
-    value: p.value ?? 0,
-  }));
-}
-
-// גלוי רק ל-Admin - מדדי משאב Azure SQL בזמן אמת (DTU/Workers/Sessions),
-// כדי לענות ישירות על "האם תקלת DB נגרמה מעומס אמיתי על המשאב, או משהו אחר"
-// בלי לצאת ל-Azure Portal בכל פעם
+// מדדי משאב Azure SQL בזמן אמת (DTU/Workers/Sessions), כדי לענות ישירות על
+// "האם תקלת DB נגרמה מעומס אמיתי על המשאב, או משהו אחר" בלי לצאת ל-Azure
+// Portal בכל פעם. הגנת Admin-בלבד נעשית ברמת העמוד שמארח את הקומפוננטה
 export const AzureSqlHealthCard: React.FC = () => {
-  const { user } = useAuth();
   const { metrics, loading, error, reload } = useSqlHealthMetrics(24);
 
-  const dtuData = useMemo(() => (metrics ? toChartData(metrics.dtuPercent) : []), [metrics]);
-  const workersData = useMemo(() => (metrics ? toChartData(metrics.workersPercent) : []), [metrics]);
-  const sessionsData = useMemo(() => (metrics ? toChartData(metrics.sessionsPercent) : []), [metrics]);
-
-  if (user?.role !== UserRole.Admin) return null;
+  const dtuData = useMemo(() => (metrics ? toMetricChartData(metrics.dtuPercent) : []), [metrics]);
+  const workersData = useMemo(() => (metrics ? toMetricChartData(metrics.workersPercent) : []), [metrics]);
+  const sessionsData = useMemo(() => (metrics ? toMetricChartData(metrics.sessionsPercent) : []), [metrics]);
 
   return (
     <Card

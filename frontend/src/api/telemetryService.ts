@@ -1,4 +1,4 @@
-import type { ClientTelemetryProbeDto, OpsSummaryDto, SqlHealthMetricsDto, TelemetryDiagnosticReport } from '../types/telemetry.types';
+import type { AppServiceHealthMetricsDto, ClientTelemetryProbeDto, OpsSummaryDto, SqlHealthMetricsDto, TelemetryDiagnosticReport } from '../types/telemetry.types';
 import { API_BASE_URL, tenantHeaders } from '../config';
 import { throwIfSessionExpired } from './sessionGuard';
 
@@ -36,6 +36,16 @@ export const telemetryService = {
 
     if (res.status === 204 || res.status === 403) return null;
     if (!res.ok) { throwIfSessionExpired(res); throw new Error(`כשל בטעינת מדדי Azure SQL (${res.status})`); }
+    return res.json();
+  },
+
+  async getAppServiceHealthMetrics(hours: number): Promise<AppServiceHealthMetricsDto | null> {
+    const res = await fetch(`${BASE_URL}/app-service-health-metrics?hours=${hours}`, {
+      headers: tenantHeaders({ Accept: 'application/json' }),
+    });
+
+    if (res.status === 204 || res.status === 403) return null;
+    if (!res.ok) { throwIfSessionExpired(res); throw new Error(`כשל בטעינת מדדי App Service (${res.status})`); }
     return res.json();
   },
 };
