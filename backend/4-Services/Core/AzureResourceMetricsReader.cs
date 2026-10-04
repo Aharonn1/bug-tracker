@@ -47,12 +47,44 @@ public class AzureResourceMetricsReader
         };
         options.Aggregations.Add(MetricAggregationType.Average);
 
-        var response = await _client.QueryResourceAsync(resourceId, metricNames, options, ct);
+        try
+        {
+            var response = await _client.QueryResourceAsync(resourceId, metricNames, options, ct);
+            return Extract(response.Value.Metrics, metricNames);
+        }
+        catch (Exception ex)
+        {
+            // Azure Monitor פוסל את כל הבקשה אם אפילו שם מדד אחד מתוך הרשימה
+            // לא נתמך למשאב הזה (למשל מדד שקיים ל-App Service על Windows אבל
+            // לא על Linux) - אז נופלים חזרה לשאילתה נפרדת לכל מדד בנפרד, כדי
+            // שמדד תקין אחד לא ימנע מכל השאר להישלף
+            _logger.LogWarning(ex, "שאילתת Azure Monitor מרוכזת נכשלה עבור {ResourceId} - נופל לשאילתות נפרדות לכל מדד", resourceId);
 
+            var result = new Dictionary<string, List<MetricPointDto>>();
+            foreach (var metricName in metricNames)
+            {
+                try
+                {
+                    var single = await _client.QueryResourceAsync(resourceId, [metricName], options, ct);
+                    var extracted = Extract(single.Value.Metrics, [metricName]);
+                    result[metricName] = extracted[metricName];
+                }
+                catch (Exception singleEx)
+                {
+                    _logger.LogWarning(singleEx, "מדד {MetricName} לא נתמך או נכשל עבור {ResourceId} - מדולג", metricName, resourceId);
+                    result[metricName] = [];
+                }
+            }
+            return result;
+        }
+    }
+
+    private static Dictionary<string, List<MetricPointDto>> Extract(IReadOnlyList<MetricResult> metrics, IReadOnlyList<string> metricNames)
+    {
         var result = new Dictionary<string, List<MetricPointDto>>();
         foreach (var metricName in metricNames)
         {
-            var metric = response.Value.Metrics.FirstOrDefault(m => m.Name == metricName);
+            var metric = metrics.FirstOrDefault(m => m.Name == metricName);
             result[metricName] = metric is null
                 ? []
                 : metric.TimeSeries
@@ -61,7 +93,6 @@ public class AzureResourceMetricsReader
                     .OrderBy(p => p.Timestamp)
                     .ToList();
         }
-
         return result;
     }
 }
