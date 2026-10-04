@@ -16,6 +16,7 @@ export const AzureAppServiceHealthCard: React.FC = () => {
   const requestsData = useMemo(() => (metrics ? toMetricChartData(metrics.requests) : []), [metrics]);
   const http5xxData = useMemo(() => (metrics ? toMetricChartData(metrics.http5xx) : []), [metrics]);
   const responseTimeData = useMemo(() => (metrics ? toMetricChartData(metrics.averageResponseTimeSeconds) : []), [metrics]);
+  const queueLengthData = useMemo(() => (metrics ? toMetricChartData(metrics.httpQueueLength) : []), [metrics]);
 
   return (
     <Card
@@ -69,11 +70,17 @@ export const AzureAppServiceHealthCard: React.FC = () => {
             <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>זמן תגובה ממוצע (שניות)</div>
             <TrendAreaChart data={responseTimeData} color={colors.warningSoft} />
           </div>
+          <div>
+            <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>אורך תור HTTP (HttpQueueLength)</div>
+            <TrendAreaChart data={queueLengthData} color="#f472b6" />
+          </div>
         </div>
       )}
 
       <div style={{ fontSize: '11px', color: colors.textFaint, marginTop: '14px', lineHeight: 1.6 }}>
         עלייה חדה ב-CPU/זיכרון יחד עם זמן תגובה גדל היא הסימן הקלאסי ל"האתר לא מחזיק עומס" - שונה לגמרי מתקלת DB, ודורש פתרון אחר (scale up/out של ה-App Service, לא של ה-SQL).
+        <br />
+        <strong>אורך תור HTTP מעל 0</strong> הוא ההוכחה הישירה ביותר: זה אומר שיש בקשות שממתינות כי אין worker thread פנוי לטפל בהן - בדיוק מה שבדיקת העומס מול /health (בלי DB בכלל) חשפה.
       </div>
     </Card>
   );

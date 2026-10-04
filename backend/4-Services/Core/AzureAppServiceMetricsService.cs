@@ -10,7 +10,9 @@ public class AzureAppServiceMetricsService(IConfiguration configuration, AzureRe
 {
     private readonly string? _resourceId = configuration["Monitoring:AppServiceResourceId"];
 
-    private static readonly string[] MetricNames = ["CpuTime", "MemoryWorkingSet", "Requests", "Http5xx", "AverageResponseTime"];
+    // HttpQueueLength הוא המדד הכי ישיר למצב שגילינו בבדיקת העומס - כמה
+    // בקשות ממתינות בתור כי אין worker thread פנוי לטפל בהן, בלי קשר ל-DB בכלל
+    private static readonly string[] MetricNames = ["CpuTime", "MemoryWorkingSet", "Requests", "Http5xx", "AverageResponseTime", "HttpQueueLength"];
 
     public async Task<AppServiceHealthMetricsDto?> GetAppServiceHealthAsync(TimeSpan window, CancellationToken ct = default)
     {
@@ -23,6 +25,7 @@ public class AzureAppServiceMetricsService(IConfiguration configuration, AzureRe
             Requests: metrics["Requests"],
             Http5xx: metrics["Http5xx"],
             AverageResponseTimeSeconds: metrics["AverageResponseTime"],
+            HttpQueueLength: metrics["HttpQueueLength"],
             GeneratedAt: DateTimeOffset.UtcNow
         );
     }

@@ -49,5 +49,6 @@ export interface AppServiceHealthMetricsDto {
   requests: MetricPointDto[];
   http5xx: MetricPointDto[];
   averageResponseTimeSeconds: MetricPointDto[];
+  httpQueueLength: MetricPointDto[];
   generatedAt: string;
 }
