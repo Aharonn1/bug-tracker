@@ -2,6 +2,7 @@ import React from 'react';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { AzureSqlHealthCard } from '../components/AzureSqlHealthCard';
 import { AzureAppServiceHealthCard } from '../components/AzureAppServiceHealthCard';
+import { LoadTestCard } from '../components/LoadTestCard';
 import { colors, radius } from '../styles/theme';
 
 // עמוד עצמאי ונפרד לגמרי מה-NOC - לא על "תקלה שכבר קרתה" אלא על "האם
@@ -36,6 +37,7 @@ export const AzureInfrastructureHealthPage: React.FC = () => (
     </div>
 
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <LoadTestCard />
       <AzureAppServiceHealthCard />
       <AzureSqlHealthCard />
     </div>
