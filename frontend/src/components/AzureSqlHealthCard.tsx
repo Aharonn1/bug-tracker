@@ -7,9 +7,12 @@ import { colors } from '../styles/theme';
 import { Card } from './ui/Card';
 import { TrendAreaChart } from './charts/TrendAreaChart';
 
+// כולל תאריך ולא רק שעה - הטווח הוא 24 שעות, כך שהנקודה הראשונה והאחרונה
+// הן כמעט תמיד בימים שונים. בלי התאריך שתי הנקודות נראות כמעט זהות (רק
+// שעה:דקה), כאילו כל הטווח הוא כמה דקות בודדות
 function toChartData(points: MetricPointDto[]) {
   return points.map((p) => ({
-    label: new Date(p.timestamp).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
+    label: new Date(p.timestamp).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
     value: p.value ?? 0,
   }));
 }
