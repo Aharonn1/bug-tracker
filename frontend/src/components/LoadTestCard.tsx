@@ -5,17 +5,19 @@ import { Card } from './ui/Card';
 
 const CONCURRENCY = 100;
 const DURATION_MS = 30_000;
+const TIMEOUT_MS = 8_000;
 const TARGET_URL = `${API_BASE_URL}/api/Incidents`;
 
 interface Stats {
   total: number;
   success: number;
   failed: number;
+  timedOut: number;
   latencies: number[];
 }
 
 function emptyStats(): Stats {
-  return { total: 0, success: 0, failed: 0, latencies: [] };
+  return { total: 0, success: 0, failed: 0, timedOut: 0, latencies: [] };
 }
 
 function percentile(sorted: number[], p: number): number | null {
@@ -53,14 +55,19 @@ export const LoadTestCard: React.FC = () => {
     const worker = async () => {
       while (Date.now() < deadline) {
         const start = performance.now();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
         try {
-          const res = await fetch(TARGET_URL, { headers: tenantHeaders({ Accept: 'application/json' }) });
+          const res = await fetch(TARGET_URL, { headers: tenantHeaders({ Accept: 'application/json' }), signal: controller.signal });
           const elapsed = performance.now() - start;
           statsRef.current.latencies.push(elapsed);
           if (res.ok) statsRef.current.success++; else statsRef.current.failed++;
-        } catch {
+        } catch (err: any) {
           statsRef.current.latencies.push(performance.now() - start);
           statsRef.current.failed++;
+          if (err?.name === 'AbortError') statsRef.current.timedOut++;
+        } finally {
+          clearTimeout(timeoutId);
         }
         statsRef.current.total++;
       }
@@ -102,14 +109,18 @@ export const LoadTestCard: React.FC = () => {
       }
     >
       <p style={{ margin: '0 0 14px 0', fontSize: '12px', color: colors.textFaint }}>
-        שולח {CONCURRENCY} בקשות GET במקביל (קריאה בלבד, בלי כתיבה ל-DB) דרך הדפדפן שלך עצמו, במשך {DURATION_MS / 1000} שניות - כדי לראות בפועל מה קורה לזמני התגובה תחת עומס.
+        שולח {CONCURRENCY} בקשות GET במקביל (קריאה בלבד, בלי כתיבה ל-DB) דרך הדפדפן שלך עצמו, במשך {DURATION_MS / 1000} שניות - כדי לראות בפועל מה קורה לזמני התגובה תחת עומס. בקשה שלא ענתה תוך {TIMEOUT_MS / 1000} שניות נספרת כ"נכשלה" (גם אם היא הייתה עונה בסוף) - כי משתמש אמיתי לא מחכה ככה.
       </p>
 
       {(running || finished) && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
           <StatBox label="סה״כ בקשות" value={stats.total} />
           <StatBox label="הצליחו" value={stats.success} color={colors.successSoft} />
-          <StatBox label="נכשלו" value={stats.failed} color={stats.failed > 0 ? colors.dangerSoft : colors.textMuted} />
+          <StatBox
+            label="נכשלו"
+            value={stats.timedOut > 0 ? `${stats.failed} (מתוכן ${stats.timedOut} timeout)` : stats.failed}
+            color={stats.failed > 0 ? colors.dangerSoft : colors.textMuted}
+          />
           <StatBox
             label="אחוז הצלחה"
             value={successRate !== null ? `${successRate.toFixed(0)}%` : '—'}
