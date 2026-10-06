@@ -17,7 +17,7 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
 
 export const CapacityFindingsCard: React.FC = () => (
   <Card
-    title="הערכת קיבולת - מצב נוכחי"
+    title="הערכת קיבולת - לעתיד, לא דחוף"
     action={
       <span style={{ fontSize: '11px', color: colors.textFaint }}>עודכן לאחרונה: {ASSESSED_ON}</span>
     }
@@ -26,16 +26,15 @@ export const CapacityFindingsCard: React.FC = () => (
       style={{
         padding: '12px 14px',
         marginBottom: '18px',
-        backgroundColor: colors.dangerBg,
-        border: `1px solid ${colors.dangerBorder}`,
+        backgroundColor: colors.surfaceRaised,
+        border: `1px solid ${colors.border}`,
         borderRadius: radius.md,
-        color: colors.dangerSoft,
+        color: colors.textSecondary,
         fontSize: '13px',
-        fontWeight: 600,
         lineHeight: 1.7,
       }}
     >
-      ⚠ המערכת כפי שהיא מוגדרת היום לא מחזיקה מעמד תחת כ-100 משתמשים בו-זמנית. זו לא תקלה חד-פעמית - הממצא חזר על עצמו בעקביות, כולל בבדיקה שבוצעה אחרי יומיים שבהם השרת לא קיבל שום תנועה.
+      ℹ️ <strong>זה כרגע כלי דמו פנימי</strong>, לא מערכת production עם מאות משתמשים בו-זמנית - אין שום דחיפות לפעול לפי מה שכתוב כאן. הממצאים למטה מתועדים לעתיד: אם היקף השימוש האמיתי יגדל משמעותית, יש כבר תשובה מוכנה ל"האם המערכת תחזיק מעמד ומה צריך לשדרג".
     </div>
 
     <Section title="התשתית הנוכחית">
@@ -65,8 +64,8 @@ export const CapacityFindingsCard: React.FC = () => (
       </ul>
     </Section>
 
-    <Section title="מסקנה והמלצה">
-      שדרוג ה-SQL בלבד <strong>לא יספיק</strong> - ליבת CPU אחת לא יכולה לשרת 100 בקשות בו-זמנית בצורה סבירה, לא משנה כמה ה-DB מהיר. כדי שהמערכת תחזיק עומס אמיתי, צריך לשדרג <strong>גם</strong> את ה-App Service (ל-Standard S1 לפחות - מאפשר autoscale אמיתי) <strong>וגם</strong> את ה-SQL, ביחד. אחד בלי השני ישאיר את הצוואר בקבוק השני במקומו.
+    <Section title="מסקנה - אם ואז יגיע הצורך">
+      ה-tiers הנוכחיים (B1 ו-S0) הם גם הזולים ביותר ב-Azure, והם לגמרי מתאימים לשימוש בפועל של כמה משתמשים בודדים. <strong>אין סיבה לשדרג אותם כרגע</strong> - זו תהיה הוצאה חודשית נוספת על קיבולת שאף אחד לא ינצל. רק אם היקף השימוש האמיתי יגדל משמעותית: שדרוג ה-SQL בלבד לא יספיק (ליבת CPU אחת ב-App Service היא צוואר הבקבוק הראשון, עוד לפני ה-DB) - יהיה צריך לשדרג <strong>גם</strong> את ה-App Service (ל-Standard S1 לפחות, שגם מאפשר autoscale) <strong>וגם</strong> את ה-SQL, ביחד.
     </Section>
   </Card>
 );
