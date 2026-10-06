@@ -67,6 +67,16 @@ export const CapacityFindingsCard: React.FC = () => (
     <Section title="מסקנה - אם ואז יגיע הצורך">
       ה-tiers הנוכחיים (B1 ו-S0) הם גם הזולים ביותר ב-Azure, והם לגמרי מתאימים לשימוש בפועל של כמה משתמשים בודדים. <strong>אין סיבה לשדרג אותם כרגע</strong> - זו תהיה הוצאה חודשית נוספת על קיבולת שאף אחד לא ינצל. רק אם היקף השימוש האמיתי יגדל משמעותית: שדרוג ה-SQL בלבד לא יספיק (ליבת CPU אחת ב-App Service היא צוואר הבקבוק הראשון, עוד לפני ה-DB) - יהיה צריך לשדרג <strong>גם</strong> את ה-App Service (ל-Standard S1 לפחות, שגם מאפשר autoscale) <strong>וגם</strong> את ה-SQL, ביחד.
     </Section>
+
+    <Section title="מוכנות הקוד - כבר עכשיו, לא כשיגיע הצורך">
+      הקוד עצמו בנוי כך שהשדרוג העתידי (אם וכש) יהיה <strong>רק שינויי הגדרות ב-Azure Portal</strong>, בלי לגעת בקוד:
+      <ul style={{ margin: '8px 0 0 0', paddingRight: '20px' }}>
+        <li>האימות מבוסס JWT סטטלס (לא session/cookies בצד שרת) - כל instance יכול לטפל בכל בקשה, אין צורך ב-sticky sessions כש-autoscale יוסיף instances.</li>
+        <li>ה-connection pool ל-SQL מוגדר במפורש בקוד (200, לא ברירת המחדל של 100) - לא תלוי במה שמוגדר ב-connection string ב-Key Vault, כך ששדרוג tier ל-SQL ינוצל במלואו מיד, בלי תקרה נסתרת בצד הלקוח.</li>
+        <li>מצבי זיכרון פנימיים (כמו תור תקלות הזמינות) כבר thread-safe ועצמאיים per-instance - לא ישברו כש-autoscale ירים עוד instance.</li>
+        <li><code>/health</code> כבר קיים ומחובר ל-health check האוטומטי של Azure - נדרש כבר היום בשביל scale-out אמיתי.</li>
+      </ul>
+    </Section>
   </Card>
 );
 

@@ -56,9 +56,21 @@ if (!string.IsNullOrEmpty(builder.Configuration["ApplicationInsights:ConnectionS
 // ==========================================
 // 3. מסד נתונים - Entity Framework Core
 // ==========================================
+
+// Max Pool Size מוגדר כאן בקוד, לא תלוי במה שמוגדר (או לא מוגדר) ב-connection
+// string השמור ב-Key Vault - כך שגם כשיום אחד נשדרג את ה-SQL tier כדי להחזיק
+// יותר עומס, אף אחד לא יצטרך לזכור לערוך את הסוד כדי להרים גם את התקרה בצד
+// הלקוח (ADO.NET מגביל ל-100 כברירת מחדל, מספיק קטן שהוא עלול להיות הצוואר
+// בקבוק הבא אחרי שה-DB כבר לא)
+var connectionStringBuilder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(
+    builder.Configuration.GetConnectionString("DefaultConnection"))
+{
+    MaxPoolSize = 200,
+};
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
+        connectionStringBuilder.ConnectionString,
         sqlOptions => sqlOptions.EnableRetryOnFailure(
             maxRetryCount: 5,
             maxRetryDelay: TimeSpan.FromSeconds(30),
