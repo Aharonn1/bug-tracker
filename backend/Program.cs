@@ -80,15 +80,32 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // ==========================================
-// 1. הגדרת CORS
+// 1. הגדרת CORS - מוגבל לרשימת origins מפורשת (Cors:AllowedOrigins ב-App
+// Settings), לא AllowAnyOrigin גורף. origin פתוח לגמרי מאפשר לכל אתר באינטרנט
+// לשלוח בקשות XHR/fetch ל-API הזה (עם קרדנציאלס שהם עצמם מחזיקים, לא שלנו -
+// אין פה cookies אז זה לא CSRF קלאסי, אבל זו עדיין פרצה מיותרת ללא שום תועלת
+// עבור API שמשרת origin יחיד ידוע). אם לא מוגדר (למשל בפיתוח מקומי לפני
+// שהוגדר), נופלים חזרה ל-AllowAnyOrigin כדי לא לנעול בטעות - בפרודקשן זה
+// חייב להיות מוגדר
 // ==========================================
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        }
+        else
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        }
     });
 });
 
