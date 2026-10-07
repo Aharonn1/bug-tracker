@@ -12,6 +12,10 @@ namespace MyBackendApi.Services.Core;
 
 public class BugService(AppDbContext context, ICurrentUserProvider currentUserProvider) : IBugService
 {
+    // ראו הערה מקבילה ב-IncidentService - רשת ביטחון מפני payload לא חסום,
+    // לא pagination מלא עם ניווט בין עמודים
+    private const int MaxResults = 500;
+
     public async Task<IEnumerable<BugReportResponseDto>> GetAllBugsAsync(IncidentStatus? statusFilter = null, int? restrictToUserId = null, CancellationToken cancellationToken = default)
     {
         var query =
@@ -32,7 +36,10 @@ public class BugService(AppDbContext context, ICurrentUserProvider currentUserPr
             query = query.Where(x => x.Bug.ReportedByUserId == restrictToUserId.Value);
         }
 
-        var rows = await query.ToListAsync(cancellationToken);
+        var rows = await query
+            .OrderByDescending(x => x.Bug.CreatedAt)
+            .Take(MaxResults)
+            .ToListAsync(cancellationToken);
         return rows.Select(x => MapToResponseDto(x.Bug, x.ReporterName));
     }
 

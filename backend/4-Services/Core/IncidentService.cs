@@ -12,6 +12,12 @@ namespace MyBackendApi.Services.Core;
 
 public class IncidentService(AppDbContext context, ErrorDeduplicationService deduplicationService) : IIncidentService
 {
+    // בלי Take כאן, לקוח עם היסטוריית תקריות גדולה (למשל אחרי שנים של שימוש,
+    // או סתם הרבה דיווחים אוטומטיים) היה מחזיר payload לא חסום לגמרי בכל טעינת
+    // עמוד. זו לא החלפה אמיתית ל-pagination עם ניווט בין עמודים (שדורש גם שינוי
+    // בפרונט), אלא רשת ביטחון שמונעת את התרחיש הגרוע ביותר
+    private const int MaxResults = 500;
+
     public async Task<IEnumerable<IncidentResponseDto>> GetAllIncidentsAsync(
         bool? unresolvedOnly = null,
         string? subsystem = null,
@@ -38,6 +44,7 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
 
         var incidents = await query
             .OrderByDescending(i => i.CreatedAt)
+            .Take(MaxResults)
             .ToListAsync(ct);
 
         // Join "רך" מול הקטלוג (לא FK אמיתי) - כי תקרית עם קוד שגיאה שעוד לא
