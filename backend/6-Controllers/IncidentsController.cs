@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Responses;
 using MyBackendApi.Services.Auth;
@@ -68,6 +69,7 @@ public class IncidentsController(
     /// </summary>
     [HttpPost("ingest")]
     [AllowAnonymous]
+    [EnableRateLimiting("ingest")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> IngestIncident(

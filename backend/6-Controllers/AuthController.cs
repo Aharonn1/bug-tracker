@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MyBackendApi.Models.DTOs.Auth;
 using MyBackendApi.Services.Interfaces;
 
@@ -8,6 +9,7 @@ namespace MyBackendApi.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [AllowAnonymous]
+[EnableRateLimiting("auth")]
 public class AuthController(IAuthService authService) : ControllerBase
 {
     [HttpPost("login")]

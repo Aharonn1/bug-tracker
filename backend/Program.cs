@@ -1,6 +1,9 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MyBackendApi.Data;
@@ -16,6 +19,65 @@ using MyBackendApi.Services.Queues;
 using MyBackendApi.Services.Tenancy;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ==========================================
+// 0. Forwarded Headers - Azure App Service רץ מאחורי reverse proxy פנימי.
+// בלי זה, HttpContext.Connection.RemoteIpAddress מחזיר את ה-IP הפנימי של
+// ה-proxy עבור כל בקשה (אותו IP לכולם) - מה שהופך כל Rate Limiting לפי IP
+// (סעיף 0.5 למטה) לחסר משמעות, כי כל התעבורה הייתה נראית כמו "משתמש אחד".
+// KnownProxies/KnownNetworks מנוקים בכוונה כי Azure App Service הוא ה-proxy
+// היחיד שרץ לפנינו - בוטחים בו באופן גורף, לא ברשת IP ספציפית
+// ==========================================
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+// ==========================================
+// 0.5 Rate Limiting - הגנה בסיסית מפני הצפה/ניצול לרעה, חשובה במיוחד
+// ל-endpoints ציבוריים/אנונימיים (login, register, ingest) שאין עליהם שום
+// הגנה כזו היום. מפוצל-לפי-IP (אחרי Forwarded Headers למעלה), לא גלובלי,
+// כדי שמשרד אחד "רועש" לא יחסום משרדים אחרים
+// ==========================================
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    static string ClientKey(HttpContext ctx) => ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+    // ברירת מחדל לכל שאר ה-API - נדיבה, רק רשת ביטחון כללית
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+        RateLimitPartition.GetSlidingWindowLimiter(ClientKey(ctx), _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = 300,
+            Window = TimeSpan.FromMinutes(1),
+            SegmentsPerWindow = 4,
+            QueueLimit = 0,
+        }));
+
+    // מחמירה יותר - login/register (הגנת brute-force על סיסמאות)
+    options.AddPolicy("auth", ctx =>
+        RateLimitPartition.GetSlidingWindowLimiter(ClientKey(ctx), _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            SegmentsPerWindow = 2,
+            QueueLimit = 0,
+        }));
+
+    // ingest אנונימי - פתוח בלי אימות בכוונה (ראו הערה ב-IncidentsController),
+    // אז זה בדיוק ה-endpoint שהכי צריך תקרה משלו
+    options.AddPolicy("ingest", ctx =>
+        RateLimitPartition.GetSlidingWindowLimiter(ClientKey(ctx), _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = 30,
+            Window = TimeSpan.FromMinutes(1),
+            SegmentsPerWindow = 2,
+            QueueLimit = 0,
+        }));
+});
 
 // ==========================================
 // 1. הגדרת CORS
@@ -153,6 +215,10 @@ var app = builder.Build();
 // ==========================================
 app.UseExceptionHandler();
 
+// ראשון בצינור בכוונה - כל middleware אחרי זה צריך לראות את ה-IP האמיתי של
+// הלקוח, לא את זה של ה-proxy הפנימי של Azure
+app.UseForwardedHeaders();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -160,6 +226,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowReactApp");
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
