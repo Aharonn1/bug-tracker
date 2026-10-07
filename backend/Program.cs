@@ -36,19 +36,30 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 // ==========================================
-// 0.5 Rate Limiting - הגנה בסיסית מפני הצפה/ניצול לרעה, חשובה במיוחד
-// ל-endpoints ציבוריים/אנונימיים (login, register, ingest) שאין עליהם שום
-// הגנה כזו היום. מפוצל-לפי-IP (אחרי Forwarded Headers למעלה), לא גלובלי,
-// כדי שמשרד אחד "רועש" לא יחסום משרדים אחרים
+// 0.5 Rate Limiting - שני סוגי הגנה שונים, לא רק אחד:
+//
+// 1) לפי-IP (SlidingWindow) - מונע מגורם בודד להציף את המערכת. לא עוזר
+//    נגד עומס אמיתי ומבוזר (למשל 100 משרדים שונים, כל אחד עם כמה בקשות
+//    בודדות בדקה - אף אחד מהם לא חוצה את הסף, אבל ביחד הם כן מציפים את
+//    ה-App Service שרץ כרגע על ליבת CPU בודדת).
+//
+// 2) Concurrency גלובלי (לא מפוצל, חל על כל הבקשות ביחד) - זה מה שבאמת
+//    עונה על "עומס אמיתי": מגביל כמה בקשות מטופלות *בו-זמנית* בפועל, לא
+//    משנה מאיזה IP. מעבר לתקרה, בקשות ממתינות בתור קצר (QueueLimit) ואז
+//    נדחות עם 503 מיידי - "אני עמוס, נסה שוב" - במקום להיתקע 6-13 שניות
+//    ואז להיכשל ממילא כמו שראינו בבדיקות העומס. RateLimiting:GlobalConcurrency
+//    ב-config כדי שאפשר יהיה להעלות את זה מאוחר יותר בלי שינוי קוד, כש-
+//    ה-App Service ישודרג מ-Basic B1 (ליבה אחת) ל-tier עם יותר קיבולת
 // ==========================================
+var globalConcurrencyLimit = builder.Configuration.GetValue<int?>("RateLimiting:GlobalConcurrency") ?? 60;
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
     static string ClientKey(HttpContext ctx) => ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-    // ברירת מחדל לכל שאר ה-API - נדיבה, רק רשת ביטחון כללית
-    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+    var perIpLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
         RateLimitPartition.GetSlidingWindowLimiter(ClientKey(ctx), _ => new SlidingWindowRateLimiterOptions
         {
             PermitLimit = 300,
@@ -56,6 +67,17 @@ builder.Services.AddRateLimiter(options =>
             SegmentsPerWindow = 4,
             QueueLimit = 0,
         }));
+
+    var concurrencyLimiter = PartitionedRateLimiter.Create<HttpContext, string>(_ =>
+        RateLimitPartition.GetConcurrencyLimiter("global", _ => new ConcurrencyLimiterOptions
+        {
+            PermitLimit = globalConcurrencyLimit,
+            QueueLimit = 20,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+        }));
+
+    // שניהם חייבים לאשר - הבקשה נדחית אם היא עוברת את אחד הספים, לא רק את שניהם ביחד
+    options.GlobalLimiter = PartitionedRateLimiter.CreateChained(perIpLimiter, concurrencyLimiter);
 
     // מחמירה יותר - login/register (הגנת brute-force על סיסמאות)
     options.AddPolicy("auth", ctx =>
