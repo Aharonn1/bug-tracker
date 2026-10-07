@@ -1,4 +1,4 @@
-import type { BugReport, CreateBugDto } from '../types/bug.types';
+import type { BugReport, CreateBugDto, PagedResult } from '../types/bug.types';
 import { BugStatus } from '../types/bug.types';
 
 import { API_BASE_URL, tenantHeaders } from '../config';
@@ -7,12 +7,13 @@ import { throwIfSessionExpired } from './sessionGuard';
 const BASE_URL = `${API_BASE_URL}/api/Bugs`;
 
 export const bugService = {
-  async getAll(status?: BugStatus): Promise<BugReport[]> {
-    const url = status !== undefined 
-      ? `${BASE_URL}?status=${status}` 
-      : BASE_URL;
+  async getAll(status?: BugStatus, page = 1, pageSize = 50): Promise<PagedResult<BugReport>> {
+    const params = new URLSearchParams();
+    if (status !== undefined) params.append('status', String(status));
+    params.append('page', String(page));
+    params.append('pageSize', String(pageSize));
 
-    const res = await fetch(url, {
+    const res = await fetch(`${BASE_URL}?${params.toString()}`, {
       headers: tenantHeaders({
         'Accept': 'application/json'
       })

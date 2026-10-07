@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using MyBackendApi.Models.DTOs.Common;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Responses;
 using MyBackendApi.Services.Auth;
@@ -35,15 +36,19 @@ public class IncidentsController(
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<IncidentResponseDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<IncidentResponseDto>>> GetIncidents(
+    [ProducesResponseType(typeof(PagedResultDto<IncidentResponseDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResultDto<IncidentResponseDto>>> GetIncidents(
         [FromQuery] bool? unresolvedOnly,
         [FromQuery] string? subsystem,
+        [FromQuery] int page,
+        [FromQuery] int pageSize,
         CancellationToken ct)
     {
         // Admin רואה את כל התקריות; משתמש רגיל רואה רק את אלו שקשורות לפעילות שלו
         var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
-        var incidents = await incidentService.GetAllIncidentsAsync(unresolvedOnly, subsystem, restrictToUserId, ct);
+        var incidents = await incidentService.GetAllIncidentsAsync(
+            unresolvedOnly, subsystem, restrictToUserId,
+            page <= 0 ? 1 : page, pageSize <= 0 ? 50 : pageSize, ct);
         return Ok(incidents);
     }
 

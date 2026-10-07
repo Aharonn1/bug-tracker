@@ -8,6 +8,7 @@ import { KeyMetricsRow } from '../components/metrics/KeyMetricsRow';
 import { SeverityBreakdownCard } from '../components/metrics/SeverityBreakdownCard';
 import { IncidentTrendCard, dayKeyOf } from '../components/metrics/IncidentTrendCard';
 import { IncidentTable } from '../components/IncidentTable';
+import { Pager } from '../components/ui/Pager';
 
 const SEVERITY_LABELS: Record<IncidentSeverity, string> = {
   [IncidentSeverity.Critical]: 'קריטי',
@@ -18,6 +19,10 @@ const SEVERITY_LABELS: Record<IncidentSeverity, string> = {
 
 interface IncidentsPageProps {
   incidents: SystemIncident[];
+  totalCount: number;
+  page: number;
+  setPage: (page: number) => void;
+  pageSize: number;
   loading: boolean;
   error: string | null;
   filterSubsystem: string;
@@ -30,6 +35,10 @@ interface IncidentsPageProps {
 
 export const IncidentsPage: React.FC<IncidentsPageProps> = ({
   incidents,
+  totalCount,
+  page,
+  setPage,
+  pageSize,
   loading,
   error,
   filterSubsystem,
@@ -136,6 +145,10 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
         onSelectUser={setSelectedUser}
       />
 
+      {/* הגרפים/המדדים למטה מחושבים מהעמוד הנוכחי בלבד (לא מכל התוצאות
+          שעונות לפילטר) - סביר כל עוד יש פחות תקריות מגודל העמוד; אם זה
+          יהפוך לבעיה אמיתית בעתיד, זה ידרוש endpoint ייעודי לאגרגציה בצד
+          השרת במקום לחשב מהרשימה שכבר הגיעה */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
         <KeyMetricsRow incidents={incidents} />
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) minmax(280px, 1.4fr)', gap: '16px' }}>
@@ -244,6 +257,8 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
       ) : (
         <IncidentTable incidents={visibleIncidents} onResolve={resolveIncident} />
       )}
+
+      <Pager page={page} pageSize={pageSize} totalCount={totalCount} onPageChange={setPage} disabled={loading} />
     </section>
   );
 };

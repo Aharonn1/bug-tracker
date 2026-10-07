@@ -64,6 +64,10 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
 
   const {
     incidents,
+    totalCount,
+    page,
+    setPage,
+    pageSize,
     loading,
     error,
     filterSubsystem,
@@ -74,6 +78,9 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
     reload
   } = useIncidents();
 
+  // מבוסס על העמוד הנוכחי בלבד (לא כל התקריות הפתוחות בכל הטננט) - נכון
+  // כל עוד יש פחות תקריות מגודל העמוד. ספירה מדויקת לגמרי דורשת endpoint
+  // ייעודי לספירה בצד השרת, לא תלוי בעמוד שנטען כרגע
   const openIncidentsCount = incidents.filter(i => !i.isResolved).length;
 
   return (
@@ -95,6 +102,10 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
         {currentView === 'incidents' && (
           <IncidentsPage
             incidents={incidents}
+            totalCount={totalCount}
+            page={page}
+            setPage={setPage}
+            pageSize={pageSize}
             loading={loading}
             error={error}
             filterSubsystem={filterSubsystem}

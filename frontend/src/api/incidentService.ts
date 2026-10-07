@@ -1,17 +1,18 @@
-import type { CreateIncidentDto, DbOutageEntry, SystemIncident } from "../types/bug.types";
+import type { CreateIncidentDto, DbOutageEntry, PagedResult, SystemIncident } from "../types/bug.types";
 import { API_BASE_URL, tenantHeaders } from '../config';
 import { throwIfSessionExpired } from './sessionGuard';
 
 const BASE_URL = `${API_BASE_URL}/api/Incidents`;
 
 export const incidentService = {
-  async getAll(unresolvedOnly?: boolean, subsystem?: string): Promise<SystemIncident[]> {
+  async getAll(unresolvedOnly?: boolean, subsystem?: string, page = 1, pageSize = 50): Promise<PagedResult<SystemIncident>> {
     const params = new URLSearchParams();
     if (unresolvedOnly) params.append('unresolvedOnly', 'true');
     if (subsystem) params.append('subsystem', subsystem);
+    params.append('page', String(page));
+    params.append('pageSize', String(pageSize));
 
-    const url = params.toString() ? `${BASE_URL}?${params.toString()}` : BASE_URL;
-    const res = await fetch(url, {
+    const res = await fetch(`${BASE_URL}?${params.toString()}`, {
       headers: tenantHeaders({ 'Accept': 'application/json' })
     });
 

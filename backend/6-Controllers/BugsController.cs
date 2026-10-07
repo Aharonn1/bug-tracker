@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MyBackendApi.Models.Common;
+using MyBackendApi.Models.DTOs.Common;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Responses;
 using MyBackendApi.Services.Auth;
@@ -14,14 +15,18 @@ namespace MyBackendApi.Controllers;
 public class BugsController(IBugService bugService, ICurrentUserProvider currentUserProvider) : ControllerBase
 {
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<BugReportResponseDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<BugReportResponseDto>>> GetAllBugs(
+    [ProducesResponseType(typeof(PagedResultDto<BugReportResponseDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResultDto<BugReportResponseDto>>> GetAllBugs(
         [FromQuery] IncidentStatus? status,
+        [FromQuery] int page,
+        [FromQuery] int pageSize,
         CancellationToken cancellationToken)
     {
         // Admin רואה את כל הבאגים; משתמש רגיל רואה רק את אלו שהוא עצמו דיווח
         var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
-        var bugs = await bugService.GetAllBugsAsync(status, restrictToUserId, cancellationToken);
+        var bugs = await bugService.GetAllBugsAsync(
+            status, restrictToUserId,
+            page <= 0 ? 1 : page, pageSize <= 0 ? 50 : pageSize, cancellationToken);
         return Ok(bugs);
     }
 

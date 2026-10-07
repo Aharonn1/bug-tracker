@@ -2,11 +2,14 @@ import React, { useMemo, useState } from 'react';
 import { useBugs } from '../hooks/useBugs';
 import { BugStatus, BugPriority } from '../types/bug.types';
 import { UserActivitySummary } from './UserActivitySummary';
+import { Pager } from './ui/Pager';
 
 export const BugList: React.FC = () => {
-  const { bugs, loading, error, refreshBugs, removeBug, updateBugStatus } = useBugs();
+  const { bugs, totalCount, page, setPage, pageSize, loading, error, refreshBugs, removeBug, updateBugStatus } = useBugs();
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
+  // מבוסס על העמוד הנוכחי בלבד (ראו הערה מקבילה ב-useIncidents/IncidentsPage) -
+  // נכון כל עוד יש פחות באגים מגודל העמוד
   const userCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const bug of bugs) {
@@ -96,7 +99,7 @@ export const BugList: React.FC = () => {
 
       <div style={{ background: '#0f172a', borderRadius: '12px', border: '1px solid #1e293b', overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #1e293b' }}>
-        <span style={{ fontSize: '14px', color: '#94a3b8' }}>סך הכל באגים רשומים: <strong style={{ color: '#f8fafc' }}>{bugs.length}</strong></span>
+        <span style={{ fontSize: '14px', color: '#94a3b8' }}>סך הכל באגים רשומים: <strong style={{ color: '#f8fafc' }}>{totalCount}</strong></span>
         <button
           onClick={refreshBugs}
           style={{
@@ -197,6 +200,8 @@ export const BugList: React.FC = () => {
         </table>
       </div>
       </div>
+
+      <Pager page={page} pageSize={pageSize} totalCount={totalCount} onPageChange={setPage} disabled={loading} />
     </>
   );
 };

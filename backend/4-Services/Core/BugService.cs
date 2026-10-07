@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using MyBackendApi.Data;
 using MyBackendApi.Exceptions;
 using MyBackendApi.Models.Common;
+using MyBackendApi.Models.DTOs.Common;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Responses;
 using MyBackendApi.Models.Entities;
@@ -12,12 +13,18 @@ namespace MyBackendApi.Services.Core;
 
 public class BugService(AppDbContext context, ICurrentUserProvider currentUserProvider) : IBugService
 {
-    // ראו הערה מקבילה ב-IncidentService - רשת ביטחון מפני payload לא חסום,
-    // לא pagination מלא עם ניווט בין עמודים
-    private const int MaxResults = 500;
+    private const int MaxPageSize = 200;
 
-    public async Task<IEnumerable<BugReportResponseDto>> GetAllBugsAsync(IncidentStatus? statusFilter = null, int? restrictToUserId = null, CancellationToken cancellationToken = default)
+    public async Task<PagedResultDto<BugReportResponseDto>> GetAllBugsAsync(
+        IncidentStatus? statusFilter = null,
+        int? restrictToUserId = null,
+        int page = 1,
+        int pageSize = 50,
+        CancellationToken cancellationToken = default)
     {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+
         var query =
             from b in context.BugReports.AsNoTracking()
             join u in context.Users.AsNoTracking() on b.ReportedByUserId equals u.Id into userJoin
@@ -36,11 +43,17 @@ public class BugService(AppDbContext context, ICurrentUserProvider currentUserPr
             query = query.Where(x => x.Bug.ReportedByUserId == restrictToUserId.Value);
         }
 
+        var totalCount = await query.CountAsync(cancellationToken);
+
         var rows = await query
             .OrderByDescending(x => x.Bug.CreatedAt)
-            .Take(MaxResults)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(cancellationToken);
-        return rows.Select(x => MapToResponseDto(x.Bug, x.ReporterName));
+
+        var items = rows.Select(x => MapToResponseDto(x.Bug, x.ReporterName)).ToList();
+
+        return new PagedResultDto<BugReportResponseDto>(items, totalCount, page, pageSize);
     }
 
     public async Task<BugReportResponseDto> GetBugByIdAsync(int id, int? restrictToUserId = null, CancellationToken cancellationToken = default)

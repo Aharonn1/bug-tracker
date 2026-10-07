@@ -1,4 +1,11 @@
 
+export interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
 // הערכים תואמים בכוונה ל-enum IncidentSeverity בבקאנד (byte, מתחיל מ-1) - ה-DTO
 // שנשלח ליצירת באג נשמר תחת אותו enum בפועל
 export const BugPriority = {

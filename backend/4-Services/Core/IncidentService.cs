@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using MyBackendApi.Data;
 using MyBackendApi.Exceptions;
 using MyBackendApi.Models.Common;
+using MyBackendApi.Models.DTOs.Common;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Responses;
 using MyBackendApi.Models.Entities;
@@ -12,22 +13,21 @@ namespace MyBackendApi.Services.Core;
 
 public class IncidentService(AppDbContext context, ErrorDeduplicationService deduplicationService) : IIncidentService
 {
-    // בלי Take כאן, לקוח עם היסטוריית תקריות גדולה (למשל אחרי שנים של שימוש,
-    // או סתם הרבה דיווחים אוטומטיים) היה מחזיר payload לא חסום לגמרי בכל טעינת
-    // עמוד. זו לא החלפה אמיתית ל-pagination עם ניווט בין עמודים (שדורש גם שינוי
-    // בפרונט), אלא רשת ביטחון שמונעת את התרחיש הגרוע ביותר
-    private const int MaxResults = 500;
+    private const int MaxPageSize = 200;
 
-    public async Task<IEnumerable<IncidentResponseDto>> GetAllIncidentsAsync(
+    public async Task<PagedResultDto<IncidentResponseDto>> GetAllIncidentsAsync(
         bool? unresolvedOnly = null,
         string? subsystem = null,
         int? restrictToUserId = null,
+        int page = 1,
+        int pageSize = 50,
         CancellationToken ct = default)
     {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+
         var query = context.SystemErrorIncidents
             .AsNoTracking()
-            .Include(i => i.Details)
-            .Include(i => i.Reporters).ThenInclude(r => r.User)
             .AsQueryable();
 
         if (unresolvedOnly == true)
@@ -42,9 +42,25 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
             query = query.Where(i => i.Reporters.Any(r => r.UserId == restrictToUserId.Value));
         }
 
+        // הוחלף מסינון בזיכרון (אחרי טעינת כל השורות) ל-subquery שמתורגם ל-SQL -
+        // כי בלי זה, pagination לפי subsystem היה לא עקבי: היינו דפדפים לפי
+        // העמוד *לפני* הסינון, ומקבלים עמודים עם פחות (או אפס) תוצאות אחריו
+        if (!string.IsNullOrWhiteSpace(subsystem))
+        {
+            var errorCodesForSubsystem = context.ErrorCatalogs
+                .Where(c => c.Subsystem == subsystem)
+                .Select(c => c.ErrorCode);
+            query = query.Where(i => errorCodesForSubsystem.Contains(i.ErrorCode));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+
         var incidents = await query
+            .Include(i => i.Details)
+            .Include(i => i.Reporters).ThenInclude(r => r.User)
             .OrderByDescending(i => i.CreatedAt)
-            .Take(MaxResults)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(ct);
 
         // Join "רך" מול הקטלוג (לא FK אמיתי) - כי תקרית עם קוד שגיאה שעוד לא
@@ -52,13 +68,9 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
         // הרבה שורות בקטלוג, ומאפשר לשלב עם ה-Include של Reporters למעלה
         var catalogs = await context.ErrorCatalogs.AsNoTracking().ToDictionaryAsync(c => c.ErrorCode, ct);
 
-        IEnumerable<SystemErrorIncident> filtered = incidents;
-        if (!string.IsNullOrWhiteSpace(subsystem))
-        {
-            filtered = filtered.Where(i => catalogs.TryGetValue(i.ErrorCode, out var cat) && cat.Subsystem == subsystem);
-        }
+        var items = incidents.Select(i => MapToResponseDto(i, catalogs.GetValueOrDefault(i.ErrorCode))).ToList();
 
-        return filtered.Select(i => MapToResponseDto(i, catalogs.GetValueOrDefault(i.ErrorCode)));
+        return new PagedResultDto<IncidentResponseDto>(items, totalCount, page, pageSize);
     }
 
     public async Task<IncidentResponseDto?> GetIncidentByIdAsync(long id, int? restrictToUserId = null, CancellationToken ct = default)
