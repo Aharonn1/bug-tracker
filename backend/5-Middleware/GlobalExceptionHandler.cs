@@ -7,6 +7,7 @@ using MyBackendApi.Exceptions;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Services.Diagnostics;
 using MyBackendApi.Services.Queues;
+using MyBackendApi.Services.Tenancy;
 using static MyBackendApi.Services.Diagnostics.DatabaseExceptionDetector;
 
 namespace MyBackendApi.Middleware;
@@ -89,10 +90,31 @@ public class GlobalExceptionHandler(
     {
         try
         {
-            // ה-header המהימן, כמו בכל שאר הבקרים - בלי הוא אין למי לשייך את התקרית,
-            // אז פשוט מדלגים על תיעוד (התגובה למשתמש כבר נשלחה בכל מקרה)
-            var tenantId = httpContext.Request.Headers["X-Tenant-Id"].FirstOrDefault();
-            if (string.IsNullOrWhiteSpace(tenantId)) return;
+            // ICurrentTenantProvider (לא header גולמי!) - אותו תיקון בדיוק כמו
+            // ב-HttpContextTenantProvider: למשתמש מאומת זה שואב מה-JWT החתום,
+            // לא מ-header שהלקוח שולח. בלי זה, תוקף יכול היה לגרום ל-500 מכוון
+            // (למשל קלט לא תקין) עם X-Tenant-Id מזויף, ולגרום לתקרית "קריסת שרת"
+            // להירשם תחת לקוח אחר לגמרי - אותה פרצת בידוד לקוחות, רק בכיוון כתיבה.
+            //
+            // נשלף מ-httpContext.RequestServices (לא constructor injection!) כי
+            // GlobalExceptionHandler עצמו רשום כ-Singleton (כך AddExceptionHandler
+            // תמיד רושם IExceptionHandler) בעוד ICurrentTenantProvider הוא Scoped -
+            // constructor injection ישיר גרם לקריסה מיידית בעליית השרת
+            // ("Cannot consume scoped service from singleton"), כי ה-DI container
+            // לא יכול לבנות Singleton שתלוי בשירות שתלוי ב-request הנוכחי.
+            // RequestServices הוא ה-scope הנכון של הבקשה הספציפית הזו
+            string tenantId;
+            try
+            {
+                var tenantProvider = httpContext.RequestServices.GetRequiredService<ICurrentTenantProvider>();
+                tenantId = tenantProvider.TenantId;
+            }
+            catch
+            {
+                // אין זהות מאומתת ואין header בכלל - אין למי לשייך את התקרית,
+                // אז פשוט מדלגים על תיעוד (התגובה למשתמש כבר נשלחה בכל מקרה)
+                return;
+            }
 
             var reportedByUserId = GetAuthenticatedUserId(httpContext);
 
