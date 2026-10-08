@@ -21,6 +21,13 @@ public class AuthService(AppDbContext context, IConfiguration configuration, DbO
     // (מגיע דרך ה-Shared Framework של Microsoft.NET.Sdk.Web, בלי צורך בחבילה נפרדת)
     private static readonly PasswordHasher<User> Hasher = new();
 
+    // ברירות מחדל: 5 ניסיונות כושלים נועלים את החשבון ל-15 דקות. זו הגנה
+    // עצמאית לגמרי מה-rate limiter הגלובלי (שפועל לפי IP, ראו Program.cs) -
+    // תוקף עם הרבה כתובות IP/פרוקסי יכול לעקוף הגבלה לפי-IP בקלות יחסית,
+    // אבל לא יכול לעקוף הגבלה שעוקבת אחרי *החשבון* עצמו
+    private int MaxFailedLoginAttempts => configuration.GetValue<int?>("Auth:MaxFailedLoginAttempts") ?? 5;
+    private TimeSpan LockoutDuration => TimeSpan.FromMinutes(configuration.GetValue<int?>("Auth:LockoutDurationMinutes") ?? 15);
+
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto dto, CancellationToken ct = default)
     {
         User? user;
@@ -37,11 +44,39 @@ public class AuthService(AppDbContext context, IConfiguration configuration, DbO
             throw;
         }
 
+        // בדיקת נעילה *לפני* אימות הסיסמה - אין טעם לבדוק סיסמה על חשבון
+        // שכבר נעול, וזה גם מונע "ניחוש" נוסף על חשבון נעול
+        if (user is not null && user.LockedOutUntil is { } lockedUntil && lockedUntil > DateTime.UtcNow)
+        {
+            throw new AccountLockedException(lockedUntil - DateTime.UtcNow);
+        }
+
         // אותה שגיאה בדיוק בין "משתמש לא קיים" ל"סיסמה שגויה" בכוונה - כדי לא
         // לחשוף לתוקף פוטנציאלי אילו כתובות אימייל בכלל רשומות במערכת
         if (user is null || Hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password) == PasswordVerificationResult.Failed)
         {
+            if (user is not null)
+            {
+                user.FailedLoginAttempts++;
+                if (user.FailedLoginAttempts >= MaxFailedLoginAttempts)
+                {
+                    user.LockedOutUntil = DateTime.UtcNow.Add(LockoutDuration);
+                    user.FailedLoginAttempts = 0;
+                    await context.SaveChangesAsync(ct);
+                    throw new AccountLockedException(LockoutDuration);
+                }
+                await context.SaveChangesAsync(ct);
+            }
+
             throw new InvalidCredentialsException();
+        }
+
+        // התחברות מוצלחת - מאפסים כל מונה כשלים/נעילה קודמים מה-IP/זמן הזה
+        if (user.FailedLoginAttempts != 0 || user.LockedOutUntil is not null)
+        {
+            user.FailedLoginAttempts = 0;
+            user.LockedOutUntil = null;
+            await context.SaveChangesAsync(ct);
         }
 
         return BuildAuthResponse(user);

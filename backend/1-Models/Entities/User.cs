@@ -22,4 +22,10 @@ public class User : AuditableEntity
     public UserRole Role { get; set; } = UserRole.User;
 
     public bool IsActive { get; set; } = true;
+
+    // הגנת account lockout - עצמאית לגמרי מה-rate limiter הגלובלי (שהוא לפי
+    // IP). תוקף נחוש יכול לעקוף הגבלה לפי-IP בקלות (הרבה כתובות/פרוקסי), אבל
+    // לא יכול לעקוף הגבלה שעוקבת אחרי *החשבון* עצמו, לא מאיפה הבקשה הגיעה
+    public int FailedLoginAttempts { get; set; }
+    public DateTime? LockedOutUntil { get; set; }
 }
