@@ -32,8 +32,13 @@ public class SystemErrorIncidentConfiguration : IEntityTypeConfiguration<SystemE
         builder.Property(i => i.RowVersion)
             .IsRowVersion();
 
-        // אינדקס מורכב קריטי: מאפשר לבדוק כפילות שגיאה עבור לקוח ספציפי ב-O(1)
+        // אינדקס מורכב קריטי: מאפשר לבדוק כפילות שגיאה עבור לקוח ספציפי ב-O(1).
+        // IsUnique - לא רק לביצועים: אוכף ברמת ה-DB שלא יכולות להיווצר שתי
+        // תקריות עם אותה חתימה לאותו לקוח, גם אם שני worker-ים מעבדים בו-זמנית
+        // (ראו IncidentIngestionWorker/IncidentService.IngestIncidentAsync) -
+        // בלי זה, מירוץ בין שני עיבודים מקבילים יכול היה ליצור כפילות שקטה
         builder.HasIndex(i => new { i.TenantId, i.ErrorFingerprintHash })
+            .IsUnique()
             .HasDatabaseName("IX_SystemErrorIncidents_Tenant_Fingerprint");
 
         // קשר של 1 ל-1 עם טבלת ה-Payload הכבדה

@@ -51,7 +51,11 @@ public class AuthService(AppDbContext context, IConfiguration configuration, DbO
     {
         try
         {
-            var emailTaken = await context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == dto.Email, ct);
+            // בלי IgnoreQueryFilters בכוונה - הייחודיות של אימייל היא per-tenant,
+            // אז הבדיקה חייבת להיות מוגבלת ללקוח הנוכחי (ה-Global Query Filter
+            // הרגיל כבר עושה את זה). בדיקה גלובלית הייתה חוסמת הרשמה של אדם
+            // במשרד אחד רק כי אותו אימייל כבר רשום במשרד אחר לגמרי
+            var emailTaken = await context.Users.AnyAsync(u => u.Email == dto.Email, ct);
             if (emailTaken) throw new EmailAlreadyExistsException(dto.Email);
 
             var user = new User
@@ -64,7 +68,19 @@ public class AuthService(AppDbContext context, IConfiguration configuration, DbO
             user.PasswordHash = Hasher.HashPassword(user, dto.Password);
 
             context.Users.Add(user);
-            await context.SaveChangesAsync(ct);
+
+            try
+            {
+                await context.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException)
+            {
+                // חלון מירוץ נדיר: שתי הרשמות בו-זמנית עם אותו אימייל באותו
+                // לקוח, שתיהן עברו את הבדיקה למעלה לפני שהראשונה נשמרה.
+                // האינדקס הייחודי ב-DB תופס את זה - מתורגם להודעה ברורה
+                // במקום 500 גנרי
+                throw new EmailAlreadyExistsException(dto.Email);
+            }
 
             return BuildAuthResponse(user);
         }

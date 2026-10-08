@@ -18,8 +18,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.PasswordHash).IsRequired();
         builder.Property(u => u.Role).IsRequired();
 
-        // אימייל משמש כשם המשתמש בהתחברות - חייב להיות ייחודי במסד הנתונים
-        builder.HasIndex(u => u.Email).IsUnique();
+        // אימייל משמש כשם המשתמש בהתחברות - ייחודי *בתוך אותו לקוח*, לא גלובלית
+        // בכל המערכת. ייחודיות גלובלית הייתה אומרת ששני משרדים שונים לא יכולים
+        // להשתמש באותה כתובת אימייל בכלל - פגיעה אמיתית בבידוד בין לקוחות
+        // (Multi-Tenancy), לא רק עניין טכני
+        builder.HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
 
         // ארבעה משתמשי seed ראשוניים - הסיסמאות כבר עברו hash (PBKDF2 דרך
         // Microsoft.AspNetCore.Identity.PasswordHasher) לפני שהוזנו כאן; הסיסמאות
