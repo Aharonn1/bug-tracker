@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { Navbar } from './components/Navbar';
 import type { DashboardView } from './components/Navbar';
 import { useIncidents } from './hooks/useIncidents';
@@ -9,13 +9,26 @@ import { DbOutageBanner } from './components/DbOutageBanner';
 import { NewVersionBanner } from './components/NewVersionBanner';
 import { LoginForm } from './components/LoginForm';
 import { RegisterForm } from './components/RegisterForm';
+// נטען מיידית (לא lazy) כי זה ה-view הראשון שכל משתמש רואה אחרי login -
+// טעינה עצלה הייתה רק מוסיפה פנייה רשתית מיותרת לפני הצגת המסך הראשי
 import { IncidentsPage } from './pages/IncidentsPage';
-import { TriagePage } from './pages/TriagePage';
-import { AboutMonitoringPage } from './pages/AboutMonitoringPage';
-import { AzureInfrastructureHealthPage } from './pages/AzureInfrastructureHealthPage';
-import { BugsPage } from './pages/BugsPage';
-import { NewBugPage } from './pages/NewBugPage';
 import { colors } from './styles/theme';
+
+// שאר העמודים נטענים רק כשבאמת נכנסים אליהם - כל אחד מהם מכיל קוד שרוב
+// המשתמשים (לא-Admin) לעולם לא פותחים (Azure health dashboards, load-test
+// tool, סוכן AI). בלי זה, כל משתמש היה מוריד ומפענח את כל הקוד הזה כבר
+// בטעינה הראשונה, גם אם הוא אף פעם לא מגיע לשם
+const TriagePage = lazy(() => import('./pages/TriagePage'));
+const AboutMonitoringPage = lazy(() => import('./pages/AboutMonitoringPage'));
+const AzureInfrastructureHealthPage = lazy(() => import('./pages/AzureInfrastructureHealthPage'));
+const BugsPage = lazy(() => import('./pages/BugsPage'));
+const NewBugPage = lazy(() => import('./pages/NewBugPage'));
+
+const PageLoadingFallback: React.FC = () => (
+  <div style={{ padding: '40px', textAlign: 'center', color: colors.textMuted }}>
+    טוען...
+  </div>
+);
 
 const AuthGate: React.FC = () => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -117,17 +130,19 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
           />
         )}
 
-        {currentView === 'triage' && <TriagePage incidents={incidents} />}
+        <Suspense fallback={<PageLoadingFallback />}>
+          {currentView === 'triage' && <TriagePage incidents={incidents} />}
 
-        {currentView === 'about' && <AboutMonitoringPage />}
+          {currentView === 'about' && <AboutMonitoringPage />}
 
-        {currentView === 'azure-health' && <AzureInfrastructureHealthPage />}
+          {currentView === 'azure-health' && <AzureInfrastructureHealthPage />}
 
-        {currentView === 'bugs' && <BugsPage />}
+          {currentView === 'bugs' && <BugsPage />}
 
-        {currentView === 'new-bug' && (
-          <NewBugPage onBugCreated={() => setCurrentView('bugs')} />
-        )}
+          {currentView === 'new-bug' && (
+            <NewBugPage onBugCreated={() => setCurrentView('bugs')} />
+          )}
+        </Suspense>
       </main>
     </div>
   );
