@@ -61,7 +61,8 @@ public class BugsController(IBugService bugService, ICurrentUserProvider current
         [FromBody] UpdateBugStatusDto dto,
         CancellationToken cancellationToken)
     {
-        var updated = await bugService.UpdateBugStatusAsync(id, dto.Status, cancellationToken);
+        var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
+        var updated = await bugService.UpdateBugStatusAsync(id, dto.Status, restrictToUserId, cancellationToken);
         return Ok(updated);
     }
 
@@ -72,7 +73,8 @@ public class BugsController(IBugService bugService, ICurrentUserProvider current
         [FromRoute] int id,
         CancellationToken cancellationToken)
     {
-        var deleted = await bugService.DeleteBugAsync(id, cancellationToken);
+        var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
+        var deleted = await bugService.DeleteBugAsync(id, restrictToUserId, cancellationToken);
         if (!deleted)
         {
             return NotFound(new { message = $"Bug with ID {id} was not found." });

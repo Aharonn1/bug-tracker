@@ -105,10 +105,17 @@ public class BugService(AppDbContext context, ICurrentUserProvider currentUserPr
         return MapToResponseDto(bug, reporterName);
     }
 
-    public async Task<BugReportResponseDto> UpdateBugStatusAsync(int id, IncidentStatus status, CancellationToken cancellationToken = default)
+    public async Task<BugReportResponseDto> UpdateBugStatusAsync(int id, IncidentStatus status, int? restrictToUserId = null, CancellationToken cancellationToken = default)
     {
         var bug = await context.BugReports.FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
-        if (bug is null) throw new BugNotFoundException(id);
+
+        // אותה הגנה כמו ב-GetBugByIdAsync: משתמש רגיל (restrictToUserId != null)
+        // לא יכול לשנות סטטוס של באג שלא הוא דיווח - גם אם הוא באותו טננט.
+        // "לא נמצא" ולא "אין הרשאה", כדי לא לחשוף בכלל שהרשומה קיימת
+        if (bug is null || (restrictToUserId.HasValue && bug.ReportedByUserId != restrictToUserId.Value))
+        {
+            throw new BugNotFoundException(id);
+        }
 
         bug.Status = status;
         bug.ResolvedAt = status == IncidentStatus.Closed ? DateTime.UtcNow : null;
@@ -125,12 +132,16 @@ public class BugService(AppDbContext context, ICurrentUserProvider currentUserPr
         return MapToResponseDto(bug, reporterName);
     }
 
-    public async Task<bool> DeleteBugAsync(int id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteBugAsync(int id, int? restrictToUserId = null, CancellationToken cancellationToken = default)
     {
         // שאילתת Where מפורשת (ולא FindAsync) כדי להבטיח שה-Global Query Filter
-        // של ה-Tenant מוחל - כך באג של לקוח אחר לא ניתן למחיקה
+        // של ה-Tenant מוחל - כך באג של לקוח אחר לא ניתן למחיקה.
+        // אותה הגנה גם ברמת המשתמש: רגיל לא יכול למחוק באג שלא הוא דיווח
         var bug = await context.BugReports.FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
-        if (bug is null) return false;
+        if (bug is null || (restrictToUserId.HasValue && bug.ReportedByUserId != restrictToUserId.Value))
+        {
+            return false;
+        }
 
         context.BugReports.Remove(bug);
         await context.SaveChangesAsync(cancellationToken);

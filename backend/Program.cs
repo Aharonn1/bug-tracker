@@ -258,6 +258,33 @@ app.UseExceptionHandler();
 // הלקוח, לא את זה של ה-proxy הפנימי של Azure
 app.UseForwardedHeaders();
 
+// HSTS - מורה לדפדפן לזכור "דבר עם השרת הזה רק ב-HTTPS" לטווח ארוך, כך
+// שגם אם מישהו ינסה (בטעות או בזדון, למשל Wi-Fi ציבורי עוין) לשלוח אותו
+// ל-HTTP, הדפדפן עצמו יסרב ולא ישלח את הבקשה כלל. לא ב-Development כי שם
+// אין תעודת HTTPS תקפה מקומית
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
+// מפנה כל בקשת HTTP ל-HTTPS - הגנה ברמת הקוד שלא תלויה בהגדרת "HTTPS Only"
+// ב-Azure Portal (שגם היא כדאי שתהיה דלוקה, אבל לא לסמוך רק עליה)
+app.UseHttpsRedirection();
+
+// כמה Security Headers בסיסיים וחינמיים - לא תלויים ב-tier או בשירות נוסף:
+// X-Content-Type-Options מונע מהדפדפן "לנחש" Content-Type שונה ממה שהשרת
+// הצהיר (שימש בעבר להברחת סקריפטים דרך קבצים שהוצהרו כ-text/plain וכו').
+// X-Frame-Options מונע הטמעת ה-API/Swagger בתוך iframe באתר זר (clickjacking).
+// Referrer-Policy מונע מה-URL המלא (כולל פרמטרים בשאילתה) לדלוף ל-origin
+// חיצוני דרך כותרת ה-Referer בבקשות יוצאות
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("Referrer-Policy", "no-referrer");
+    await next();
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

@@ -267,13 +267,20 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
         return incident.IncidentId;
     }
 
-    public async Task MarkAsResolvedAsync(long id, CancellationToken ct = default)
+    public async Task MarkAsResolvedAsync(long id, int? restrictToUserId = null, CancellationToken ct = default)
     {
         // שאילתת Where מפורשת (ולא FindAsync) כדי להבטיח שה-Global Query Filter
-        // של ה-Tenant מוחל - כך תקרית של לקוח אחר תיחשב "לא נמצאה" ולא ניתנת לעדכון
+        // של ה-Tenant מוחל - כך תקרית של לקוח אחר תיחשב "לא נמצאה" ולא ניתנת לעדכון.
+        // אותה הגנה כמו ב-GetIncidentByIdAsync: משתמש רגיל (restrictToUserId != null)
+        // יכול לסגור רק תקרית שהוא עצמו בין המדווחים שלה, לא כל תקרית בטננט
         var incident = await context.SystemErrorIncidents
+            .Include(i => i.Reporters)
             .FirstOrDefaultAsync(i => i.IncidentId == id, ct);
-        if (incident is null) throw new IncidentNotFoundException(id);
+
+        if (incident is null || (restrictToUserId.HasValue && incident.Reporters.All(r => r.UserId != restrictToUserId.Value)))
+        {
+            throw new IncidentNotFoundException(id);
+        }
 
         incident.IsResolved = true;
         incident.Status = IncidentStatus.Closed;

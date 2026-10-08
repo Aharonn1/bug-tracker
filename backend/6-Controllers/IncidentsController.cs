@@ -99,7 +99,8 @@ public class IncidentsController(
         [FromRoute] long id,
         CancellationToken ct)
     {
-        await incidentService.MarkAsResolvedAsync(id, ct);
+        var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
+        await incidentService.MarkAsResolvedAsync(id, restrictToUserId, ct);
         return NoContent();
     }
 

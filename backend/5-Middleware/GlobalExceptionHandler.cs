@@ -38,9 +38,20 @@ public class GlobalExceptionHandler(
             _ => (HttpStatusCode.InternalServerError, "שגיאת שרת פנימית בלתי צפויה")
         };
 
-        var detail = exception is DbUpdateConcurrencyException
-            ? "פעולה זו התבססה על נתונים שכבר אינם עדכניים - מישהו אחר עדכן את אותה תקלה בינתיים. רענן את המסך ונסה שוב."
-            : exception.Message;
+        // לחריגות "מוכרות" (הענפים המפורשים למעלה) ה-Message נכתב בכוונה כטקסט
+        // בטוח להצגה ללקוח. אבל לכל מה שנופל ל-InternalServerError - חריגה
+        // בלתי צפויה לגמרי, לרוב מ-.NET/SqlClient/קוד צד-שלישי - ה-Message
+        // עלול לכלול פרטי מימוש פנימיים (שאילתת SQL, נתיב קובץ, connection
+        // string חלקי) שאסור שיגיעו ללקוח. הפרטים המלאים כבר נרשמו ללוג השרת
+        // למעלה (logger.LogError) - ללקוח מגיעה רק הודעה גנרית
+        var detail = exception switch
+        {
+            DbUpdateConcurrencyException =>
+                "פעולה זו התבססה על נתונים שכבר אינם עדכניים - מישהו אחר עדכן את אותה תקלה בינתיים. רענן את המסך ונסה שוב.",
+            _ when statusCode == HttpStatusCode.InternalServerError =>
+                "אירעה שגיאה בלתי צפויה בשרת. הצוות הטכני כבר קיבל את הפרטים המלאים.",
+            _ => exception.Message
+        };
 
         var problemDetails = new ProblemDetails
         {
