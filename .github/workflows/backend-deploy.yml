@@ -17,6 +17,12 @@ env:
   AZURE_WEBAPP_NAME: bugtracker-api-aharon
   DOTNET_VERSION: '8.0.x'
 
+# ברירת המחדל של GITHUB_TOKEN יכולה להיות רחבה יותר ממה שהוורקפלואו הזה
+# בפועל צריך - אין כאן אף שלב שכותב ל-repo (לא יוצר release, לא דוחף
+# commit, לא פותח issue). contents:read זה המינימום שעדיין מאפשר checkout
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

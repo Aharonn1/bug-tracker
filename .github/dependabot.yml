@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # NuGet packages (backend) - exactly the category that caught two high-
+  # severity transitive vulnerabilities (Microsoft.Extensions.Caching.Memory,
+  # System.Formats.Asn1) during a manual audit; this makes that automatic
+  - package-ecosystem: "nuget"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+  # npm packages (frontend) - same reasoning, caught a high-severity
+  # source-map-js advisory manually earlier today
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+  # GitHub Actions themselves (the workflow files' own action versions)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
