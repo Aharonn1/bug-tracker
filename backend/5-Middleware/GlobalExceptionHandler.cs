@@ -69,14 +69,28 @@ public class GlobalExceptionHandler(
             {
                 // אם המשתמש כבר מחובר (יש לו JWT תקף) וה-DB נופל *תוך כדי*
                 // שהוא עובד - יש לנו זהות מאומתת אמיתית, לא רק אימייל שהוקלד.
-                // אימות ה-JWT לא דורש DB בכלל, אז זה עובד גם עכשיו
-                dbOutageLog.Record(new DbOutageEntry(
-                    OccurredAt: DateTime.UtcNow,
-                    ExceptionType: exception.GetType().Name,
-                    Message: exception.Message,
-                    RequestPath: $"{httpContext.Request.Method} {httpContext.Request.Path}",
-                    ReportedByUserId: GetAuthenticatedUserId(httpContext)
-                ));
+                // אימות ה-JWT לא דורש DB בכלל, אז זה עובד גם עכשיו.
+                //
+                // אותו תיקון בדיוק כמו ב-TryQueueIncidentAsync למטה: חייבים
+                // tenantId אמיתי כדי ש-DbOutageFlushWorker ידע מאוחר יותר למי
+                // לשייך את התקרית - בלי זה היא הייתה משוייכת בטעות ללקוח קבוע
+                // אחד תמיד, בלי קשר למי שבאמת נתקל בתקלה
+                try
+                {
+                    var tenantProvider = httpContext.RequestServices.GetRequiredService<ICurrentTenantProvider>();
+                    dbOutageLog.Record(new DbOutageEntry(
+                        OccurredAt: DateTime.UtcNow,
+                        ExceptionType: exception.GetType().Name,
+                        Message: exception.Message,
+                        RequestPath: $"{httpContext.Request.Method} {httpContext.Request.Path}",
+                        TenantId: tenantProvider.TenantId,
+                        ReportedByUserId: GetAuthenticatedUserId(httpContext)
+                    ));
+                }
+                catch
+                {
+                    // אין זהות מאומתת ואין header - אין למי לשייך, מדלגים על התיעוד
+                }
             }
 
             await TryQueueIncidentAsync(httpContext, exception, cancellationToken);

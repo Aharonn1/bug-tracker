@@ -2,6 +2,10 @@ using System.Collections.Concurrent;
 
 namespace MyBackendApi.Services.Diagnostics;
 
+// TenantId - חובה, לא ברירת מחדל: בלעדיו, DbOutageFlushWorker לא יודע לאיזה
+// לקוח לשייך את התקרית כשהיא נפרקת בחזרה (ראה שם) - חייב להיגזר מ-
+// ICurrentTenantProvider/CurrentTenantId בנקודת הכשל עצמה, לא מומצא מאוחר יותר
+//
 // AttemptedEmail - כשהתקלה קרתה בזמן ניסיון login/register, זה היחיד שיש לנו
 // כדי לדעת "אצל מי" קרתה הבעיה, כי עוד אין זהות מאומתת באותו רגע.
 // ReportedByUserId - לעומת זאת, כשמשתמש כבר מחובר (יש לו JWT תקף) וה-DB נופל
@@ -11,6 +15,7 @@ public record DbOutageEntry(
     string ExceptionType,
     string Message,
     string RequestPath,
+    string TenantId,
     string? AttemptedEmail = null,
     int? ReportedByUserId = null);
 

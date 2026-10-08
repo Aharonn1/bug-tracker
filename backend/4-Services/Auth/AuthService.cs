@@ -93,11 +93,26 @@ public class AuthService(AppDbContext context, IConfiguration configuration, DbO
 
     private void RecordDbOutage(Exception ex, string action, string email)
     {
+        // CurrentTenantId נגזר מה-header/JWT בלבד (לא דורש DB) - בטוח לקרוא לו
+        // גם כאן, כש-ה-DB עצמו נפל. בלי tenant לשייך אליו, DbOutageFlushWorker
+        // לא יוכל לפרוק את הרשומה הזו נכון מאוחר יותר - אם אין header בכלל
+        // (קריאה אנונימית לגמרי בלי X-Tenant-Id), פשוט מדלגים על התיעוד
+        string tenantId;
+        try
+        {
+            tenantId = context.CurrentTenantId;
+        }
+        catch
+        {
+            return;
+        }
+
         dbOutageLog.Record(new DbOutageEntry(
             OccurredAt: DateTime.UtcNow,
             ExceptionType: ex.GetType().Name,
             Message: ex.Message,
             RequestPath: action,
+            TenantId: tenantId,
             AttemptedEmail: email
         ));
     }

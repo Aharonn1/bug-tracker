@@ -58,7 +58,7 @@ public class DbOutageFlushWorker(
                     });
 
                     await incidentService.IngestIncidentAsync(new CreateIncidentDto(
-                        TenantId: "default-tenant",
+                        TenantId: entry.TenantId,
                         ErrorCode: "SERVER_DATABASE_UNAVAILABLE",
                         CaseNumber: null,
                         ExternalReferenceId: null,
