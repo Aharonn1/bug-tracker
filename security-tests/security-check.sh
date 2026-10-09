@@ -153,17 +153,63 @@ CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/api/Auth/login
 echo ""
 
 # ---------------------------------------------------------------------------
+# Needs a clean rate-limit budget: 1 register + 5 bad logins is 6 calls
+# against the same shared "auth" policy (10/min/IP) that steps 5-6 above
+# already spent some of. Rather than count exactly and risk a flaky false
+# failure near the boundary, just wait out the window first - correctness
+# over speed for a security check.
+echo "--- 7. Per-account lockout after repeated failed logins ---"
+echo "  (waiting ~60s for the shared auth rate-limit window to clear first)"
+sleep 60
+
+LOCKOUT_EMAIL="security-lockout-check-$(date +%s)@lawfirm.co.il"
+REG_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/api/Auth/register" \
+  -H "Content-Type: application/json" -H "X-Tenant-Id: $TENANT_ID" \
+  -d "{\"fullName\":\"Security Lockout Check\",\"email\":\"$LOCKOUT_EMAIL\",\"password\":\"CorrectHorseBattery123\"}")
+
+if [ "$REG_CODE" != "201" ]; then
+  fail "setup: could not register the throwaway lockout-test account (got $REG_CODE) - skipping lockout check"
+else
+  LAST_CODE=""
+  for i in 1 2 3 4 5; do
+    LAST_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/api/Auth/login" \
+      -H "Content-Type: application/json" -H "X-Tenant-Id: $TENANT_ID" \
+      -d "{\"email\":\"$LOCKOUT_EMAIL\",\"password\":\"wrong-password\"}")
+  done
+  [ "$LAST_CODE" = "423" ] && pass "5th consecutive bad-password attempt -> 423 (account locked)" || fail "5th consecutive bad-password attempt -> got $LAST_CODE, expected 423"
+
+  CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/api/Auth/login" \
+    -H "Content-Type: application/json" -H "X-Tenant-Id: $TENANT_ID" \
+    -d "{\"email\":\"$LOCKOUT_EMAIL\",\"password\":\"CorrectHorseBattery123\"}")
+  [ "$CODE" = "423" ] && pass "correct password during lockout window -> still 423 (not just counting attempts)" || fail "correct password during lockout window -> got $CODE, expected 423"
+fi
+echo ""
+
+# ---------------------------------------------------------------------------
 # Runs LAST on purpose: this deliberately exhausts the auth endpoint's
 # shared rate-limit bucket for our IP, which would make every check after it
 # fail with 429 instead of the status code it's actually testing for.
-echo "--- 7. Auth endpoint rate limiting (brute-force protection) ---"
+#
+# Uses its own throwaway account, NOT $ADMIN_EMAIL - 15 bad-password
+# attempts against a real account would trip the *account* lockout from
+# step 7 (after 5) well before the 15th attempt, locking out an account
+# this script (and whoever runs it manually afterward) actually needs.
+# Learned this the hard way: first draft used the admin seed account here
+# and locked it out for 15 minutes mid-review.
+echo "--- 8. Auth endpoint rate limiting (brute-force protection) ---"
+RATE_LIMIT_EMAIL="security-rate-limit-check-$(date +%s)@lawfirm.co.il"
+curl -sS -o /dev/null -X POST "$BASE_URL/api/Auth/register" \
+  -H "Content-Type: application/json" -H "X-Tenant-Id: $TENANT_ID" \
+  -d "{\"fullName\":\"Security Rate Limit Check\",\"email\":\"$RATE_LIMIT_EMAIL\",\"password\":\"CorrectHorseBattery123\"}"
+
 # Policy is 10/min per IP - fire 15 bad-password attempts and expect at
-# least one 429 before we run out
+# least one 429 before we run out (will also account-lock this throwaway
+# account after its 5th attempt, which is fine - it's never used again)
 GOT_429=0
 for i in $(seq 1 15); do
   CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/api/Auth/login" \
     -H "Content-Type: application/json" -H "X-Tenant-Id: $TENANT_ID" \
-    -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"definitely-wrong-password\"}")
+    -d "{\"email\":\"$RATE_LIMIT_EMAIL\",\"password\":\"definitely-wrong-password\"}")
   [ "$CODE" = "429" ] && GOT_429=1 && break
 done
 [ "$GOT_429" = "1" ] && pass "15 rapid bad-password attempts triggered a 429 (rate limiter engaged)" || fail "15 rapid bad-password attempts never got a 429 - brute-force protection may not be active"
