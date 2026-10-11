@@ -247,6 +247,20 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<DiagnosticPlugins>();
 builder.Services.AddScoped<IRcaAgentService, RcaAgentService>();
 
+// ==========================================
+// 7. HSTS - תצורה מפורשת
+// ==========================================
+// בלי קונפיגורציה מפורשת, UseHsts() למטה משתמש ב-MaxAge ברירת המחדל של
+// ASP.NET Core - 30 יום בלבד. זה מתחת לסף שדורג SSL Labs בשביל ציון A+
+// (נדרש בסביבות 180 יום ומעלה) - נבדק בפועל: הבקאנד קיבל A, הפרונטנד
+// (עם max-age=31536000, שנה אחת, בקובץ staticwebapp.config.json) קיבל A+.
+// 365 יום כאן כדי להתאים לאותו ערך בדיוק משני הצדדים
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = true;
+});
+
 var app = builder.Build();
 
 // ==========================================
