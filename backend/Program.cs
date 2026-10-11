@@ -290,12 +290,26 @@ app.UseHttpsRedirection();
 // הצהיר (שימש בעבר להברחת סקריפטים דרך קבצים שהוצהרו כ-text/plain וכו').
 // X-Frame-Options מונע הטמעת ה-API/Swagger בתוך iframe באתר זר (clickjacking).
 // Referrer-Policy מונע מה-URL המלא (כולל פרמטרים בשאילתה) לדלוף ל-origin
-// חיצוני דרך כותרת ה-Referer בבקשות יוצאות
+// חיצוני דרך כותרת ה-Referer בבקשות יוצאות.
+// Permissions-Policy חוסם גישה לפיצ'רי דפדפן (מצלמה/מיקרופון/מיקום) - רלוונטי
+// גם ל-API טהור, כי זה חוסם גם דפים חיצוניים שמטמיעים תגובה מה-API בצורה
+// לא צפויה
 app.Use(async (context, next) =>
 {
     context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
     context.Response.Headers.Append("X-Frame-Options", "DENY");
     context.Response.Headers.Append("Referrer-Policy", "no-referrer");
+    context.Response.Headers.Append("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+
+    // CSP רק מחוץ ל-Development: Swagger UI (זמין רק ב-Development, ראו למטה)
+    // טוען סקריפטים וסגנונות מוטבעים משלו שהמדיניות הזו הייתה חוסמת.
+    // ב-production זה API טהור (JSON בלבד) שלעולם לא אמור לרנדר כלום
+    // בדפדפן - default-src 'none' חוסם הכול בלי לשבור שום פונקציונליות אמיתית
+    if (!app.Environment.IsDevelopment())
+    {
+        context.Response.Headers.Append("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+    }
+
     await next();
 });
 
