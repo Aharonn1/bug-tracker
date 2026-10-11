@@ -3,18 +3,17 @@ import type { AuthUser } from '../types/auth.types';
 import { UserRole } from '../types/auth.types';
 import { colors } from '../styles/theme';
 
-export type DashboardView = 'incidents' | 'triage' | 'bugs' | 'new-bug' | 'about' | 'azure-health' | 'security';
+export type DashboardView = 'incidents' | 'bugs' | 'new-bug' | 'about' | 'azure-health' | 'security';
 
 interface NavbarProps {
   currentView: DashboardView;
   onViewChange: (view: DashboardView) => void;
   openIncidentsCount: number;
-  unhandledCount: number;
   user: AuthUser;
   onLogout: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openIncidentsCount, unhandledCount, user, onLogout }) => {
+export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openIncidentsCount, user, onLogout }) => {
   const getNavBtnStyle = (view: DashboardView): React.CSSProperties => {
     const isActive = currentView === view;
     return {
@@ -71,7 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
           onClick={() => onViewChange('incidents')}
           style={getNavBtnStyle('incidents')}
         >
-          <span>ניטור שגיאות ממשלתיות</span>
+          <span>ניטור תקלות מערכת</span>
           {openIncidentsCount > 0 && (
             <span style={{
               backgroundColor: colors.danger,
@@ -82,25 +81,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
               borderRadius: '999px'
             }}>
               {openIncidentsCount}
-            </span>
-          )}
-        </button>
-
-        <button
-          onClick={() => onViewChange('triage')}
-          style={getNavBtnStyle('triage')}
-        >
-          <span>שגיאות שטרם טופלו</span>
-          {unhandledCount > 0 && (
-            <span style={{
-              backgroundColor: colors.warning,
-              color: '#1a1200',
-              fontSize: '11px',
-              fontWeight: 700,
-              padding: '2px 7px',
-              borderRadius: '999px'
-            }}>
-              {unhandledCount}
             </span>
           )}
         </button>

@@ -18,7 +18,6 @@ import { colors } from './styles/theme';
 // המשתמשים (לא-Admin) לעולם לא פותחים (Azure health dashboards, load-test
 // tool, סוכן AI). בלי זה, כל משתמש היה מוריד ומפענח את כל הקוד הזה כבר
 // בטעינה הראשונה, גם אם הוא אף פעם לא מגיע לשם
-const TriagePage = lazy(() => import('./pages/TriagePage'));
 const AboutMonitoringPage = lazy(() => import('./pages/AboutMonitoringPage'));
 const AzureInfrastructureHealthPage = lazy(() => import('./pages/AzureInfrastructureHealthPage'));
 const BugsPage = lazy(() => import('./pages/BugsPage'));
@@ -103,7 +102,6 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
         currentView={currentView}
         onViewChange={setCurrentView}
         openIncidentsCount={openIncidentsCount}
-        unhandledCount={openIncidentsCount}
         user={user}
         onLogout={onLogout}
       />
@@ -132,8 +130,6 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
         )}
 
         <Suspense fallback={<PageLoadingFallback />}>
-          {currentView === 'triage' && <TriagePage incidents={incidents} />}
-
           {currentView === 'about' && <AboutMonitoringPage />}
 
           {currentView === 'security' && <SecurityTrustPage />}
