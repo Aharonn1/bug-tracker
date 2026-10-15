@@ -11,6 +11,14 @@ const sslLabsUrl = (domain: string) => `https://www.ssllabs.com/ssltest/analyze.
 const observatoryUrl = (domain: string) => `https://observatory.mozilla.org/analyze/${domain}`;
 const securityHeadersUrl = (domain: string) => `https://securityheaders.com/?q=https%3A%2F%2F${domain}&followRedirects=on`;
 
+// ל-CSP Evaluator אין פרמטר URL להזנה אוטומטית של דומיין - הכלי דורש הדבקה
+// ידנית של מדיניות ה-CSP עצמה, אז במקום כפתור לכל דומיין מציגים את שתי
+// המדיניות (אתר + API) כטקסט להעתקה, לצד קישור יחיד לכלי
+const CSP_EVALUATOR_URL = 'https://csp-evaluator.withgoogle.com/';
+const FRONTEND_CSP =
+  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://bugtracker-api-aharon-fuaucng8a3ckhqck.israelcentral-01.azurewebsites.net https://www.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+const BACKEND_CSP = "default-src 'none'; frame-ancestors 'none'";
+
 interface VerificationTool {
   label: string;
   description: string;
@@ -196,6 +204,73 @@ export const SecurityTrustPage: React.FC = () => {
                   שרת ה-API ↗
                 </a>
               </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div
+        style={{
+          marginTop: '20px',
+          padding: '22px 24px',
+          backgroundColor: colors.surfaceRaised,
+          border: `1px solid ${colors.border}`,
+          borderRadius: radius.lg,
+          boxShadow: shadow.card,
+        }}
+      >
+        <div style={{ fontSize: '15px', fontWeight: 700, color: colors.textPrimary, marginBottom: '6px' }}>
+          בדיקה מעמיקה של מדיניות ה-CSP (Google CSP Evaluator)
+        </div>
+        <p style={{ fontSize: '12.5px', color: colors.textMuted, lineHeight: 1.7, marginBottom: '16px' }}>
+          בניגוד לשלושת הכלים למעלה שרק בודקים אם קיימת מדיניות CSP, הכלי הזה בודק את התוכן שלה
+          עצמה - האם היא אכן חוסמת וקטורי תקיפה נפוצים כמו הזרקת קוד (XSS). הכלי לא תומך בקישור
+          ישיר לפי דומיין - יש להעתיק את המדיניות הרלוונטית ולהדביק אותה בכלי.
+        </p>
+        <a
+          href={CSP_EVALUATOR_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-block',
+            padding: '8px 16px',
+            borderRadius: radius.md,
+            backgroundColor: colors.accent,
+            color: '#ffffff',
+            fontSize: '12.5px',
+            fontWeight: 700,
+            textDecoration: 'none',
+            marginBottom: '18px',
+          }}
+        >
+          פתיחת CSP Evaluator ↗
+        </a>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {[
+            { label: 'מדיניות ה-CSP של שרת האתר', value: FRONTEND_CSP },
+            { label: 'מדיניות ה-CSP של שרת ה-API', value: BACKEND_CSP },
+          ].map((row) => (
+            <div key={row.label}>
+              <div style={{ fontSize: '11.5px', color: colors.textMuted, marginBottom: '4px' }}>
+                {row.label}
+              </div>
+              <code
+                style={{
+                  display: 'block',
+                  padding: '10px 12px',
+                  backgroundColor: colors.card,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: radius.md,
+                  fontSize: '11px',
+                  color: colors.textSecondary,
+                  direction: 'ltr',
+                  textAlign: 'left',
+                  wordBreak: 'break-all',
+                  userSelect: 'all',
+                }}
+              >
+                {row.value}
+              </code>
             </div>
           ))}
         </div>
