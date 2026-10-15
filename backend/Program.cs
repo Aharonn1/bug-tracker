@@ -326,10 +326,12 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// GET / ללא זה מחזיר 404 עם גוף ריק וללא Content-Type - מספיק חריג בשביל
+// GET/HEAD / ללא זה מחזיר 404 עם גוף ריק וללא Content-Type - מספיק חריג בשביל
 // לגרום לכלי סריקה חיצוניים (כמו Mozilla HTTP Observatory) להיכשל לגמרי
-// בניתוח במקום לתת ציון. זה endpoint מידע בלבד, לא קשור ל-API העסקי
-app.MapGet("/", () => Results.Ok(new { service = "BugReports API", status = "ok" }));
+// בניתוח במקום לתת ציון. זה endpoint מידע בלבד, לא קשור ל-API העסקי.
+// MapGet לבדו רושם רק את הפועל GET - כלי סריקה ששולח HEAD כבדיקה מקדימה
+// עדיין יקבל 405, לכן צריך לרשום את שני הפעלים במפורש
+app.MapMethods("/", ["GET", "HEAD"], () => Results.Ok(new { service = "BugReports API", status = "ok" }));
 
 app.MapHealthChecks("/health");
 app.MapControllers();
