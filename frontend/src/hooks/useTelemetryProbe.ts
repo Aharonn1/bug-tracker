@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { telemetryService } from '../api/telemetryService';
-import type { ClientTelemetryProbeDto, TelemetryDiagnosticReport } from '../types/telemetry.types';
+import type { ClientTelemetryProbeDto, ExternalConnectivityResult, TelemetryDiagnosticReport } from '../types/telemetry.types';
 import { API_BASE_URL, TENANT_ID } from '../config';
 import { reportHandledApiFailure } from '../utils/errorReporting';
 
@@ -11,6 +11,14 @@ import { reportHandledApiFailure } from '../utils/errorReporting';
 const LATENCY_PING_URL = `${API_BASE_URL}/health`;
 const PING_ATTEMPTS = 5;
 const PING_TIMEOUT_MS = 4000;
+
+// אותו URL בדיוק ש-Chrome עצמו משתמש בו פנימית כדי לבדוק "האם יש בכלל
+// אינטרנט" (captive portal detection) - קליל (0 בייטים), מופץ גלובלית,
+// ולא קשור בשום צורה לשרתים שלנו. המטרה: להבדיל בין "הרשת שלי תקולה"
+// (גם הפינג לכאן יהיה איטי/ייכשל) לבין "דווקא השרת שלנו איטי" (כאן
+// יהיה מהיר, אבל ה-ping הפנימי למעלה איטי)
+const EXTERNAL_PING_URL = 'https://www.gstatic.com/generate_204';
+const EXTERNAL_PING_ATTEMPTS = 3;
 
 function measureExecutionLagMs(): Promise<number> {
   return new Promise((resolve) => {
@@ -49,6 +57,38 @@ async function measureConnectivity(): Promise<{ latencyMs: number; pingAttempts:
     successful.length > 0 ? successful.reduce((sum, v) => sum + v, 0) / successful.length : PING_TIMEOUT_MS;
 
   return { latencyMs, pingAttempts: PING_ATTEMPTS, pingFailures };
+}
+
+// כמו pingOnce, אבל mode: 'no-cors' - gstatic.com לא שולח
+// Access-Control-Allow-Origin, אז הדפדפן לא נותן לקוד לקרוא את תוכן
+// התשובה (status/body). זה בסדר גמור כאן: לא צריך לקרוא כלום, רק למדוד
+// כמה זמן לקח לבקשה להשלים - וזה עובד גם על "opaque response"
+async function pingExternalOnce(): Promise<number | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
+  const start = performance.now();
+  try {
+    await fetch(EXTERNAL_PING_URL, {
+      method: 'GET',
+      mode: 'no-cors',
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    return performance.now() - start;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function measureExternalConnectivity(): Promise<ExternalConnectivityResult> {
+  const results = await Promise.all(Array.from({ length: EXTERNAL_PING_ATTEMPTS }, () => pingExternalOnce()));
+  const successful = results.filter((r): r is number => r !== null);
+  const pingFailures = EXTERNAL_PING_ATTEMPTS - successful.length;
+  const latencyMs = successful.length > 0 ? successful.reduce((sum, v) => sum + v, 0) / successful.length : null;
+
+  return { latencyMs, pingAttempts: EXTERNAL_PING_ATTEMPTS, pingFailures };
 }
 
 // שיא זמן הפריים על פני חלון דגימה קצר - קפיצות גבוהות מרמזות על גימגום תצוגה
@@ -105,6 +145,7 @@ function buildFallbackReport(dto: ClientTelemetryProbeDto): TelemetryDiagnosticR
 export const useTelemetryProbe = () => {
   const [report, setReport] = useState<TelemetryDiagnosticReport | null>(null);
   const [metrics, setMetrics] = useState<ClientTelemetryProbeDto | null>(null);
+  const [externalConnectivity, setExternalConnectivity] = useState<ExternalConnectivityResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,11 +154,14 @@ export const useTelemetryProbe = () => {
       setLoading(true);
       setError(null);
 
-      const [connectivity, executionLagMs, frameJankMs] = await Promise.all([
+      const [connectivity, executionLagMs, frameJankMs, external] = await Promise.all([
         measureConnectivity(),
         measureExecutionLagMs(),
         measureFrameJankMs(),
+        measureExternalConnectivity(),
       ]);
+
+      setExternalConnectivity(external);
 
       const connection = (navigator as any).connection;
 
@@ -154,5 +198,5 @@ export const useTelemetryProbe = () => {
     }
   }, []);
 
-  return { report, metrics, loading, error, runProbe };
+  return { report, metrics, externalConnectivity, loading, error, runProbe };
 };

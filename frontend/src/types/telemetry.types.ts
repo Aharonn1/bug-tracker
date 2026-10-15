@@ -14,6 +14,15 @@ export interface ClientTelemetryProbeDto {
   currentUrl: string;
 }
 
+// תוצאת בדיקת הרשת ה"כללית" מול שרת חיצוני (לא שלנו) - משמש רק להשוואה
+// בצד הלקוח, לכן נפרד לגמרי מ-ClientTelemetryProbeDto (שחייב להתאים בדיוק
+// למה שהבקאנד מצפה לקבל) ולא נשלח לשרת בכלל
+export interface ExternalConnectivityResult {
+  latencyMs: number | null;
+  pingAttempts: number;
+  pingFailures: number;
+}
+
 export type TelemetryStatusColor = 'Red' | 'Yellow' | 'Green';
 
 export interface TelemetryDiagnosticReport {

@@ -65,8 +65,28 @@ function formatMetric(value: number | null | undefined, unit: string): string {
   return value === null || value === undefined ? 'לא זמין בדפדפן זה' : `${Math.round(value)}${unit}`;
 }
 
+// משווה את זמן התגובה אלינו מול זמן התגובה ל-Google כדי לענות על השאלה
+// "זו בעיה אצלי באינטרנט, או דווקא אצלכם בשרת?" - רמז נוסף לצד האבחנה
+// המלאה מהשרת, לא תחליף לה. שמרני בכוונה: רק כש ההבדל ברור, לא מנחש
+// כששני הצדדים דומים
+function buildComparisonNote(
+  internalLatencyMs: number,
+  external: { latencyMs: number | null; pingAttempts: number; pingFailures: number }
+): string | null {
+  const externalIsBad = external.pingFailures === external.pingAttempts || (external.latencyMs ?? 0) > 400;
+  const externalIsGood = external.latencyMs !== null && external.latencyMs < 150 && external.pingFailures === 0;
+
+  if (externalIsBad) {
+    return 'בדיקה מול Google (לא קשור אלינו) הראתה את אותה בעיה בדיוק - זה כמעט בוודאות הרשת/הספק (ISP) שלך, לא השרת שלנו.';
+  }
+  if (externalIsGood && internalLatencyMs > 400) {
+    return 'בדיקה מול Google הראתה חיבור תקין ומהיר - הרשת שלך נראית בסדר. ייתכן שהתקלה דווקא אצלנו בשרת, לא אצלך.';
+  }
+  return null;
+}
+
 export const ConnectionDiagnosticBanner: React.FC = () => {
-  const { report, metrics, loading, error, runProbe } = useTelemetryProbe();
+  const { report, metrics, externalConnectivity, loading, error, runProbe } = useTelemetryProbe();
 
   // מגן מפני הרצה כפולה ב-StrictMode (dev בלבד - React מדמה mount→unmount→
   // mount כדי לתפוס תלויות ניקוי חסרות). ה-ref שורד את הדימוי הזה, אז בפועל
@@ -85,6 +105,10 @@ export const ConnectionDiagnosticBanner: React.FC = () => {
   const style = STATUS_STYLES[report.statusColor] ?? STATUS_STYLES.Green;
   const os = detectOS();
   const showUptimeHelp = report.isFixableByRestart && os !== 'other';
+  const comparisonNote =
+    report.statusColor !== 'Green' && metrics && externalConnectivity
+      ? buildComparisonNote(metrics.latencyMs, externalConnectivity)
+      : null;
 
   return (
     <div
@@ -114,6 +138,22 @@ export const ConnectionDiagnosticBanner: React.FC = () => {
           <div style={{ color: '#cbd5e1', fontSize: '13px', lineHeight: 1.6 }}>
             {report.actionableRecommendation}
           </div>
+          {comparisonNote && (
+            <div
+              style={{
+                color: style.text,
+                fontSize: '12.5px',
+                lineHeight: 1.6,
+                marginTop: '8px',
+                padding: '8px 10px',
+                backgroundColor: 'rgba(0,0,0,0.2)',
+                border: `1px solid ${style.border}`,
+                borderRadius: '6px',
+              }}
+            >
+              🔍 {comparisonNote}
+            </div>
+          )}
         </div>
         <button
           onClick={runProbe}
@@ -177,8 +217,14 @@ export const ConnectionDiagnosticBanner: React.FC = () => {
             }}
           >
             {[
-              ['זמן תגובה לשרת (ממוצע)', formatMetric(metrics.latencyMs, 'ms')],
-              ['ניתוקים בבדיקה', `${metrics.pingFailures} מתוך ${metrics.pingAttempts} ניסיונות`],
+              ['זמן תגובה לשרת שלנו (ממוצע)', formatMetric(metrics.latencyMs, 'ms')],
+              ['ניתוקים בבדיקה (לשרת שלנו)', `${metrics.pingFailures} מתוך ${metrics.pingAttempts} ניסיונות`],
+              ...(externalConnectivity
+                ? ([
+                    ['זמן תגובה ל-Google (בדיקת רשת כללית)', formatMetric(externalConnectivity.latencyMs, 'ms')],
+                    ['ניתוקים בבדיקה (ל-Google)', `${externalConnectivity.pingFailures} מתוך ${externalConnectivity.pingAttempts} ניסיונות`],
+                  ] as [string, string][])
+                : []),
               ['סוג חיבור מדווח', metrics.effectiveConnectionType ?? 'לא זמין בדפדפן זה'],
               ['עומס מעבד (Event Loop Lag)', formatMetric(metrics.executionLagMs, 'ms')],
               ['גימגום תצוגה (Frame Jank)', formatMetric(metrics.frameJankMs, 'ms')],
