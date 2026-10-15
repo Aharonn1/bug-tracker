@@ -240,8 +240,10 @@ builder.Services.AddSingleton<DbOutageLog>();
 builder.Services.AddHostedService<DbOutageFlushWorker>();
 
 // ==========================================
-// 6. שירותי סוכן AI וכלי חקירה - RcaAgentService פונה ל-OpenAI ישירות דרך
-// HTTP (לא דרך Semantic Kernel), ולכן אין כאן רישום Kernel
+// 6. שירותי סוכן AI וכלי חקירה - RcaAgentService פונה ל-Azure OpenAI ישירות
+// דרך HTTP (לא דרך Semantic Kernel), ולכן אין כאן רישום Kernel. המעבר
+// מ-OpenAI הציבורי ל-Azure OpenAI נעשה כדי שנתוני תקריות (כולל שמות מערכות
+// ממשלתיות) לא יצאו מגבולות ה-tenant של Azure
 // ==========================================
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<DiagnosticPlugins>();

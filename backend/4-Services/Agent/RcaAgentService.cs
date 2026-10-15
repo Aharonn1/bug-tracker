@@ -34,8 +34,10 @@ public class RcaAgentService : IRcaAgentService
         string? playbook,
         CancellationToken ct = default)
     {
-        var apiKey = _configuration["OpenAI:ApiKey"];
-        var modelId = _configuration["OpenAI:ModelId"] ?? "gpt-4o-mini";
+        var apiKey = _configuration["AzureOpenAI:ApiKey"];
+        var endpoint = _configuration["AzureOpenAI:Endpoint"]?.TrimEnd('/');
+        var deployment = _configuration["AzureOpenAI:DeploymentName"];
+        var apiVersion = _configuration["AzureOpenAI:ApiVersion"] ?? "2024-06-01";
 
         var toolsDefinition = new object[]
         {
@@ -96,7 +98,7 @@ public class RcaAgentService : IRcaAgentService
         };
 
         // שלב 1: שליחה עם הגדרת הכלים
-        var firstResponse = await CallOpenAiAsync(modelId, apiKey!, messages, toolsDefinition, ct);
+        var firstResponse = await CallAzureOpenAiAsync(endpoint!, deployment!, apiVersion, apiKey!, messages, toolsDefinition, ct);
         var choice = firstResponse["choices"]?[0]?["message"];
 
         // שלב 2: טיפול בקריאות כלים (Function Calls)
@@ -143,7 +145,7 @@ public class RcaAgentService : IRcaAgentService
             }
 
             // שלב 3: הפקת דו"ח סופי
-            var finalResponse = await CallOpenAiAsync(modelId, apiKey!, messages, null, ct);
+            var finalResponse = await CallAzureOpenAiAsync(endpoint!, deployment!, apiVersion, apiKey!, messages, null, ct);
             return finalResponse["choices"]?[0]?["message"]?["content"]?.GetValue<string>() ?? "לא התקבל דו״ח סופי.";
         }
 
@@ -152,16 +154,19 @@ public class RcaAgentService : IRcaAgentService
 
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(25);
 
-    private async Task<JsonObject> CallOpenAiAsync(
-        string modelId,
+    private async Task<JsonObject> CallAzureOpenAiAsync(
+        string endpoint,
+        string deployment,
+        string apiVersion,
         string apiKey,
         JsonArray messages,
         object[]? tools,
         CancellationToken ct)
     {
+        // Azure OpenAI לא מקבל "model" בגוף הבקשה - המודל נקבע לגמרי לפי ה-deployment
+        // שב-URL, לא כמו OpenAI הציבורי
         var payload = new JsonObject
         {
-            ["model"] = modelId,
             ["messages"] = messages.DeepClone(),
             ["temperature"] = 0.1
         };
@@ -171,6 +176,8 @@ public class RcaAgentService : IRcaAgentService
             payload["tools"] = JsonSerializer.SerializeToNode(tools);
         }
 
+        var requestUri = $"{endpoint}/openai/deployments/{deployment}/chat/completions?api-version={apiVersion}";
+
         // ניסיון ראשון + ניסיון חוזר בודד עבור תקלות חולפות (עומס/שגיאת שרת),
         // בדומה ל-EnableRetryOnFailure שכבר משמש אצלנו מול Azure SQL
         for (var attempt = 1; attempt <= 2; attempt++)
@@ -178,11 +185,12 @@ public class RcaAgentService : IRcaAgentService
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeoutCts.CancelAfter(RequestTimeout);
 
-            using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions")
+            using var req = new HttpRequestMessage(HttpMethod.Post, requestUri)
             {
                 Content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json")
             };
-            req.Headers.Add("Authorization", $"Bearer {apiKey}");
+            // Azure OpenAI מאמת עם header "api-key" - לא Authorization: Bearer כמו OpenAI הציבורי
+            req.Headers.Add("api-key", apiKey);
 
             HttpResponseMessage res;
             try
@@ -220,7 +228,7 @@ public class RcaAgentService : IRcaAgentService
                         "תקלת הרשאות מול ספק ה-AI (מפתח API שגוי או פג תוקף). יש לפנות לצוות התשתיות."),
                     var code when (int)code >= 500 => new AiServiceUnavailableException(
                         "שירות ה-AI החיצוני אינו זמין כרגע. נסה שוב מאוחר יותר."),
-                    _ => new InvalidOperationException($"OpenAI Error ({res.StatusCode}): {errorBody}")
+                    _ => new InvalidOperationException($"Azure OpenAI Error ({res.StatusCode}): {errorBody}")
                 };
             }
         }
