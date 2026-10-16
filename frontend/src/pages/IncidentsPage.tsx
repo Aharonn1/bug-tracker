@@ -102,7 +102,7 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
     <section>
       <SectionHeader
         title="מוקד בקרה ואירועי קצה (NOC)"
-        subtitle='מעקב חריגות תהיל"ה, נט המשפט ומערכות הוצאה לפועל'
+        subtitle="מעקב חריגות ותקלות במערכת"
         actions={
           <>
             <select
@@ -110,7 +110,7 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
               onChange={(e) => setFilterSubsystem(e.target.value)}
               style={selectStyle}
             >
-              <option value="">כל המערכות הממשלתיות</option>
+              <option value="">כל המערכות</option>
               <option value="NetHaMishpat">נט המשפט</option>
               <option value="EcaGov">רשות האכיפה והגבייה</option>
               <option value="DocumentEngine">מנוע חתימה ומסמכים</option>

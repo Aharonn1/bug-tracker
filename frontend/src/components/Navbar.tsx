@@ -61,8 +61,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
             מרכז ניטור ותקלות מערכת
           </h1>
         </div>
-        <span style={{ color: colors.border, fontSize: '14px' }}>|</span>
-        <span style={{ color: colors.textFaint, fontSize: '13px' }}>אינטגרציות ממשלתיות וליבה</span>
       </div>
 
       <nav style={{ display: 'flex', gap: '8px', backgroundColor: colors.card, padding: '4px', borderRadius: '10px' }}>
@@ -83,13 +81,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
               {openIncidentsCount}
             </span>
           )}
-        </button>
-
-        <button
-          onClick={() => onViewChange('bugs')}
-          style={getNavBtnStyle('bugs')}
-        >
-          <span>ניהול באגים כללי</span>
         </button>
 
         <button
