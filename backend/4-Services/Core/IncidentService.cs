@@ -332,7 +332,7 @@ public class IncidentService(
             i.Details?.RawPayload,
             i.Reporters
                 .OrderByDescending(r => r.LastSeenAt)
-                .Select(r => new IncidentReporterDto(r.UserId, r.User.FullName, r.OccurrenceCount, r.LastSeenAt))
+                .Select(r => new IncidentReporterDto(r.UserId, r.User.FullName, r.User.Role, r.OccurrenceCount, r.LastSeenAt))
                 .ToList()
         );
 }

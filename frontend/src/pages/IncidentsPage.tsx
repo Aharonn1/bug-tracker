@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { IncidentSeverity, type SystemIncident } from '../types/bug.types';
+import { UserRole } from '../types/auth.types';
 import { colors, radius } from '../styles/theme';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { OpsSummaryPanel } from '../components/OpsSummaryPanel';
@@ -52,14 +53,18 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
   const [selectedSeverity, setSelectedSeverity] = useState<IncidentSeverity | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
+  // תצוגת "פעילות עובדים" מיועדת למנהל/ת המשרד - לא רלוונטי להציג שם את
+  // ה-SiteAdmin (מנהל-על חוצה-לקוחות): הפעילות שלו היא בדיקות/ניהול, לא
+  // עובד שנתקל בתקלה. תקרית שדווחה רק על ידו מצטרפת ל"לא מזוהה", לא נעלמת
   const incidentUserCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const incident of incidents) {
-      if (incident.reportedByUsers.length === 0) {
+      const employeeReporters = incident.reportedByUsers.filter((r) => r.role !== UserRole.SiteAdmin);
+      if (employeeReporters.length === 0) {
         counts['לא מזוהה'] = (counts['לא מזוהה'] || 0) + 1;
         continue;
       }
-      for (const reporter of incident.reportedByUsers) {
+      for (const reporter of employeeReporters) {
         counts[reporter.userName] = (counts[reporter.userName] || 0) + reporter.occurrenceCount;
       }
     }

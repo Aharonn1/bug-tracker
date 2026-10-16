@@ -28,10 +28,13 @@ public record IncidentResponseDto(
     IReadOnlyList<IncidentReporterDto> ReportedByUsers
 );
 
-// כל משתמש שנתקל בתקרית הזו לפחות פעם אחת, כמה פעמים, ומתי לאחרונה
+// כל משתמש שנתקל בתקרית הזו לפחות פעם אחת, כמה פעמים, ומתי לאחרונה.
+// Role כלול כדי שהצד-לקוח יוכל להחריג SiteAdmin מתצוגות "פעילות העובדים
+// במשרד שלי" - הפעילות שלו היא לרוב בדיקות/ניהול, לא "עובד שנתקל בתקלה"
 public record IncidentReporterDto(
     int UserId,
     string UserName,
+    UserRole Role,
     int OccurrenceCount,
     DateTime LastSeenAt
 );

@@ -1,3 +1,4 @@
+import type { UserRole } from './auth.types';
 
 export interface PagedResult<T> {
   items: T[];
@@ -73,6 +74,7 @@ export type SubsystemType = (typeof SubsystemType)[keyof typeof SubsystemType];
 export interface IncidentReporter {
   userId: number;
   userName: string;
+  role: UserRole;
   occurrenceCount: number;
   lastSeenAt: string;
 }
