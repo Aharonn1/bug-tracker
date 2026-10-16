@@ -394,7 +394,7 @@ namespace MyBackendApi.Migrations
                             FullName = "אהרון הלוי",
                             IsActive = true,
                             PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
-                            Role = (byte)2,
+                            Role = (byte)3,
                             TenantId = "default-tenant"
                         },
                         new
@@ -406,7 +406,7 @@ namespace MyBackendApi.Migrations
                             FullName = "נועה כהן",
                             IsActive = true,
                             PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
-                            Role = (byte)1,
+                            Role = (byte)2,
                             TenantId = "default-tenant"
                         },
                         new
@@ -432,6 +432,186 @@ namespace MyBackendApi.Migrations
                             PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
                             Role = (byte)1,
                             TenantId = "default-tenant"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "dana.cohengold@cohen-gold-law.co.il",
+                            FailedLoginAttempts = 0,
+                            FullName = "דנה כהן-גולד",
+                            IsActive = true,
+                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            Role = (byte)2,
+                            TenantId = "cohen-gold-law"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "yoav.shapira@cohen-gold-law.co.il",
+                            FailedLoginAttempts = 0,
+                            FullName = "יואב שפירא",
+                            IsActive = true,
+                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            Role = (byte)1,
+                            TenantId = "cohen-gold-law"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "michal.avraham@cohen-gold-law.co.il",
+                            FailedLoginAttempts = 0,
+                            FullName = "מיכל אברהם",
+                            IsActive = true,
+                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            Role = (byte)1,
+                            TenantId = "cohen-gold-law"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "ron.friedman@cohen-gold-law.co.il",
+                            FailedLoginAttempts = 0,
+                            FullName = "רון פרידמן",
+                            IsActive = true,
+                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            Role = (byte)1,
+                            TenantId = "cohen-gold-law"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "tal.nachmias@cohen-gold-law.co.il",
+                            FailedLoginAttempts = 0,
+                            FullName = "טל נחמיאס",
+                            IsActive = true,
+                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            Role = (byte)1,
+                            TenantId = "cohen-gold-law"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "omer.mizrahi@mizrahi-partners.co.il",
+                            FailedLoginAttempts = 0,
+                            FullName = "עומר מזרחי",
+                            IsActive = true,
+                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            Role = (byte)2,
+                            TenantId = "mizrahi-partners"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "liat.gabay@mizrahi-partners.co.il",
+                            FailedLoginAttempts = 0,
+                            FullName = "ליאת גבאי",
+                            IsActive = true,
+                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            Role = (byte)1,
+                            TenantId = "mizrahi-partners"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "asaf.biton@mizrahi-partners.co.il",
+                            FailedLoginAttempts = 0,
+                            FullName = "אסף ביטון",
+                            IsActive = true,
+                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            Role = (byte)1,
+                            TenantId = "mizrahi-partners"
+                        },
+                        new
+                        {
+                            Id = 13,
+                            CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "hadar.shalom@mizrahi-partners.co.il",
+                            FailedLoginAttempts = 0,
+                            FullName = "הדר שלום",
+                            IsActive = true,
+                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            Role = (byte)1,
+                            TenantId = "mizrahi-partners"
+                        },
+                        new
+                        {
+                            Id = 14,
+                            CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "gil.ohayon@mizrahi-partners.co.il",
+                            FailedLoginAttempts = 0,
+                            FullName = "גיל אוחיון",
+                            IsActive = true,
+                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            Role = (byte)1,
+                            TenantId = "mizrahi-partners"
+                        },
+                        new
+                        {
+                            Id = 15,
+                            CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "rotem.benami@ben-ami-legal.co.il",
+                            FailedLoginAttempts = 0,
+                            FullName = "רותם בן-עמי",
+                            IsActive = true,
+                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            Role = (byte)2,
+                            TenantId = "ben-ami-legal"
+                        },
+                        new
+                        {
+                            Id = 16,
+                            CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "shahar.levin@ben-ami-legal.co.il",
+                            FailedLoginAttempts = 0,
+                            FullName = "שחר לוין",
+                            IsActive = true,
+                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            Role = (byte)1,
+                            TenantId = "ben-ami-legal"
+                        },
+                        new
+                        {
+                            Id = 17,
+                            CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "neta.israeli@ben-ami-legal.co.il",
+                            FailedLoginAttempts = 0,
+                            FullName = "נטע ישראלי",
+                            IsActive = true,
+                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            Role = (byte)1,
+                            TenantId = "ben-ami-legal"
+                        },
+                        new
+                        {
+                            Id = 18,
+                            CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "or.zuckerman@ben-ami-legal.co.il",
+                            FailedLoginAttempts = 0,
+                            FullName = "אור צוקרמן",
+                            IsActive = true,
+                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            Role = (byte)1,
+                            TenantId = "ben-ami-legal"
+                        },
+                        new
+                        {
+                            Id = 19,
+                            CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "sapir.hadad@ben-ami-legal.co.il",
+                            FailedLoginAttempts = 0,
+                            FullName = "ספיר חדד",
+                            IsActive = true,
+                            PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
+                            Role = (byte)1,
+                            TenantId = "ben-ami-legal"
                         });
                 });
 

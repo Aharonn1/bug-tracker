@@ -1,11 +1,15 @@
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using MyBackendApi.Models.Entities;
+using MyBackendApi.Services.Auth;
 using MyBackendApi.Services.Tenancy;
 
 namespace MyBackendApi.Data;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenantProvider tenantProvider) : DbContext(options)
+public class AppDbContext(
+    DbContextOptions<AppDbContext> options,
+    ICurrentTenantProvider tenantProvider,
+    ICurrentUserProvider currentUserProvider) : DbContext(options)
 {
     public DbSet<BugReport> BugReports => Set<BugReport>();
     public DbSet<ErrorCatalog> ErrorCatalogs => Set<ErrorCatalog>();
@@ -17,6 +21,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenant
     // כי כך EF Core יודע לתרגם את ה-Global Query Filter למשתנה שמוערך בזמן ריצת השאילתה
     public string CurrentTenantId => tenantProvider.TenantId;
 
+    // SiteAdmin עוקף את בידוד ה-TenantId בכוונה (רואה את כל הלקוחות) - false
+    // כברירת מחדל בתוך ה-Background Worker (אין שם HttpContext), כך שההתנהגות
+    // שם לא משתנה בכלל, רק נתיבי בקשה עם HttpContext עשויים לעקוף
+    public bool CurrentUserIsSiteAdmin => currentUserProvider.IsSiteAdmin;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -27,22 +36,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenant
         // Global Query Filter - מונע דליפת מידע בין לקוחות (Multi-Tenancy): כל שאילתת
         // קריאה על ישויות עם TenantId תסונן אוטומטית ללקוח הנוכחי, בלי אפשרות "לשכוח"
         // להוסיף את הסינון הזה ידנית במקום חדש בעתיד
-        modelBuilder.Entity<SystemErrorIncident>().HasQueryFilter(e => e.TenantId == CurrentTenantId);
-        modelBuilder.Entity<BugReport>().HasQueryFilter(e => e.TenantId == CurrentTenantId);
+        // SiteAdmin עוקף את הסינון (CurrentUserIsSiteAdmin) בכוונה - מנהל-על
+        // חוצה-לקוחות שצריך לראות תקריות מכל הלקוחות, לא רק מהלקוח שלו
+        modelBuilder.Entity<SystemErrorIncident>().HasQueryFilter(e => e.TenantId == CurrentTenantId || CurrentUserIsSiteAdmin);
+        modelBuilder.Entity<BugReport>().HasQueryFilter(e => e.TenantId == CurrentTenantId || CurrentUserIsSiteAdmin);
 
         // IncidentDetailPayload אין לו TenantId משלו, אבל הוא הצד "החובה" ביחס 1:1
         // עם SystemErrorIncident שכבר מסונן - בלי סינון תואם כאן EF Core מזהיר
         // (ותיעודית ממליץ) שאפשר לקבל תוצאות לא עקביות בטעינת הניווט ביניהם
-        modelBuilder.Entity<IncidentDetailPayload>().HasQueryFilter(d => d.Incident.TenantId == CurrentTenantId);
+        modelBuilder.Entity<IncidentDetailPayload>().HasQueryFilter(d => d.Incident.TenantId == CurrentTenantId || CurrentUserIsSiteAdmin);
 
         // אותו הגיון כמו IncidentDetailPayload למעלה - IncidentReporter הוא הצד
         // "החובה" ביחס לתקרית המסוננת, וצריך סינון תואם
-        modelBuilder.Entity<IncidentReporter>().HasQueryFilter(r => r.Incident.TenantId == CurrentTenantId);
+        modelBuilder.Entity<IncidentReporter>().HasQueryFilter(r => r.Incident.TenantId == CurrentTenantId || CurrentUserIsSiteAdmin);
 
         // משתמשים מסוננים לפי אותו header מהימן כמו שאר הישויות - כך שחיפוש
         // לפי אימייל בזמן login לא "יטעה" בין לקוחות שונים בעתיד. הבדיקה עצמה
         // (AuthService) חייבת להשתמש ב-IgnoreQueryFilters אם היא רצה בלי בקשת
         // HTTP פעילה (כרגע אינה, כך שאין בכך צורך)
-        modelBuilder.Entity<User>().HasQueryFilter(u => u.TenantId == CurrentTenantId);
+        modelBuilder.Entity<User>().HasQueryFilter(u => u.TenantId == CurrentTenantId || CurrentUserIsSiteAdmin);
     }
 }

@@ -23,7 +23,7 @@ public class BugsController(IBugService bugService, ICurrentUserProvider current
         CancellationToken cancellationToken)
     {
         // Admin רואה את כל הבאגים; משתמש רגיל רואה רק את אלו שהוא עצמו דיווח
-        var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
+        var restrictToUserId = currentUserProvider.IsAdminOrAbove ? null : currentUserProvider.UserId;
         var bugs = await bugService.GetAllBugsAsync(
             status, restrictToUserId,
             page <= 0 ? 1 : page, pageSize <= 0 ? 50 : pageSize, cancellationToken);
@@ -37,7 +37,7 @@ public class BugsController(IBugService bugService, ICurrentUserProvider current
         [FromRoute] int id,
         CancellationToken cancellationToken)
     {
-        var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
+        var restrictToUserId = currentUserProvider.IsAdminOrAbove ? null : currentUserProvider.UserId;
         var bug = await bugService.GetBugByIdAsync(id, restrictToUserId, cancellationToken);
         return Ok(bug);
     }
@@ -61,7 +61,7 @@ public class BugsController(IBugService bugService, ICurrentUserProvider current
         [FromBody] UpdateBugStatusDto dto,
         CancellationToken cancellationToken)
     {
-        var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
+        var restrictToUserId = currentUserProvider.IsAdminOrAbove ? null : currentUserProvider.UserId;
         var updated = await bugService.UpdateBugStatusAsync(id, dto.Status, restrictToUserId, cancellationToken);
         return Ok(updated);
     }
@@ -73,7 +73,7 @@ public class BugsController(IBugService bugService, ICurrentUserProvider current
         [FromRoute] int id,
         CancellationToken cancellationToken)
     {
-        var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
+        var restrictToUserId = currentUserProvider.IsAdminOrAbove ? null : currentUserProvider.UserId;
         var deleted = await bugService.DeleteBugAsync(id, restrictToUserId, cancellationToken);
         if (!deleted)
         {

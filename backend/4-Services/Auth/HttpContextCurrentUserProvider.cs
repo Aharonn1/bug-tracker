@@ -18,4 +18,9 @@ public class HttpContextCurrentUserProvider(IHttpContextAccessor httpContextAcce
 
     public bool IsAdmin =>
         httpContextAccessor.HttpContext?.User?.IsInRole(nameof(UserRole.Admin)) == true;
+
+    public bool IsSiteAdmin =>
+        httpContextAccessor.HttpContext?.User?.IsInRole(nameof(UserRole.SiteAdmin)) == true;
+
+    public bool IsAdminOrAbove => IsAdmin || IsSiteAdmin;
 }

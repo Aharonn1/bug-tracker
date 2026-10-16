@@ -12,7 +12,11 @@ using MyBackendApi.Services.Interfaces;
 
 namespace MyBackendApi.Services.Core;
 
-public class IncidentService(AppDbContext context, ErrorDeduplicationService deduplicationService) : IIncidentService
+public class IncidentService(
+    AppDbContext context,
+    ErrorDeduplicationService deduplicationService,
+    IIncidentNotificationService notificationService,
+    ILogger<IncidentService> logger) : IIncidentService
 {
     private const int MaxPageSize = 200;
 
@@ -264,6 +268,19 @@ public class IncidentService(AppDbContext context, ErrorDeduplicationService ded
 
         context.SystemErrorIncidents.Add(incident);
         await context.SaveChangesAsync(ct);
+
+        // התראה רק על תקרית *חדשה לגמרי* (fingerprint ראשון מסוגו) - לא על
+        // הישנות (ApplyToExistingIncidentAsync סופר OccurrencesCount בלי להתריע).
+        // כשל בשליחה לעולם לא אמור להפיל את קליטת התקרית - היא כבר נשמרה למעלה
+        try
+        {
+            await notificationService.NotifyNewIncidentAsync(incident, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "כשל בשליחת התראת תקרית חדשה {IncidentId} - התקרית עצמה נשמרה בהצלחה", incident.IncidentId);
+        }
+
         return incident.IncidentId;
     }
 

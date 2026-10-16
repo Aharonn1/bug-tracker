@@ -14,6 +14,7 @@ using MyBackendApi.Services.Core;
 using MyBackendApi.Services.Deduplication;
 using MyBackendApi.Services.Diagnostics;
 using MyBackendApi.Services.Interfaces;
+using MyBackendApi.Services.Notifications;
 using MyBackendApi.Services.Plugins;
 using MyBackendApi.Services.Queues;
 using MyBackendApi.Services.Tenancy;
@@ -188,6 +189,7 @@ builder.Services.AddHealthChecks()
 // ==========================================
 builder.Services.AddScoped<IBugService, BugService>();
 builder.Services.AddScoped<IIncidentService, IncidentService>();
+builder.Services.AddScoped<IIncidentNotificationService, IncidentNotificationService>();
 builder.Services.AddScoped<TelemetryAnalysisService>();
 builder.Services.AddSingleton<OpsInsightsService>();
 builder.Services.AddSingleton<AzureResourceMetricsReader>();

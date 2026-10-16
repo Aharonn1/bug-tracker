@@ -45,7 +45,7 @@ public class IncidentsController(
         CancellationToken ct)
     {
         // Admin רואה את כל התקריות; משתמש רגיל רואה רק את אלו שקשורות לפעילות שלו
-        var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
+        var restrictToUserId = currentUserProvider.IsAdminOrAbove ? null : currentUserProvider.UserId;
         var incidents = await incidentService.GetAllIncidentsAsync(
             unresolvedOnly, subsystem, restrictToUserId,
             page <= 0 ? 1 : page, pageSize <= 0 ? 50 : pageSize, ct);
@@ -59,7 +59,7 @@ public class IncidentsController(
         [FromRoute] long id,
         CancellationToken ct)
     {
-        var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
+        var restrictToUserId = currentUserProvider.IsAdminOrAbove ? null : currentUserProvider.UserId;
         var incident = await incidentService.GetIncidentByIdAsync(id, restrictToUserId, ct);
         return Ok(incident);
     }
@@ -99,7 +99,7 @@ public class IncidentsController(
         [FromRoute] long id,
         CancellationToken ct)
     {
-        var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
+        var restrictToUserId = currentUserProvider.IsAdminOrAbove ? null : currentUserProvider.UserId;
         await incidentService.MarkAsResolvedAsync(id, restrictToUserId, ct);
         return NoContent();
     }
@@ -112,7 +112,7 @@ public class IncidentsController(
         [FromRoute] long id,
         CancellationToken ct)
     {
-        var restrictToUserId = currentUserProvider.IsAdmin ? null : currentUserProvider.UserId;
+        var restrictToUserId = currentUserProvider.IsAdminOrAbove ? null : currentUserProvider.UserId;
         var incident = await incidentService.GetIncidentByIdAsync(id, restrictToUserId, ct);
 
         var report = await rcaAgentService.AnalyzeAndRemediateIncidentAsync(
