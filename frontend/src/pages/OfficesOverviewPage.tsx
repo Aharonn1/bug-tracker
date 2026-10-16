@@ -326,11 +326,16 @@ export const OfficesOverviewPage: React.FC = () => {
     );
   }
 
+  // סכום התקריות המסוננות לכל משרד (לא incidents.length הגולמי) - כדי שהמספר
+  // כאן יתאים בדיוק למה שמוצג בפועל כשפותחים כל משרד, לא יכלול תקריות
+  // שדווחו רק ע"י ה-SiteAdmin
+  const totalEmployeeIncidents = offices.reduce((sum, o) => sum + o.incidents.length, 0);
+
   return (
     <section>
       <SectionHeader
         title="סקירת משרדים"
-        subtitle={`${offices.length} משרדים, ${users.length} משתמשים, ${incidents.length} תקריות - תצוגה חוצת-לקוחות. לחצו על משרד כדי לראות את התקריות שלו`}
+        subtitle={`${offices.length} משרדים, ${users.length} משתמשים, ${totalEmployeeIncidents} תקריות - תצוגה חוצת-לקוחות. לחצו על משרד כדי לראות את התקריות שלו`}
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.md }}>
