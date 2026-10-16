@@ -28,6 +28,20 @@ public class FailedIncidentsController(
         return Ok(await failedIncidentService.GetUnresolvedAsync(ct));
     }
 
+    // תג המספר ליד "תקריות שנכשלו" בניווט
+    [HttpGet("count")]
+    [ProducesResponseType(typeof(FailedIncidentsCountDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetUnresolvedCount(CancellationToken ct)
+    {
+        if (!currentUserProvider.IsSiteAdmin)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "רק מנהל-על יכול לגשת לתור התקריות שנכשלו" });
+        }
+
+        return Ok(new FailedIncidentsCountDto(await failedIncidentService.GetUnresolvedCountAsync(ct)));
+    }
+
     [HttpPost("{id:long}/retry")]
     [ProducesResponseType(typeof(FailedIncidentRetryResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

@@ -122,6 +122,15 @@ public class IncidentService(
         return await query.CountAsync(i => i.CreatedAt > since, ct);
     }
 
+    // תג המספר ליד "סקירת משרדים" בניווט - סך התקריות הפתוחות חוצות-הלקוחות,
+    // תמיד מסונן מפעילות SiteAdmin (excludeSiteAdminOnlyIncidents קבוע true)
+    // בלי תלות בתפקיד המזמין בפועל, כי זה בדיוק מה שהעמוד עצמו מציג
+    public async Task<int> GetOfficesOpenIncidentsCountAsync(CancellationToken ct = default)
+    {
+        var query = BuildVisibleIncidentsQuery(restrictToUserId: null, excludeSiteAdminOnlyIncidents: true);
+        return await query.CountAsync(i => !i.IsResolved, ct);
+    }
+
     public async Task<IncidentResponseDto?> GetIncidentByIdAsync(long id, int? restrictToUserId = null, CancellationToken ct = default)
     {
         var incident = await context.SystemErrorIncidents

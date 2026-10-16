@@ -11,3 +11,5 @@ public record FailedIncidentSummaryDto(
 );
 
 public record FailedIncidentRetryResultDto(bool Succeeded, string? ErrorMessage);
+
+public record FailedIncidentsCountDto(int Count);

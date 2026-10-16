@@ -4,8 +4,10 @@ import type { DashboardView } from './components/Navbar';
 import { useIncidents } from './hooks/useIncidents';
 import { useAuth } from './hooks/useAuth';
 import { useNewIncidentsCount } from './hooks/useNewIncidentsCount';
+import { useSiteAdminBadgeCounts } from './hooks/useSiteAdminBadgeCounts';
 import { userService } from './api/userService';
 import type { AuthUser } from './types/auth.types';
+import { UserRole } from './types/auth.types';
 import { ConnectionDiagnosticBanner } from './components/ConnectionDiagnosticBanner';
 import { DbOutageBanner } from './components/DbOutageBanner';
 import { NewVersionBanner } from './components/NewVersionBanner';
@@ -101,6 +103,7 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
   const openIncidentsCount = incidents.filter(i => !i.isResolved).length;
 
   const { newCount, resetToZero } = useNewIncidentsCount();
+  const { officesOpenCount, failedIncidentsCount } = useSiteAdminBadgeCounts(user.role === UserRole.SiteAdmin);
 
   // מסמן "נצפה" פעם אחת בלבד לכל "ביקור" בתוך מסך התקריות - לא בכל קליק
   // על עימוד/סינון כל עוד עדיין שם (loading מתחלף גם בהם, לא רק בכניסה
@@ -127,6 +130,8 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
         onViewChange={setCurrentView}
         openIncidentsCount={openIncidentsCount}
         newIncidentsCount={newCount}
+        officesOpenCount={officesOpenCount}
+        failedIncidentsCount={failedIncidentsCount}
         user={user}
         onLogout={onLogout}
       />

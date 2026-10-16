@@ -74,6 +74,22 @@ public class IncidentsController(
         return Ok(new NewIncidentsCountDto(count));
     }
 
+    // תג המספר ליד "סקירת משרדים" בניווט - SiteAdmin בלבד, אותו עיקרון
+    // כמו שאר העמודים חוצי-הלקוחות (FailedIncidentsController וכו')
+    [HttpGet("offices-open-count")]
+    [ProducesResponseType(typeof(NewIncidentsCountDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetOfficesOpenIncidentsCount(CancellationToken ct)
+    {
+        if (!currentUserProvider.IsSiteAdmin)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "רק מנהל-על יכול לגשת לנתון זה" });
+        }
+
+        var count = await incidentService.GetOfficesOpenIncidentsCountAsync(ct);
+        return Ok(new NewIncidentsCountDto(count));
+    }
+
     [HttpGet("{id:long}")]
     [ProducesResponseType(typeof(IncidentResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

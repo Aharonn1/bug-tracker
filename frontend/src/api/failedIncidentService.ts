@@ -14,6 +14,15 @@ export const failedIncidentService = {
     return res.json();
   },
 
+  async getUnresolvedCount(): Promise<{ count: number }> {
+    const res = await fetch(`${BASE_URL}/count`, {
+      headers: tenantHeaders({ 'Accept': 'application/json' })
+    });
+
+    if (!res.ok) { throwIfSessionExpired(res); throw new Error(`שגיאה בטעינת ספירת תקריות שנכשלו (${res.status})`); }
+    return res.json();
+  },
+
   async retryNow(id: number): Promise<FailedIncidentRetryResult> {
     const res = await fetch(`${BASE_URL}/${id}/retry`, {
       method: 'POST',

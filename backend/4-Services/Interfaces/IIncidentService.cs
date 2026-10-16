@@ -21,6 +21,8 @@ public interface IIncidentService
         bool excludeSiteAdminOnlyIncidents = false,
         CancellationToken ct = default);
 
+    Task<int> GetOfficesOpenIncidentsCountAsync(CancellationToken ct = default);
+
     Task<IncidentResponseDto?> GetIncidentByIdAsync(long id, int? restrictToUserId = null, CancellationToken ct = default);
 
     Task<IncidentResponseDto> IngestIncidentAsync(CreateIncidentDto dto, CancellationToken ct = default);

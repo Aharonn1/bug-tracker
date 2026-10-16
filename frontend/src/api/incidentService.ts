@@ -29,6 +29,15 @@ export const incidentService = {
     return res.json();
   },
 
+  async getOfficesOpenCount(): Promise<{ newCount: number }> {
+    const res = await fetch(`${BASE_URL}/offices-open-count`, {
+      headers: tenantHeaders({ 'Accept': 'application/json' })
+    });
+
+    if (!res.ok) { throwIfSessionExpired(res); throw new Error(`שגיאה בטעינת ספירת תקריות פתוחות (${res.status})`); }
+    return res.json();
+  },
+
   // לא נוגע ב-DB בכלל בצד השרת - עובד גם כשבסיס הנתונים לגמרי לא זמין,
   // כל עוד יש טוקן תקף (אימות JWT לא דורש DB)
   async getDbOutageLog(): Promise<DbOutageEntry[]> {

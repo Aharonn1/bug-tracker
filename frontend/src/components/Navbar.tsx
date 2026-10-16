@@ -10,11 +10,28 @@ interface NavbarProps {
   onViewChange: (view: DashboardView) => void;
   openIncidentsCount: number;
   newIncidentsCount: number;
+  officesOpenCount: number;
+  failedIncidentsCount: number;
   user: AuthUser;
   onLogout: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openIncidentsCount, newIncidentsCount, user, onLogout }) => {
+const NavCountBadge: React.FC<{ count: number }> = ({ count }) => (
+  count > 0 ? (
+    <span style={{
+      backgroundColor: colors.danger,
+      color: '#fff',
+      fontSize: '11px',
+      fontWeight: 700,
+      padding: '2px 7px',
+      borderRadius: '999px'
+    }}>
+      {count}
+    </span>
+  ) : null
+);
+
+export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openIncidentsCount, newIncidentsCount, officesOpenCount, failedIncidentsCount, user, onLogout }) => {
   const getNavBtnStyle = (view: DashboardView): React.CSSProperties => {
     const isActive = currentView === view;
     return {
@@ -93,18 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
           style={getNavBtnStyle('incidents')}
         >
           <span>ניטור תקלות מערכת</span>
-          {openIncidentsCount > 0 && (
-            <span style={{
-              backgroundColor: colors.danger,
-              color: '#fff',
-              fontSize: '11px',
-              fontWeight: 700,
-              padding: '2px 7px',
-              borderRadius: '999px'
-            }}>
-              {openIncidentsCount}
-            </span>
-          )}
+          <NavCountBadge count={openIncidentsCount} />
         </button>
 
         <button
@@ -145,6 +151,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
               style={getNavBtnStyle('offices')}
             >
               <span>סקירת משרדים</span>
+              <NavCountBadge count={officesOpenCount} />
             </button>
 
             <button
@@ -152,6 +159,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
               style={getNavBtnStyle('failed-incidents')}
             >
               <span>תקריות שנכשלו</span>
+              <NavCountBadge count={failedIncidentsCount} />
             </button>
           </>
         )}

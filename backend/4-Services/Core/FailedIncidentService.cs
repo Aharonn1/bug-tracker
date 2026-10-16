@@ -31,6 +31,13 @@ public class FailedIncidentService(
             f.FirstFailedAt, f.LastAttemptAt, f.AttemptCount)).ToList();
     }
 
+    // תג המספר ליד "תקריות שנכשלו" בניווט - נספר בנפרד מ-GetUnresolvedAsync
+    // כדי שלא נצטרך לגרור/לפענח כל DtoJson רק בשביל מספר
+    public async Task<int> GetUnresolvedCountAsync(CancellationToken ct = default)
+    {
+        return await context.FailedIncidentIngestions.CountAsync(f => f.ResolvedAt == null, ct);
+    }
+
     public async Task<FailedIncidentRetryResultDto> RetryNowAsync(long id, CancellationToken ct = default)
     {
         var entry = await context.FailedIncidentIngestions.FirstOrDefaultAsync(f => f.Id == id, ct)
