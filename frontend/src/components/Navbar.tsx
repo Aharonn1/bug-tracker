@@ -3,17 +3,18 @@ import type { AuthUser } from '../types/auth.types';
 import { UserRole, isAdminOrAbove } from '../types/auth.types';
 import { colors } from '../styles/theme';
 
-export type DashboardView = 'incidents' | 'bugs' | 'new-bug' | 'about' | 'azure-health' | 'security' | 'offices';
+export type DashboardView = 'incidents' | 'bugs' | 'new-bug' | 'about' | 'azure-health' | 'security' | 'offices' | 'failed-incidents';
 
 interface NavbarProps {
   currentView: DashboardView;
   onViewChange: (view: DashboardView) => void;
   openIncidentsCount: number;
+  newIncidentsCount: number;
   user: AuthUser;
   onLogout: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openIncidentsCount, user, onLogout }) => {
+export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openIncidentsCount, newIncidentsCount, user, onLogout }) => {
   const getNavBtnStyle = (view: DashboardView): React.CSSProperties => {
     const isActive = currentView === view;
     return {
@@ -61,6 +62,29 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
             מרכז ניטור ותקלות מערכת
           </h1>
         </div>
+
+        {/* "חדשות מאז הביקור האחרון" - סימן נפרד לגמרי מהנקודה/תג האדומים
+            שעל כפתור הניטור (שמציינים "סך הכל פתוחות"); בכוונה צבע/צורה שונים
+            לגמרי כדי שלא יתבלבלו ביניהם, ובלי אנימציית פעימה */}
+        {newIncidentsCount > 0 && (
+          <span
+            title={`${newIncidentsCount} תקריות חדשות מאז הביקור האחרון שלך`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 10px',
+              borderRadius: '999px',
+              backgroundColor: colors.card,
+              border: `1px solid ${colors.violet}`,
+              color: '#c4b5fd',
+              fontSize: '11.5px',
+              fontWeight: 700,
+            }}
+          >
+            🔔 {newIncidentsCount} חדשות
+          </span>
+        )}
       </div>
 
       <nav style={{ display: 'flex', gap: '8px', backgroundColor: colors.card, padding: '4px', borderRadius: '10px' }}>
@@ -121,6 +145,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
               style={getNavBtnStyle('offices')}
             >
               <span>סקירת משרדים</span>
+            </button>
+
+            <button
+              onClick={() => onViewChange('failed-incidents')}
+              style={getNavBtnStyle('failed-incidents')}
+            >
+              <span>תקריות שנכשלו</span>
             </button>
           </>
         )}

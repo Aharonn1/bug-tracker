@@ -203,6 +203,46 @@ namespace MyBackendApi.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MyBackendApi.Models.Entities.FailedIncidentIngestion", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DtoJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ErrorMessage")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("FirstFailedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastAttemptAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ResolvedAt", "AttemptCount");
+
+                    b.ToTable("FailedIncidentIngestions", (string)null);
+                });
+
             modelBuilder.Entity("MyBackendApi.Models.Entities.IncidentDetailPayload", b =>
                 {
                     b.Property<long>("IncidentId")
@@ -350,6 +390,9 @@ namespace MyBackendApi.Migrations
                         .IsRequired()
                         .HasMaxLength(120)
                         .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime?>("IncidentsLastViewedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");

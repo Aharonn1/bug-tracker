@@ -15,6 +15,12 @@ public interface IIncidentService
         int pageSize = 50,
         CancellationToken ct = default);
 
+    Task<int> GetNewIncidentsCountAsync(
+        DateTime since,
+        int? restrictToUserId = null,
+        bool excludeSiteAdminOnlyIncidents = false,
+        CancellationToken ct = default);
+
     Task<IncidentResponseDto?> GetIncidentByIdAsync(long id, int? restrictToUserId = null, CancellationToken ct = default);
 
     Task<IncidentResponseDto> IngestIncidentAsync(CreateIncidentDto dto, CancellationToken ct = default);

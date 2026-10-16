@@ -21,6 +21,7 @@ public class IncidentsController(
     IRcaAgentService rcaAgentService,
     ICurrentTenantProvider tenantProvider,
     ICurrentUserProvider currentUserProvider,
+    IUserDirectoryService userDirectoryService,
     DbOutageLog dbOutageLog) : ControllerBase
 {
     /// <summary>
@@ -53,6 +54,24 @@ public class IncidentsController(
             unresolvedOnly, subsystem, restrictToUserId, excludeSiteAdminOnlyIncidents,
             page <= 0 ? 1 : page, pageSize <= 0 ? 50 : pageSize, ct);
         return Ok(incidents);
+    }
+
+    // תג "חדשות מאז הביקור האחרון" בניווט - אותם כללי ראות בדיוק כמו הרשימה
+    // המלאה למעלה, רק סופר מה-IncidentsLastViewedAt של המזמין ואילך
+    [HttpGet("new-count")]
+    [ProducesResponseType(typeof(NewIncidentsCountDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetNewIncidentsCount(CancellationToken ct)
+    {
+        var restrictToUserId = currentUserProvider.IsAdminOrAbove ? null : currentUserProvider.UserId;
+        var excludeSiteAdminOnlyIncidents = currentUserProvider.IsAdmin && !currentUserProvider.IsSiteAdmin;
+
+        var lastViewedAt = await userDirectoryService.GetIncidentsLastViewedAtAsync(currentUserProvider.UserId!.Value, ct);
+        // null (מעולם לא ביקר) => "עכשיו", לא MinValue - אחרת ביקור ראשון-אי-פעם
+        // היה "מבריק" לרגע את כל ההיסטוריה לפני שה-mark-as-viewed מאפס אותו
+        var since = lastViewedAt ?? DateTime.UtcNow;
+
+        var count = await incidentService.GetNewIncidentsCountAsync(since, restrictToUserId, excludeSiteAdminOnlyIncidents, ct);
+        return Ok(new NewIncidentsCountDto(count));
     }
 
     [HttpGet("{id:long}")]

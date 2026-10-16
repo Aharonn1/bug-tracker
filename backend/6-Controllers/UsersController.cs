@@ -26,4 +26,14 @@ public class UsersController(IUserDirectoryService userDirectoryService, ICurren
         var users = await userDirectoryService.GetAllUsersAsync(ct);
         return Ok(users);
     }
+
+    // כל משתמש מאומת מסמן את התקריות כנצפו עבור עצמו - אין צורך בהרשאת
+    // SiteAdmin, זה פועל רק על הרשומה של המזמין עצמו
+    [HttpPost("me/incidents-viewed")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> MarkIncidentsViewed(CancellationToken ct)
+    {
+        await userDirectoryService.MarkIncidentsViewedAsync(currentUserProvider.UserId!.Value, ct);
+        return NoContent();
+    }
 }

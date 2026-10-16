@@ -20,4 +20,15 @@ public class UserDirectoryService(AppDbContext context) : IUserDirectoryService
             .Select(u => new UserSummaryDto(u.Id, u.FullName, u.Email, u.Role, u.TenantId))
             .ToListAsync(ct);
     }
+
+    public async Task MarkIncidentsViewedAsync(int userId, CancellationToken ct = default)
+    {
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+        if (user is null) return; // הגנתי בלבד - לא אמור לקרות למשתמש מאומת
+        user.IncidentsLastViewedAt = DateTime.UtcNow;
+        await context.SaveChangesAsync(ct);
+    }
+
+    public Task<DateTime?> GetIncidentsLastViewedAtAsync(int userId, CancellationToken ct = default) =>
+        context.Users.Where(u => u.Id == userId).Select(u => u.IncidentsLastViewedAt).FirstOrDefaultAsync(ct);
 }

@@ -1,3 +1,7 @@
+using System.Text.Json;
+using MyBackendApi.Data;
+using MyBackendApi.Models.DTOs.Ingestion;
+using MyBackendApi.Models.Entities;
 using MyBackendApi.Services.Interfaces;
 
 namespace MyBackendApi.Services.Queues;
@@ -40,7 +44,37 @@ public class IncidentIngestionWorker(
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogError(ex, "כשל בעיבוד אירוע מהתור עבור ErrorCode {ErrorCode}", dto.ErrorCode);
+                await TryWriteDeadLetterAsync(dto, ex);
             }
         });
+    }
+
+    // Dead-Letter: רשת-הצלה אחרונה כדי שתקרית שנכשלה לא תלך לאיבוד בשקט -
+    // נשמרת לטבלה נפרדת ו-FailedIncidentRetryWorker ינסה שוב מאוחר יותר
+    private async Task TryWriteDeadLetterAsync(CreateIncidentDto dto, Exception ex)
+    {
+        try
+        {
+            // Scope חדש ונקי - ה-scope שכשל למעלה כבר disposed (היה בתוך ה-try),
+            // וגם אם לא היה, עדיף DbContext רענן ולא אחד שאולי במצב שגוי אחרי חריגה
+            using var scope = scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            context.FailedIncidentIngestions.Add(new FailedIncidentIngestion
+            {
+                TenantId = dto.TenantId,
+                DtoJson = JsonSerializer.Serialize(dto),
+                ErrorMessage = $"{ex.GetType().Name}: {ex.Message}",
+            });
+            // CancellationToken.None בכוונה - זו בדיוק הרשומה שאמורה לתפוס
+            // עבודה שאבדה; אם האפליקציה באמצע כיבוי, אסור שזה יגרום לנו
+            // לפספס גם את רשת ההצלה האחרונה
+            await context.SaveChangesAsync(CancellationToken.None);
+        }
+        catch (Exception dlqEx)
+        {
+            // כשל אחרון - גם כתיבת ה-Dead-Letter נכשלה, אין עוד רשת הצלה.
+            // התקרית עבור ErrorCode הזה תלך לאיבוד לחלוטין, רק מתועד בלוג
+            logger.LogError(dlqEx, "כשל בכתיבת רשומת Dead-Letter עבור ErrorCode {ErrorCode} - האירוע ילך לאיבוד", dto.ErrorCode);
+        }
     }
 }

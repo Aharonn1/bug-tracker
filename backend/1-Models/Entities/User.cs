@@ -28,4 +28,8 @@ public class User : AuditableEntity
     // לא יכול לעקוף הגבלה שעוקבת אחרי *החשבון* עצמו, לא מאיפה הבקשה הגיעה
     public int FailedLoginAttempts { get; set; }
     public DateTime? LockedOutUntil { get; set; }
+
+    // null = מעולם לא ביקר במסך התקריות - "חדשות" מחושב מול DateTime.UtcNow
+    // של רגע הבקשה במקרה הזה, לא מול null/MinValue (ראו IncidentsController)
+    public DateTime? IncidentsLastViewedAt { get; set; }
 }

@@ -34,26 +34,12 @@ public class IncidentService(
     private static SemaphoreSlim GetIncidentLock(string tenantId, string fingerprint) =>
         IncidentLocks.GetOrAdd($"{tenantId}:{fingerprint}", static _ => new SemaphoreSlim(1, 1));
 
-    public async Task<PagedResultDto<IncidentResponseDto>> GetAllIncidentsAsync(
-        bool? unresolvedOnly = null,
-        string? subsystem = null,
-        int? restrictToUserId = null,
-        bool excludeSiteAdminOnlyIncidents = false,
-        int page = 1,
-        int pageSize = 50,
-        CancellationToken ct = default)
+    // נקודת-אמת יחידה לכלל הראות - כל מי שצריך לדעת "אילו תקריות המזמין הזה
+    // בכלל רשאי לראות" (הרשימה המלאה, וגם ספירת ה"חדשות") עובר דרך כאן, כדי
+    // שהכללים לעולם לא יתבדרו בין שתי שאילתות נפרדות
+    private IQueryable<SystemErrorIncident> BuildVisibleIncidentsQuery(int? restrictToUserId, bool excludeSiteAdminOnlyIncidents)
     {
-        page = Math.Max(1, page);
-        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
-
-        var query = context.SystemErrorIncidents
-            .AsNoTracking()
-            .AsQueryable();
-
-        if (unresolvedOnly == true)
-        {
-            query = query.Where(i => !i.IsResolved);
-        }
+        var query = context.SystemErrorIncidents.AsNoTracking().AsQueryable();
 
         // כל משתמש רואה רק תקריות שהוא עצמו נתקל בהן; restrictToUserId מגיע
         // null רק כשהמזמין הוא Admin (נקבע ב-Controller)
@@ -69,6 +55,28 @@ public class IncidentService(
         if (excludeSiteAdminOnlyIncidents)
         {
             query = query.Where(i => i.Reporters.Any(r => r.User.Role != UserRole.SiteAdmin));
+        }
+
+        return query;
+    }
+
+    public async Task<PagedResultDto<IncidentResponseDto>> GetAllIncidentsAsync(
+        bool? unresolvedOnly = null,
+        string? subsystem = null,
+        int? restrictToUserId = null,
+        bool excludeSiteAdminOnlyIncidents = false,
+        int page = 1,
+        int pageSize = 50,
+        CancellationToken ct = default)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+
+        var query = BuildVisibleIncidentsQuery(restrictToUserId, excludeSiteAdminOnlyIncidents);
+
+        if (unresolvedOnly == true)
+        {
+            query = query.Where(i => !i.IsResolved);
         }
 
         // הוחלף מסינון בזיכרון (אחרי טעינת כל השורות) ל-subquery שמתורגם ל-SQL -
@@ -100,6 +108,18 @@ public class IncidentService(
         var items = incidents.Select(i => MapToResponseDto(i, catalogs.GetValueOrDefault(i.ErrorCode))).ToList();
 
         return new PagedResultDto<IncidentResponseDto>(items, totalCount, page, pageSize);
+    }
+
+    // משתמש באותו BuildVisibleIncidentsQuery כמו הרשימה המלאה - כך ש"מה חדש"
+    // לעולם לא יכלול יותר ממה ש"מה רואים בכלל" כבר מאפשר לאותו משתמש
+    public async Task<int> GetNewIncidentsCountAsync(
+        DateTime since,
+        int? restrictToUserId = null,
+        bool excludeSiteAdminOnlyIncidents = false,
+        CancellationToken ct = default)
+    {
+        var query = BuildVisibleIncidentsQuery(restrictToUserId, excludeSiteAdminOnlyIncidents);
+        return await query.CountAsync(i => i.CreatedAt > since, ct);
     }
 
     public async Task<IncidentResponseDto?> GetIncidentByIdAsync(long id, int? restrictToUserId = null, CancellationToken ct = default)

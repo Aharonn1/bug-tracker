@@ -1,8 +1,10 @@
-import React, { Suspense, lazy, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Navbar } from './components/Navbar';
 import type { DashboardView } from './components/Navbar';
 import { useIncidents } from './hooks/useIncidents';
 import { useAuth } from './hooks/useAuth';
+import { useNewIncidentsCount } from './hooks/useNewIncidentsCount';
+import { userService } from './api/userService';
 import type { AuthUser } from './types/auth.types';
 import { ConnectionDiagnosticBanner } from './components/ConnectionDiagnosticBanner';
 import { DbOutageBanner } from './components/DbOutageBanner';
@@ -24,6 +26,7 @@ const BugsPage = lazy(() => import('./pages/BugsPage'));
 const NewBugPage = lazy(() => import('./pages/NewBugPage'));
 const SecurityTrustPage = lazy(() => import('./pages/SecurityTrustPage'));
 const OfficesOverviewPage = lazy(() => import('./pages/OfficesOverviewPage'));
+const FailedIncidentsPage = lazy(() => import('./pages/FailedIncidentsPage'));
 
 const PageLoadingFallback: React.FC = () => (
   <div style={{ padding: '40px', textAlign: 'center', color: colors.textMuted }}>
@@ -97,12 +100,33 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
   // ייעודי לספירה בצד השרת, לא תלוי בעמוד שנטען כרגע
   const openIncidentsCount = incidents.filter(i => !i.isResolved).length;
 
+  const { newCount, resetToZero } = useNewIncidentsCount();
+
+  // מסמן "נצפה" פעם אחת בלבד לכל "ביקור" בתוך מסך התקריות - לא בכל קליק
+  // על עימוד/סינון כל עוד עדיין שם (loading מתחלף גם בהם, לא רק בכניסה
+  // ראשונית למסך), בלי זה היינו שולחים POST מיותר על כל קליק כזה
+  const markedThisVisitRef = useRef(false);
+
+  useEffect(() => {
+    if (currentView !== 'incidents') {
+      markedThisVisitRef.current = false;
+      return;
+    }
+    if (loading || markedThisVisitRef.current) return;
+
+    markedThisVisitRef.current = true;
+    userService.markIncidentsViewed()
+      .then(resetToZero)
+      .catch(() => { markedThisVisitRef.current = false; });
+  }, [currentView, loading, resetToZero]);
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: colors.bg }}>
       <Navbar
         currentView={currentView}
         onViewChange={setCurrentView}
         openIncidentsCount={openIncidentsCount}
+        newIncidentsCount={newCount}
         user={user}
         onLogout={onLogout}
       />
@@ -138,6 +162,8 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
           {currentView === 'azure-health' && <AzureInfrastructureHealthPage />}
 
           {currentView === 'offices' && <OfficesOverviewPage />}
+
+          {currentView === 'failed-incidents' && <FailedIncidentsPage />}
 
           {currentView === 'bugs' && <BugsPage />}
 

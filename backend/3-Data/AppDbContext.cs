@@ -17,6 +17,10 @@ public class AppDbContext(
     public DbSet<IncidentDetailPayload> IncidentDetailPayloads => Set<IncidentDetailPayload>();
     public DbSet<User> Users => Set<User>();
 
+    // בכוונה בלי HasQueryFilter - רשומת תפעול/אמינות חוצת-לקוחות, לא נתון
+    // עסקי מבודד-לקוח. הגישה מוגבלת ל-SiteAdmin ברמת ה-Controller בלבד
+    public DbSet<FailedIncidentIngestion> FailedIncidentIngestions => Set<FailedIncidentIngestion>();
+
     // חשוף כ-property על ה-Context עצמו (ולא כקריאה ישירה ל-tenantProvider בתוך ה-lambda)
     // כי כך EF Core יודע לתרגם את ה-Global Query Filter למשתנה שמוערך בזמן ריצת השאילתה
     public string CurrentTenantId => tenantProvider.TenantId;

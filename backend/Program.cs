@@ -191,6 +191,7 @@ builder.Services.AddScoped<IBugService, BugService>();
 builder.Services.AddScoped<IIncidentService, IncidentService>();
 builder.Services.AddScoped<IIncidentNotificationService, IncidentNotificationService>();
 builder.Services.AddScoped<IUserDirectoryService, UserDirectoryService>();
+builder.Services.AddScoped<IFailedIncidentService, FailedIncidentService>();
 builder.Services.AddScoped<TelemetryAnalysisService>();
 builder.Services.AddSingleton<OpsInsightsService>();
 builder.Services.AddSingleton<AzureResourceMetricsReader>();
@@ -241,6 +242,10 @@ builder.Services.AddHostedService<IncidentIngestionWorker>();
 // תקופתית ברגע שהחיבור חוזר
 builder.Services.AddSingleton<DbOutageLog>();
 builder.Services.AddHostedService<DbOutageFlushWorker>();
+
+// סוריקה תקופתית על FailedIncidentIngestions (Dead-Letter) - ראו הערה
+// ב-FailedIncidentRetryWorker.cs
+builder.Services.AddHostedService<FailedIncidentRetryWorker>();
 
 // ==========================================
 // 6. שירותי סוכן AI וכלי חקירה - RcaAgentService פונה ל-Azure OpenAI ישירות

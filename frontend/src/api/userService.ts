@@ -13,4 +13,13 @@ export const userService = {
     if (!res.ok) { throwIfSessionExpired(res); throw new Error(`שגיאה בטעינת רשימת המשתמשים (${res.status})`); }
     return res.json();
   },
+
+  async markIncidentsViewed(): Promise<void> {
+    const res = await fetch(`${BASE_URL}/me/incidents-viewed`, {
+      method: 'POST',
+      headers: tenantHeaders(),
+    });
+
+    if (!res.ok) { throwIfSessionExpired(res); throw new Error(`כשל בסימון תקריות כנצפו (${res.status})`); }
+  },
 };
