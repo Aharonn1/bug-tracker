@@ -1,6 +1,7 @@
 import React from 'react';
 import type { SystemIncident } from '../types/bug.types';
 import { UserRole } from '../types/auth.types';
+import { isSiteAdminEmail } from '../constants/siteAdmin';
 
 interface Props {
   incident: SystemIncident | null;
@@ -21,7 +22,10 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
   if (!incident) return null;
 
   const payload = parseRawPayload(incident.rawPayload);
-  const attemptedEmail = typeof payload?.attemptedEmail === 'string' ? payload.attemptedEmail : null;
+  const rawAttemptedEmail = typeof payload?.attemptedEmail === 'string' ? payload.attemptedEmail : null;
+  // זה לא עובר דרך reportedByUsers (מחולץ ישירות מה-payload הגולמי), אז
+  // סינון ה-SiteAdmin חייב לקרות גם כאן בנפרד - אותו שיקול כמו בטבלה
+  const attemptedEmail = isSiteAdminEmail(rawAttemptedEmail) ? null : rawAttemptedEmail;
   // SiteAdmin לא נחשב "עובד שנתקל בתקלה" - אותו שיקול כמו בטבלה ובפילוח לפי משתמש
   const employeeReporters = incident.reportedByUsers.filter((r) => r.role !== UserRole.SiteAdmin);
 

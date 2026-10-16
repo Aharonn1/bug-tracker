@@ -10,6 +10,7 @@ public interface IIncidentService
         bool? unresolvedOnly = null,
         string? subsystem = null,
         int? restrictToUserId = null,
+        bool excludeSiteAdminOnlyIncidents = false,
         int page = 1,
         int pageSize = 50,
         CancellationToken ct = default);

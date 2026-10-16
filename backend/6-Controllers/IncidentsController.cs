@@ -46,8 +46,11 @@ public class IncidentsController(
     {
         // Admin רואה את כל התקריות; משתמש רגיל רואה רק את אלו שקשורות לפעילות שלו
         var restrictToUserId = currentUserProvider.IsAdminOrAbove ? null : currentUserProvider.UserId;
+        // מנהל/ת משרד (Admin, לא SiteAdmin) לא רואה תקריות ללא מדווח-עובד מזוהה -
+        // ל-SiteAdmin עצמו יש ראות מלאה, גם לתקריות כאלה
+        var excludeSiteAdminOnlyIncidents = currentUserProvider.IsAdmin && !currentUserProvider.IsSiteAdmin;
         var incidents = await incidentService.GetAllIncidentsAsync(
-            unresolvedOnly, subsystem, restrictToUserId,
+            unresolvedOnly, subsystem, restrictToUserId, excludeSiteAdminOnlyIncidents,
             page <= 0 ? 1 : page, pageSize <= 0 ? 50 : pageSize, ct);
         return Ok(incidents);
     }

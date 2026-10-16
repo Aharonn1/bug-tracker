@@ -38,6 +38,7 @@ public class IncidentService(
         bool? unresolvedOnly = null,
         string? subsystem = null,
         int? restrictToUserId = null,
+        bool excludeSiteAdminOnlyIncidents = false,
         int page = 1,
         int pageSize = 50,
         CancellationToken ct = default)
@@ -59,6 +60,15 @@ public class IncidentService(
         if (restrictToUserId.HasValue)
         {
             query = query.Where(i => i.Reporters.Any(r => r.UserId == restrictToUserId.Value));
+        }
+
+        // מנהל/ת משרד (Admin, לא SiteAdmin) לא אמורה לראות תקריות שאין להן
+        // מדווח-עובד מזוהה כלל - לא תקריות "לא מזוהות" ולא תקריות שדווחו רק
+        // ע"י ה-SiteAdmin חוצה-הלקוחות (פעילות בדיקות/ניהול, לא עובד שלה).
+        // ל-SiteAdmin עצמו (excludeSiteAdminOnlyIncidents=false) יש ראות מלאה
+        if (excludeSiteAdminOnlyIncidents)
+        {
+            query = query.Where(i => i.Reporters.Any(r => r.User.Role != UserRole.SiteAdmin));
         }
 
         // הוחלף מסינון בזיכרון (אחרי טעינת כל השורות) ל-subquery שמתורגם ל-SQL -

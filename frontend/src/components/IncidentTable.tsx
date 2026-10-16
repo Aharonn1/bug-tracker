@@ -3,6 +3,7 @@ import { AgentDiagnosisModal } from './AgentDiagnosisModal';
 import { IncidentDetailsModal } from './IncidentDetailsModal';
 import { IncidentSeverity, type SystemIncident } from '../types/bug.types';
 import { UserRole } from '../types/auth.types';
+import { isSiteAdminEmail } from '../constants/siteAdmin';
 import { useAgentDiagnosis } from '../hooks/useAgentDiagnosis';
 
 interface Props {
@@ -14,7 +15,10 @@ function extractAttemptedEmail(rawPayload: string | null): string | null {
   if (!rawPayload) return null;
   try {
     const parsed = JSON.parse(rawPayload);
-    return typeof parsed?.attemptedEmail === 'string' ? parsed.attemptedEmail : null;
+    const email = typeof parsed?.attemptedEmail === 'string' ? parsed.attemptedEmail : null;
+    // זה לא עובר דרך reportedByUsers (מחולץ ישירות מה-payload הגולמי), אז
+    // סינון ה-SiteAdmin מהעמודה הזו חייב לקרות גם כאן בנפרד
+    return isSiteAdminEmail(email) ? null : email;
   } catch {
     return null;
   }
