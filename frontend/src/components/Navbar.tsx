@@ -1,9 +1,9 @@
 import React from 'react';
 import type { AuthUser } from '../types/auth.types';
-import { UserRole } from '../types/auth.types';
+import { UserRole, isAdminOrAbove } from '../types/auth.types';
 import { colors } from '../styles/theme';
 
-export type DashboardView = 'incidents' | 'bugs' | 'new-bug' | 'about' | 'azure-health' | 'security';
+export type DashboardView = 'incidents' | 'bugs' | 'new-bug' | 'about' | 'azure-health' | 'security' | 'offices';
 
 interface NavbarProps {
   currentView: DashboardView;
@@ -104,12 +104,21 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
           <span>אבטחה ואמון</span>
         </button>
 
-        {user.role === UserRole.Admin && (
+        {isAdminOrAbove(user.role) && (
           <button
             onClick={() => onViewChange('azure-health')}
             style={getNavBtnStyle('azure-health')}
           >
             <span>בריאות תשתית Azure</span>
+          </button>
+        )}
+
+        {user.role === UserRole.SiteAdmin && (
+          <button
+            onClick={() => onViewChange('offices')}
+            style={getNavBtnStyle('offices')}
+          >
+            <span>סקירת משרדים</span>
           </button>
         )}
       </nav>
@@ -120,7 +129,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
             width: '30px',
             height: '30px',
             borderRadius: '50%',
-            backgroundColor: user.role === UserRole.Admin ? colors.violet : colors.border,
+            backgroundColor: isAdminOrAbove(user.role) ? colors.violet : colors.border,
             color: '#fff',
             display: 'flex',
             alignItems: 'center',
@@ -136,10 +145,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
             <span style={{
               fontSize: '10.5px',
               fontWeight: 600,
-              color: user.role === UserRole.Admin ? '#c4b5fd' : colors.textFaint,
+              color: isAdminOrAbove(user.role) ? '#c4b5fd' : colors.textFaint,
               lineHeight: 1,
             }}>
-              {user.role === UserRole.Admin ? 'מנהל מערכת' : 'משתמש'}
+              {user.role === UserRole.SiteAdmin ? 'מנהל-על' : user.role === UserRole.Admin ? 'מנהל מערכת' : 'משתמש'}
             </span>
           </div>
         </div>

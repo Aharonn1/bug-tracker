@@ -190,6 +190,7 @@ builder.Services.AddHealthChecks()
 builder.Services.AddScoped<IBugService, BugService>();
 builder.Services.AddScoped<IIncidentService, IncidentService>();
 builder.Services.AddScoped<IIncidentNotificationService, IncidentNotificationService>();
+builder.Services.AddScoped<IUserDirectoryService, UserDirectoryService>();
 builder.Services.AddScoped<TelemetryAnalysisService>();
 builder.Services.AddSingleton<OpsInsightsService>();
 builder.Services.AddSingleton<AzureResourceMetricsReader>();

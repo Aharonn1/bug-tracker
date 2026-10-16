@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { UserRole } from '../types/auth.types';
+import { isAdminOrAbove } from '../types/auth.types';
 import { colors } from '../styles/theme';
 import { Card } from './ui/Card';
 import { HorizontalBarChart } from './charts/HorizontalBarChart';
@@ -26,7 +26,7 @@ export const UserActivitySummary: React.FC<Props> = ({ title, counts: countsMap,
     [countsMap]
   );
 
-  if (user?.role !== UserRole.Admin || data.length === 0) return null;
+  if (!user || !isAdminOrAbove(user.role) || data.length === 0) return null;
 
   const handleBarClick = (label: string) => {
     onSelectUser(selectedUser === label ? null : label);

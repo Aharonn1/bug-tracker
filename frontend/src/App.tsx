@@ -23,6 +23,7 @@ const AzureInfrastructureHealthPage = lazy(() => import('./pages/AzureInfrastruc
 const BugsPage = lazy(() => import('./pages/BugsPage'));
 const NewBugPage = lazy(() => import('./pages/NewBugPage'));
 const SecurityTrustPage = lazy(() => import('./pages/SecurityTrustPage'));
+const OfficesOverviewPage = lazy(() => import('./pages/OfficesOverviewPage'));
 
 const PageLoadingFallback: React.FC = () => (
   <div style={{ padding: '40px', textAlign: 'center', color: colors.textMuted }}>
@@ -135,6 +136,8 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
           {currentView === 'security' && <SecurityTrustPage />}
 
           {currentView === 'azure-health' && <AzureInfrastructureHealthPage />}
+
+          {currentView === 'offices' && <OfficesOverviewPage />}
 
           {currentView === 'bugs' && <BugsPage />}
 

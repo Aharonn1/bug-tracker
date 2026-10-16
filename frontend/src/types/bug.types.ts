@@ -79,6 +79,7 @@ export interface IncidentReporter {
 
 export interface SystemIncident {
   incidentId: number;
+  tenantId: string;
   errorCode: string;
   category: string;
   subsystem: SubsystemType | string;

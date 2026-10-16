@@ -77,7 +77,7 @@ public class TelemetryController(
         [FromQuery] int hours,
         CancellationToken ct)
     {
-        if (!currentUserProvider.IsAdmin)
+        if (!currentUserProvider.IsAdminOrAbove)
         {
             return StatusCode(StatusCodes.Status403Forbidden, new { message = "רק מנהל מערכת יכול לגשת למדדי Azure" });
         }
@@ -97,7 +97,7 @@ public class TelemetryController(
         [FromQuery] int hours,
         CancellationToken ct)
     {
-        if (!currentUserProvider.IsAdmin)
+        if (!currentUserProvider.IsAdminOrAbove)
         {
             return StatusCode(StatusCodes.Status403Forbidden, new { message = "רק מנהל מערכת יכול לגשת למדדי Azure" });
         }
