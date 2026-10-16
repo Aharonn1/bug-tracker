@@ -1,5 +1,6 @@
 import React from 'react';
 import type { SystemIncident } from '../types/bug.types';
+import { UserRole } from '../types/auth.types';
 
 interface Props {
   incident: SystemIncident | null;
@@ -21,6 +22,8 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
 
   const payload = parseRawPayload(incident.rawPayload);
   const attemptedEmail = typeof payload?.attemptedEmail === 'string' ? payload.attemptedEmail : null;
+  // SiteAdmin לא נחשב "עובד שנתקל בתקלה" - אותו שיקול כמו בטבלה ובפילוח לפי משתמש
+  const employeeReporters = incident.reportedByUsers.filter((r) => r.role !== UserRole.SiteAdmin);
 
   return (
     <div
@@ -123,15 +126,15 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
 
           <section>
             <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>
-              משתמשים שנתקלו בתקלה ({incident.reportedByUsers.length})
+              משתמשים שנתקלו בתקלה ({employeeReporters.length})
             </div>
-            {incident.reportedByUsers.length === 0 ? (
+            {employeeReporters.length === 0 ? (
               <div style={{ color: '#64748b', fontSize: '13px' }}>
                 {attemptedEmail ? 'אף חשבון מחובר לא נתקל בתקלה - ראו את האימייל שהוקלד למעלה' : 'לא זוהה משתמש מחובר עבור תקלה זו'}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {incident.reportedByUsers.map((r) => (
+                {employeeReporters.map((r) => (
                   <div
                     key={r.userId}
                     style={{

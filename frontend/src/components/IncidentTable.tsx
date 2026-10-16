@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AgentDiagnosisModal } from './AgentDiagnosisModal';
 import { IncidentDetailsModal } from './IncidentDetailsModal';
 import { IncidentSeverity, type SystemIncident } from '../types/bug.types';
+import { UserRole } from '../types/auth.types';
 import { useAgentDiagnosis } from '../hooks/useAgentDiagnosis';
 
 interface Props {
@@ -73,6 +74,9 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
             ) : (
               incidents.map((i) => {
                 const resolved = i.isResolved;
+                // SiteAdmin (מנהל-על חוצה-לקוחות) לא נחשב "עובד שדיווח" מבחינת
+                // עמודת "דווח על ידי" - אותו שיקול כמו בפילוח לפי משתמש למעלה
+                const employeeReporters = i.reportedByUsers.filter((r) => r.role !== UserRole.SiteAdmin);
                 return (
                   <tr key={i.incidentId} style={{ borderBottom: '1px solid #1e293b', background: resolved ? 'rgba(15, 23, 42, 0.4)' : '#131f37' }}>
                     <td style={{ padding: '12px', fontFamily: 'monospace' }}>#{i.incidentId}</td>
@@ -153,7 +157,7 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                       {new Date(i.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
                     </td>
                     <td style={{ padding: '12px', fontSize: '12px' }}>
-                      {i.reportedByUsers.length === 0 ? (
+                      {employeeReporters.length === 0 ? (
                         extractAttemptedEmail(i.rawPayload) ? (
                           <span style={{ color: '#fca5a5' }} title="אימייל שהוקלד בניסיון התחברות, לפני שהייתה זהות מאומתת">
                             {extractAttemptedEmail(i.rawPayload)}
@@ -161,16 +165,16 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                         ) : (
                           <span style={{ color: '#64748b' }}>לא מזוהה</span>
                         )
-                      ) : i.reportedByUsers.length === 1 ? (
+                      ) : employeeReporters.length === 1 ? (
                         <span style={{ color: '#e2e8f0', whiteSpace: 'nowrap' }}>
-                          {i.reportedByUsers[0].userName}
-                          {i.reportedByUsers[0].occurrenceCount > 1 && (
-                            <span style={{ color: '#94a3b8' }}> ×{i.reportedByUsers[0].occurrenceCount}</span>
+                          {employeeReporters[0].userName}
+                          {employeeReporters[0].occurrenceCount > 1 && (
+                            <span style={{ color: '#94a3b8' }}> ×{employeeReporters[0].occurrenceCount}</span>
                           )}
                         </span>
                       ) : (
                         <span
-                          title={i.reportedByUsers.map((r) => `${r.userName} — ${r.occurrenceCount} פעמים`).join('\n')}
+                          title={employeeReporters.map((r) => `${r.userName} — ${r.occurrenceCount} פעמים`).join('\n')}
                           style={{
                             display: 'inline-block',
                             padding: '3px 9px',
@@ -183,7 +187,7 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                             cursor: 'default',
                           }}
                         >
-                          {i.reportedByUsers.length} משתמשים
+                          {employeeReporters.length} משתמשים
                         </span>
                       )}
                     </td>
