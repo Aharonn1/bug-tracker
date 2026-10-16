@@ -189,55 +189,76 @@ const OfficeCard: React.FC<{ office: OfficeGroup; open: boolean; onToggle: () =>
           {office.incidents.length === 0 ? (
             <p style={{ color: colors.textFaint, fontSize: '12.5px', margin: 0 }}>אין תקריות עבור משרד זה</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
-              {office.incidents.map((incident) => {
-                const severity = SEVERITY_LABELS[incident.severity] ?? SEVERITY_LABELS[2];
-                const palette = severityPalette[severity.key];
-                return (
-                  <div
-                    key={incident.incidentId}
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: spacing.sm,
-                      padding: `${spacing.sm} ${spacing.md}`,
-                      backgroundColor: colors.surface,
-                      border: `1px solid ${colors.borderSubtle}`,
-                      borderRadius: radius.md,
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, minWidth: '220px' }}>
-                      <span
+            <div style={{ overflowX: 'auto', background: colors.surface, borderRadius: radius.lg, border: `1px solid ${colors.borderSubtle}` }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', color: colors.textSecondary, fontSize: '12.5px' }}>
+                <thead>
+                  <tr style={{ background: colors.card, borderBottom: `1px solid ${colors.border}` }}>
+                    <th style={{ padding: '10px 12px' }}>חומרה</th>
+                    <th style={{ padding: '10px 12px' }}>קוד שגיאה</th>
+                    <th style={{ padding: '10px 12px' }}>תיאור</th>
+                    <th style={{ padding: '10px 12px' }}>מערכת</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center' }}>הופעות</th>
+                    <th style={{ padding: '10px 12px' }}>עדכון אחרון</th>
+                    <th style={{ padding: '10px 12px' }}>דווח ע"י</th>
+                    <th style={{ padding: '10px 12px' }}>סטטוס</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {office.incidents.map((incident, idx) => {
+                    const severity = SEVERITY_LABELS[incident.severity] ?? SEVERITY_LABELS[2];
+                    const palette = severityPalette[severity.key];
+                    return (
+                      <tr
+                        key={incident.incidentId}
                         style={{
-                          fontSize: '10.5px',
-                          fontWeight: 700,
-                          padding: '2px 8px',
-                          borderRadius: '999px',
-                          backgroundColor: palette.bg,
-                          color: palette.text,
+                          borderBottom: `1px solid ${colors.borderSubtle}`,
+                          backgroundColor: idx % 2 === 1 ? colors.surfaceRaised : 'transparent',
                         }}
                       >
-                        {severity.label}
-                      </span>
-                      <span style={{ fontSize: '12.5px', color: colors.textPrimary, fontWeight: 600 }}>
-                        {incident.errorCode}
-                      </span>
-                      {incident.isResolved && (
-                        <span style={{ fontSize: '10.5px', color: colors.successSoft }}>נפתרה</span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '12px', color: colors.textMuted, flex: 1, minWidth: '200px' }}>
-                      {incident.hebrewDescription}
-                    </div>
-                    <div style={{ fontSize: '11.5px', color: colors.textFaint }}>
-                      דווח ע"י: {incident.reportedByUsers.map((r) => r.userName).join(', ') || 'לא ידוע'}
-                      {incident.occurrencesCount > 1 && ` (${incident.occurrencesCount} הישנויות)`}
-                    </div>
-                  </div>
-                );
-              })}
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          <span
+                            style={{
+                              fontSize: '10.5px',
+                              fontWeight: 700,
+                              padding: '3px 9px',
+                              borderRadius: '999px',
+                              backgroundColor: palette.bg,
+                              color: palette.text,
+                            }}
+                          >
+                            {severity.label}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 12px', fontWeight: 600, color: colors.textPrimary, whiteSpace: 'nowrap' }}>
+                          {incident.errorCode}
+                        </td>
+                        <td style={{ padding: '10px 12px', color: colors.textMuted, maxWidth: '360px' }}>
+                          {incident.hebrewDescription}
+                        </td>
+                        <td style={{ padding: '10px 12px', color: colors.accentSoft, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                          {incident.subsystem}
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
+                          {incident.occurrencesCount}
+                        </td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', fontSize: '11.5px', color: colors.textFaint }}>
+                          {new Date(incident.lastSeenAt).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', fontSize: '11.5px' }}>
+                          {incident.reportedByUsers.map((r) => r.userName).join(', ') || 'לא ידוע'}
+                        </td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          {incident.isResolved ? (
+                            <span style={{ color: colors.successSoft, fontWeight: 700, fontSize: '11.5px' }}>✓ נפתרה</span>
+                          ) : (
+                            <span style={{ color: colors.dangerSoft, fontWeight: 700, fontSize: '11.5px' }}>● פתוחה</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
