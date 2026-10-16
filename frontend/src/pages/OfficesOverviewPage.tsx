@@ -39,7 +39,13 @@ function buildOfficeGroups(users: UserSummary[], incidents: SystemIncident[]): O
 
   return tenantIds.map((tenantId) => {
     const tenantUsers = users.filter((u) => u.tenantId === tenantId);
-    const tenantIncidents = incidents.filter((i) => i.tenantId === tenantId);
+    // תקריות שדווחו רק ע"י ה-SiteAdmin (או בלי מדווח מזוהה בכלל) לא נחשבות
+    // "פעילות המשרד" - אותו שיקול שכבר חל על התצוגה של מנהל/ת המשרד עצמה
+    // (IncidentsController.excludeSiteAdminOnlyIncidents), מוחל כאן גם כש-
+    // SiteAdmin עצמו מסתכל על משרד ספציפי מתוך "סקירת משרדים"
+    const tenantIncidents = incidents.filter(
+      (i) => i.tenantId === tenantId && i.reportedByUsers.some((r) => r.role !== UserRole.SiteAdmin)
+    );
     const severityCounts: Record<number, number> = {};
     for (const inc of tenantIncidents) {
       severityCounts[inc.severity] = (severityCounts[inc.severity] ?? 0) + 1;
@@ -207,6 +213,7 @@ const OfficeCard: React.FC<{ office: OfficeGroup; open: boolean; onToggle: () =>
                   {office.incidents.map((incident, idx) => {
                     const severity = SEVERITY_LABELS[incident.severity] ?? SEVERITY_LABELS[2];
                     const palette = severityPalette[severity.key];
+                    const employeeReporters = incident.reportedByUsers.filter((r) => r.role !== UserRole.SiteAdmin);
                     return (
                       <tr
                         key={incident.incidentId}
@@ -245,7 +252,7 @@ const OfficeCard: React.FC<{ office: OfficeGroup; open: boolean; onToggle: () =>
                           {new Date(incident.lastSeenAt).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                         </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', fontSize: '11.5px' }}>
-                          {incident.reportedByUsers.map((r) => r.userName).join(', ') || 'לא ידוע'}
+                          {employeeReporters.map((r) => r.userName).join(', ') || 'לא ידוע'}
                         </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                           {incident.isResolved ? (
