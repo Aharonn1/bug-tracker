@@ -90,36 +90,39 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
           <span>+ דיווח תקלה חדשה</span>
         </button>
 
-        <button
-          onClick={() => onViewChange('about')}
-          style={getNavBtnStyle('about')}
-        >
-          <span>מה המערכת מזהה?</span>
-        </button>
-
-        <button
-          onClick={() => onViewChange('security')}
-          style={getNavBtnStyle('security')}
-        >
-          <span>אבטחה ואמון</span>
-        </button>
-
-        {isAdminOrAbove(user.role) && (
-          <button
-            onClick={() => onViewChange('azure-health')}
-            style={getNavBtnStyle('azure-health')}
-          >
-            <span>בריאות תשתית Azure</span>
-          </button>
-        )}
-
+        {/* ניטור תקלות ודיווח תקלה חדשה - היחידים שגלויים למנהלי משרד ולעובדים
+            רגילים. כל השאר (מידע כללי, אבטחה, תשתית, סקירה חוצת-לקוחות) זמינים
+            רק ל-SiteAdmin - החלטה מפורשת, לא רק "אין להם צורך" */}
         {user.role === UserRole.SiteAdmin && (
-          <button
-            onClick={() => onViewChange('offices')}
-            style={getNavBtnStyle('offices')}
-          >
-            <span>סקירת משרדים</span>
-          </button>
+          <>
+            <button
+              onClick={() => onViewChange('about')}
+              style={getNavBtnStyle('about')}
+            >
+              <span>מה המערכת מזהה?</span>
+            </button>
+
+            <button
+              onClick={() => onViewChange('security')}
+              style={getNavBtnStyle('security')}
+            >
+              <span>אבטחה ואמון</span>
+            </button>
+
+            <button
+              onClick={() => onViewChange('azure-health')}
+              style={getNavBtnStyle('azure-health')}
+            >
+              <span>בריאות תשתית Azure</span>
+            </button>
+
+            <button
+              onClick={() => onViewChange('offices')}
+              style={getNavBtnStyle('offices')}
+            >
+              <span>סקירת משרדים</span>
+            </button>
+          </>
         )}
       </nav>
 
