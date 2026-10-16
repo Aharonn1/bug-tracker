@@ -56,6 +56,11 @@ public class FailedIncidentService(
                 ?? throw new InvalidOperationException("DtoJson נפתר ל-null");
             await incidentService.IngestIncidentAsync(dto, ct);
 
+            // IngestIncidentAsync יכול לקרוא ל-ChangeTracker.Clear() על אותו
+            // context משותף (למשל בנפילה חזרה אחרי מירוץ DbUpdateException) -
+            // מה שמנתק את entry מהמעקב בלי לזרוק חריגה. בלי ה-Attach הזה,
+            // העדכונים למטה היו "נבלעים" בשקט ב-SaveChanges הבא
+            ReattachIfDetached(entry);
             entry.ResolvedAt = DateTime.UtcNow;
             entry.LastAttemptAt = DateTime.UtcNow;
             await context.SaveChangesAsync(ct);
@@ -63,6 +68,7 @@ public class FailedIncidentService(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            ReattachIfDetached(entry);
             entry.AttemptCount++;
             entry.LastAttemptAt = DateTime.UtcNow;
             entry.ErrorMessage = $"{ex.GetType().Name}: {ex.Message}";
@@ -71,6 +77,14 @@ public class FailedIncidentService(
             // עדיין רוצים לשמור את עדכון מונה-הניסיונות כדי לא "לאבד" ניסיון
             await context.SaveChangesAsync(CancellationToken.None);
             return false;
+        }
+    }
+
+    private void ReattachIfDetached(FailedIncidentIngestion entry)
+    {
+        if (context.Entry(entry).State == EntityState.Detached)
+        {
+            context.Attach(entry);
         }
     }
 
