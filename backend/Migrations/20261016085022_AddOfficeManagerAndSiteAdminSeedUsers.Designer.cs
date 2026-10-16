@@ -12,7 +12,7 @@ using MyBackendApi.Data;
 namespace MyBackendApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261016083947_AddOfficeManagerAndSiteAdminSeedUsers")]
+    [Migration("20261016085022_AddOfficeManagerAndSiteAdminSeedUsers")]
     partial class AddOfficeManagerAndSiteAdminSeedUsers
     {
         /// <inheritdoc />
@@ -438,7 +438,7 @@ namespace MyBackendApi.Migrations
                         },
                         new
                         {
-                            Id = 5,
+                            Id = 1001,
                             CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "dana.cohengold@cohen-gold-law.co.il",
                             FailedLoginAttempts = 0,
@@ -450,7 +450,7 @@ namespace MyBackendApi.Migrations
                         },
                         new
                         {
-                            Id = 6,
+                            Id = 1002,
                             CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "yoav.shapira@cohen-gold-law.co.il",
                             FailedLoginAttempts = 0,
@@ -462,7 +462,7 @@ namespace MyBackendApi.Migrations
                         },
                         new
                         {
-                            Id = 7,
+                            Id = 1003,
                             CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "michal.avraham@cohen-gold-law.co.il",
                             FailedLoginAttempts = 0,
@@ -474,7 +474,7 @@ namespace MyBackendApi.Migrations
                         },
                         new
                         {
-                            Id = 8,
+                            Id = 1004,
                             CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "ron.friedman@cohen-gold-law.co.il",
                             FailedLoginAttempts = 0,
@@ -486,7 +486,7 @@ namespace MyBackendApi.Migrations
                         },
                         new
                         {
-                            Id = 9,
+                            Id = 1005,
                             CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "tal.nachmias@cohen-gold-law.co.il",
                             FailedLoginAttempts = 0,
@@ -498,7 +498,7 @@ namespace MyBackendApi.Migrations
                         },
                         new
                         {
-                            Id = 10,
+                            Id = 1006,
                             CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "omer.mizrahi@mizrahi-partners.co.il",
                             FailedLoginAttempts = 0,
@@ -510,7 +510,7 @@ namespace MyBackendApi.Migrations
                         },
                         new
                         {
-                            Id = 11,
+                            Id = 1007,
                             CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "liat.gabay@mizrahi-partners.co.il",
                             FailedLoginAttempts = 0,
@@ -522,7 +522,7 @@ namespace MyBackendApi.Migrations
                         },
                         new
                         {
-                            Id = 12,
+                            Id = 1008,
                             CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "asaf.biton@mizrahi-partners.co.il",
                             FailedLoginAttempts = 0,
@@ -534,7 +534,7 @@ namespace MyBackendApi.Migrations
                         },
                         new
                         {
-                            Id = 13,
+                            Id = 1009,
                             CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "hadar.shalom@mizrahi-partners.co.il",
                             FailedLoginAttempts = 0,
@@ -546,7 +546,7 @@ namespace MyBackendApi.Migrations
                         },
                         new
                         {
-                            Id = 14,
+                            Id = 1010,
                             CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "gil.ohayon@mizrahi-partners.co.il",
                             FailedLoginAttempts = 0,
@@ -558,7 +558,7 @@ namespace MyBackendApi.Migrations
                         },
                         new
                         {
-                            Id = 15,
+                            Id = 1011,
                             CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "rotem.benami@ben-ami-legal.co.il",
                             FailedLoginAttempts = 0,
@@ -570,7 +570,7 @@ namespace MyBackendApi.Migrations
                         },
                         new
                         {
-                            Id = 16,
+                            Id = 1012,
                             CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "shahar.levin@ben-ami-legal.co.il",
                             FailedLoginAttempts = 0,
@@ -582,7 +582,7 @@ namespace MyBackendApi.Migrations
                         },
                         new
                         {
-                            Id = 17,
+                            Id = 1013,
                             CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "neta.israeli@ben-ami-legal.co.il",
                             FailedLoginAttempts = 0,
@@ -594,7 +594,7 @@ namespace MyBackendApi.Migrations
                         },
                         new
                         {
-                            Id = 18,
+                            Id = 1014,
                             CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "or.zuckerman@ben-ami-legal.co.il",
                             FailedLoginAttempts = 0,
@@ -606,7 +606,7 @@ namespace MyBackendApi.Migrations
                         },
                         new
                         {
-                            Id = 19,
+                            Id = 1015,
                             CreatedAt = new DateTime(2026, 10, 16, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "sapir.hadad@ben-ami-legal.co.il",
                             FailedLoginAttempts = 0,
