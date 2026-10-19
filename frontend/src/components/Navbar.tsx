@@ -3,7 +3,7 @@ import type { AuthUser } from '../types/auth.types';
 import { UserRole, isAdminOrAbove } from '../types/auth.types';
 import { colors } from '../styles/theme';
 
-export type DashboardView = 'incidents' | 'bugs' | 'new-bug' | 'about' | 'azure-health' | 'security' | 'offices' | 'failed-incidents';
+export type DashboardView = 'incidents' | 'bugs' | 'new-bug' | 'about' | 'azure-health' | 'security' | 'offices' | 'failed-incidents' | 'login-security';
 
 interface NavbarProps {
   currentView: DashboardView;
@@ -12,6 +12,7 @@ interface NavbarProps {
   newIncidentsCount: number;
   officesOpenCount: number;
   failedIncidentsCount: number;
+  blockedIpsCount: number;
   user: AuthUser;
   onLogout: () => void;
 }
@@ -31,7 +32,7 @@ const NavCountBadge: React.FC<{ count: number }> = ({ count }) => (
   ) : null
 );
 
-export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openIncidentsCount, newIncidentsCount, officesOpenCount, failedIncidentsCount, user, onLogout }) => {
+export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openIncidentsCount, newIncidentsCount, officesOpenCount, failedIncidentsCount, blockedIpsCount, user, onLogout }) => {
   const getNavBtnStyle = (view: DashboardView): React.CSSProperties => {
     const isActive = currentView === view;
     return {
@@ -160,6 +161,14 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
             >
               <span>תקריות שנכשלו</span>
               <NavCountBadge count={failedIncidentsCount} />
+            </button>
+
+            <button
+              onClick={() => onViewChange('login-security')}
+              style={getNavBtnStyle('login-security')}
+            >
+              <span>אבטחת כניסה</span>
+              <NavCountBadge count={blockedIpsCount} />
             </button>
           </>
         )}

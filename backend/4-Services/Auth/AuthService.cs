@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -15,7 +16,11 @@ using static MyBackendApi.Services.Diagnostics.DatabaseExceptionDetector;
 
 namespace MyBackendApi.Services.Auth;
 
-public class AuthService(AppDbContext context, IConfiguration configuration, DbOutageLog dbOutageLog) : IAuthService
+public class AuthService(
+    AppDbContext context,
+    IConfiguration configuration,
+    DbOutageLog dbOutageLog,
+    IHttpContextAccessor httpContextAccessor) : IAuthService
 {
     // PasswordHasher הוא stateless ובטוח לשימוש חוזר - חלק מ-Microsoft.AspNetCore.Identity
     // (מגיע דרך ה-Shared Framework של Microsoft.NET.Sdk.Web, בלי צורך בחבילה נפרדת)
@@ -28,8 +33,89 @@ public class AuthService(AppDbContext context, IConfiguration configuration, DbO
     private int MaxFailedLoginAttempts => configuration.GetValue<int?>("Auth:MaxFailedLoginAttempts") ?? 5;
     private TimeSpan LockoutDuration => TimeSpan.FromMinutes(configuration.GetValue<int?>("Auth:LockoutDurationMinutes") ?? 15);
 
+    // חסימת IP - שכבה שלישית, עצמאית גם מה-rate limiter (שמתאפס כל דקה) וגם
+    // מנעילת החשבון הבודד (שלא "רואה" שאותו IP בדיוק מנסה על כמה חשבונות
+    // שונים). מופעלת רק כש-IP אחד גורם לנעילת כמה חשבונות *שונים* תוך חלון
+    // זמן - חתימה קלאסית של credential-stuffing, לא טעות הקלדה של משתמש בודד
+    private int IpBanDistinctAccountsThreshold => configuration.GetValue<int?>("Auth:IpBanDistinctAccountsThreshold") ?? 3;
+    private int IpBanWindowHours => configuration.GetValue<int?>("Auth:IpBanWindowHours") ?? 24;
+    private int IpBanDurationHours => configuration.GetValue<int?>("Auth:IpBanDurationHours") ?? 24;
+
+    private string ClientIp => httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+    private string? CurrentTenantIdOrNull()
+    {
+        try { return context.CurrentTenantId; }
+        catch { return null; }
+    }
+
+    private async Task LogAttemptAsync(string email, LoginAttemptOutcome outcome, CancellationToken ct)
+    {
+        context.LoginAttempts.Add(new LoginAttempt
+        {
+            Email = email,
+            IpAddress = ClientIp,
+            TenantId = CurrentTenantIdOrNull(),
+            Outcome = outcome
+        });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private async Task EnsureIpNotBlockedAsync(CancellationToken ct)
+    {
+        var ip = ClientIp;
+        var block = await context.BlockedIpAddresses.FirstOrDefaultAsync(b => b.IpAddress == ip, ct);
+        if (block is not null && block.BlockedUntil > DateTime.UtcNow)
+        {
+            await LogAttemptAsync("", LoginAttemptOutcome.IpBlocked, ct);
+            throw new IpBlockedException(block.BlockedUntil - DateTime.UtcNow);
+        }
+    }
+
+    // נקראת רק כשנוצרת נעילת-חשבון *חדשה* - לא על כל ניסיון חוזר נגד חשבון
+    // שכבר נעול, כדי לא לבדוק את אותו דבר שוב ושוב לחינם
+    private async Task CheckAndEscalateIpBanAsync(CancellationToken ct)
+    {
+        var ip = ClientIp;
+        var since = DateTime.UtcNow.AddHours(-IpBanWindowHours);
+
+        var distinctLockedAccounts = await context.LoginAttempts
+            .Where(a => a.IpAddress == ip && a.Outcome == LoginAttemptOutcome.AccountLocked && a.AttemptedAt > since)
+            .Select(a => a.Email)
+            .Distinct()
+            .CountAsync(ct);
+
+        if (distinctLockedAccounts < IpBanDistinctAccountsThreshold) return;
+
+        var existing = await context.BlockedIpAddresses.FirstOrDefaultAsync(b => b.IpAddress == ip, ct);
+        var blockedUntil = DateTime.UtcNow.AddHours(IpBanDurationHours);
+        var reason = $"נעל {distinctLockedAccounts} חשבונות שונים תוך {IpBanWindowHours} שעות";
+
+        if (existing is null)
+        {
+            context.BlockedIpAddresses.Add(new BlockedIpAddress
+            {
+                IpAddress = ip,
+                BlockedUntil = blockedUntil,
+                Reason = reason
+            });
+        }
+        else
+        {
+            existing.BlockedUntil = blockedUntil;
+            existing.Reason = reason;
+            existing.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await context.SaveChangesAsync(ct);
+    }
+
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto dto, CancellationToken ct = default)
     {
+        // נבדק *לפני* כל גישה לטבלת המשתמשים - IP חסום לא אמור לגרום לשום
+        // שאילתה נוספת, אותו עיקרון בדיוק כמו "אותה שגיאה למשתמש לא קיים"
+        await EnsureIpNotBlockedAsync(ct);
+
         User? user;
         try
         {
@@ -44,30 +130,39 @@ public class AuthService(AppDbContext context, IConfiguration configuration, DbO
             throw;
         }
 
+        if (user is null)
+        {
+            await LogAttemptAsync(dto.Email, LoginAttemptOutcome.UnknownEmail, ct);
+            throw new InvalidCredentialsException();
+        }
+
         // בדיקת נעילה *לפני* אימות הסיסמה - אין טעם לבדוק סיסמה על חשבון
         // שכבר נעול, וזה גם מונע "ניחוש" נוסף על חשבון נעול
-        if (user is not null && user.LockedOutUntil is { } lockedUntil && lockedUntil > DateTime.UtcNow)
+        if (user.LockedOutUntil is { } lockedUntil && lockedUntil > DateTime.UtcNow)
         {
+            await LogAttemptAsync(dto.Email, LoginAttemptOutcome.AccountLocked, ct);
             throw new AccountLockedException(lockedUntil - DateTime.UtcNow);
         }
 
         // אותה שגיאה בדיוק בין "משתמש לא קיים" ל"סיסמה שגויה" בכוונה - כדי לא
         // לחשוף לתוקף פוטנציאלי אילו כתובות אימייל בכלל רשומות במערכת
-        if (user is null || Hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password) == PasswordVerificationResult.Failed)
+        if (Hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password) == PasswordVerificationResult.Failed)
         {
-            if (user is not null)
+            user.FailedLoginAttempts++;
+            if (user.FailedLoginAttempts >= MaxFailedLoginAttempts)
             {
-                user.FailedLoginAttempts++;
-                if (user.FailedLoginAttempts >= MaxFailedLoginAttempts)
-                {
-                    user.LockedOutUntil = DateTime.UtcNow.Add(LockoutDuration);
-                    user.FailedLoginAttempts = 0;
-                    await context.SaveChangesAsync(ct);
-                    throw new AccountLockedException(LockoutDuration);
-                }
+                user.LockedOutUntil = DateTime.UtcNow.Add(LockoutDuration);
+                user.FailedLoginAttempts = 0;
                 await context.SaveChangesAsync(ct);
-            }
 
+                await LogAttemptAsync(dto.Email, LoginAttemptOutcome.AccountLocked, ct);
+                await CheckAndEscalateIpBanAsync(ct);
+
+                throw new AccountLockedException(LockoutDuration);
+            }
+            await context.SaveChangesAsync(ct);
+
+            await LogAttemptAsync(dto.Email, LoginAttemptOutcome.InvalidCredentials, ct);
             throw new InvalidCredentialsException();
         }
 
@@ -79,11 +174,14 @@ public class AuthService(AppDbContext context, IConfiguration configuration, DbO
             await context.SaveChangesAsync(ct);
         }
 
+        await LogAttemptAsync(dto.Email, LoginAttemptOutcome.Success, ct);
         return BuildAuthResponse(user);
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto dto, CancellationToken ct = default)
     {
+        await EnsureIpNotBlockedAsync(ct);
+
         try
         {
             // בלי IgnoreQueryFilters בכוונה - הייחודיות של אימייל היא per-tenant,

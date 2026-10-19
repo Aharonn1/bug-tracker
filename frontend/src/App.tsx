@@ -29,6 +29,7 @@ const NewBugPage = lazy(() => import('./pages/NewBugPage'));
 const SecurityTrustPage = lazy(() => import('./pages/SecurityTrustPage'));
 const OfficesOverviewPage = lazy(() => import('./pages/OfficesOverviewPage'));
 const FailedIncidentsPage = lazy(() => import('./pages/FailedIncidentsPage'));
+const LoginSecurityPage = lazy(() => import('./pages/LoginSecurityPage'));
 
 const PageLoadingFallback: React.FC = () => (
   <div style={{ padding: '40px', textAlign: 'center', color: colors.textMuted }}>
@@ -103,7 +104,7 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
   const openIncidentsCount = incidents.filter(i => !i.isResolved).length;
 
   const { newCount, resetToZero } = useNewIncidentsCount();
-  const { officesOpenCount, failedIncidentsCount } = useSiteAdminBadgeCounts(user.role === UserRole.SiteAdmin);
+  const { officesOpenCount, failedIncidentsCount, blockedIpsCount } = useSiteAdminBadgeCounts(user.role === UserRole.SiteAdmin);
 
   // מסמן "נצפה" פעם אחת בלבד לכל "ביקור" בתוך מסך התקריות - לא בכל קליק
   // על עימוד/סינון כל עוד עדיין שם (loading מתחלף גם בהם, לא רק בכניסה
@@ -132,6 +133,7 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
         newIncidentsCount={newCount}
         officesOpenCount={officesOpenCount}
         failedIncidentsCount={failedIncidentsCount}
+        blockedIpsCount={blockedIpsCount}
         user={user}
         onLogout={onLogout}
       />
@@ -169,6 +171,8 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
           {currentView === 'offices' && <OfficesOverviewPage />}
 
           {currentView === 'failed-incidents' && <FailedIncidentsPage />}
+
+          {currentView === 'login-security' && <LoginSecurityPage />}
 
           {currentView === 'bugs' && <BugsPage />}
 
