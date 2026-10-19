@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MyBackendApi.Data;
@@ -133,12 +134,31 @@ builder.Services.AddCors(options =>
 });
 
 // ==========================================
+// 1.5 Response Compression - משתלם במיוחד ללקוחות על רשת חלשה/סלולרית
+// (בדיוק המשתמשים שדיווחו על איטיות): JSON דחוס במקום גולמי. EnableForHttps
+// מופעל בכוונה למרות שברירת המחדל כבויה (היסטורית, הגנה מפני BREACH) -
+// כאן זה בטוח כי אין בתגובות סוד (כמו CSRF token) שמוחזר יחד עם קלט
+// שמוזן ע"י התוקף - אימות כאן הוא Bearer JWT, לא cookie+CSRF-in-body
+// ==========================================
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+});
+
+// ==========================================
 // 2. קונטרולרים וטיפול בשגיאות Enterprise (RFC 7807)
 // ==========================================
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        // שדות null לא נכתבים בכלל במקום "fieldName":null מפורש - חוסך בייטים
+        // בכל תגובה, בולט במיוחד ב-DTOs עם הרבה שדות nullable (כמו תקריות).
+        // בטוח: קוד הלקוח כבר בודק falsy (!value), לא === null במפורש, על
+        // כל השדות הרלוונטיים שחוזרים מה-API (אומת לפני השינוי)
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -295,6 +315,10 @@ if (!app.Environment.IsDevelopment())
 // מפנה כל בקשת HTTP ל-HTTPS - הגנה ברמת הקוד שלא תלויה בהגדרת "HTTPS Only"
 // ב-Azure Portal (שגם היא כדאי שתהיה דלוקה, אבל לא לסמוך רק עליה)
 app.UseHttpsRedirection();
+
+// חייב לרוץ לפני כל middleware שכותב את גוף התגובה (MapControllers למטה) -
+// זה מה שבאמת דוחס את ה-JSON היוצא
+app.UseResponseCompression();
 
 // כמה Security Headers בסיסיים וחינמיים - לא תלויים ב-tier או בשירות נוסף:
 // X-Content-Type-Options מונע מהדפדפן "לנחש" Content-Type שונה ממה שהשרת
