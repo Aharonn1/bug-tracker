@@ -1,6 +1,7 @@
 using Azure.Identity;
 using Azure.Monitor.Query;
 using Azure.Monitor.Query.Models;
+using MyBackendApi.Exceptions;
 using MyBackendApi.Models.DTOs.Telemetry;
 
 namespace MyBackendApi.Services.Core;
@@ -61,6 +62,9 @@ public class AzureResourceMetricsReader
             _logger.LogWarning(ex, "שאילתת Azure Monitor מרוכזת נכשלה עבור {ResourceId} - נופל לשאילתות נפרדות לכל מדד", resourceId);
 
             var result = new Dictionary<string, List<MetricPointDto>>();
+            Exception? lastFailure = null;
+            var anySucceeded = false;
+
             foreach (var metricName in metricNames)
             {
                 try
@@ -68,13 +72,26 @@ public class AzureResourceMetricsReader
                     var single = await _client.QueryResourceAsync(resourceId, [metricName], options, ct);
                     var extracted = Extract(single.Value.Metrics, [metricName]);
                     result[metricName] = extracted[metricName];
+                    anySucceeded = true;
                 }
                 catch (Exception singleEx)
                 {
-                    _logger.LogWarning(singleEx, "מדד {MetricName} לא נתמך או נכשל עבור {ResourceId} - מדולג", metricName, resourceId);
+                    _logger.LogError(singleEx, "מדד {MetricName} נכשל עבור {ResourceId}", metricName, resourceId);
                     result[metricName] = [];
+                    lastFailure = singleEx;
                 }
             }
+
+            // אם אף מדד אחד לא הצליח, זו לא "עדיין אין נתונים" - זו כנראה
+            // תקלת הרשאות/credential אמיתית. זורקים כדי שהתשובה תהיה 500
+            // ברור (GlobalExceptionHandler) במקום 200 עם מערכים ריקים שנראה
+            // זהה לחלוטין ל"אין מספיק נתונים להצגת מגמה" בפרונטנד - בדיוק
+            // מה שהסתיר תקלת הרשאות אמיתית במשך ימים
+            if (!anySucceeded && lastFailure is not null)
+            {
+                throw new AzureMonitorQueryFailedException(resourceId, lastFailure);
+            }
+
             return result;
         }
     }
