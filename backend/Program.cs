@@ -23,12 +23,14 @@ using MyBackendApi.Services.Tenancy;
 var builder = WebApplication.CreateBuilder(args);
 
 // ==========================================
-// 0. Forwarded Headers - Azure App Service רץ מאחורי reverse proxy פנימי.
-// בלי זה, HttpContext.Connection.RemoteIpAddress מחזיר את ה-IP הפנימי של
-// ה-proxy עבור כל בקשה (אותו IP לכולם) - מה שהופך כל Rate Limiting לפי IP
-// (סעיף 0.5 למטה) לחסר משמעות, כי כל התעבורה הייתה נראית כמו "משתמש אחד".
-// KnownProxies/KnownNetworks מנוקים בכוונה כי Azure App Service הוא ה-proxy
-// היחיד שרץ לפנינו - בוטחים בו באופן גורף, לא ברשת IP ספציפית
+// 0. Forwarded Headers - עדיין נדרש בשביל XForwardedProto (זיהוי HTTPS
+// מאחורי ה-proxy הפנימי של Azure App Service). X-Forwarded-For *לא* משמש
+// יותר כמקור אמון לשום החלטת אבטחה (Rate Limiting, חסימת IP) - הוא כותרת
+// רגילה שכל לקוח חיצוני יכול לשלוח בעצמו, ואומת אמפירית שזה מאפשר לעקוף
+// גם הגבלת-קצב וגם חסימת IP (אותה בקשה בדיוק, עם X-Forwarded-For שונה,
+// עברה חסימה פעילה). ל-IP אמיתי ובלתי-ניתן-לזיוף משתמשים ב-X-Client-IP
+// (ראו TrustedClientIp.cs) - כותרת שה-Front End Role של Azure App Service
+// עצמו קובע ברמת הפלטפורמה ותמיד דורס, בניגוד ל-X-Forwarded-For
 // ==========================================
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -59,7 +61,7 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    static string ClientKey(HttpContext ctx) => ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    static string ClientKey(HttpContext ctx) => TrustedClientIp.Resolve(ctx);
 
     var perIpLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
         RateLimitPartition.GetSlidingWindowLimiter(ClientKey(ctx), _ => new SlidingWindowRateLimiterOptions

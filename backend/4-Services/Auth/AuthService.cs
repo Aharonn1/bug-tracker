@@ -41,7 +41,9 @@ public class AuthService(
     private int IpBanWindowHours => configuration.GetValue<int?>("Auth:IpBanWindowHours") ?? 24;
     private int IpBanDurationHours => configuration.GetValue<int?>("Auth:IpBanDurationHours") ?? 24;
 
-    private string ClientIp => httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    // X-Client-IP, לא RemoteIpAddress/X-Forwarded-For הניתנים לזיוף - ראו
+    // TrustedClientIp.cs להסבר המלא
+    private string ClientIp => httpContextAccessor.HttpContext is { } ctx ? TrustedClientIp.Resolve(ctx) : "unknown";
 
     private string? CurrentTenantIdOrNull()
     {
