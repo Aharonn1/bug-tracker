@@ -4,6 +4,7 @@ import { CapacityFindingsCard } from '../components/CapacityFindingsCard';
 import { AzureSqlHealthCard } from '../components/AzureSqlHealthCard';
 import { AzureAppServiceHealthCard } from '../components/AzureAppServiceHealthCard';
 import { LoadTestCard } from '../components/LoadTestCard';
+import { TenantScaleTestCard } from '../components/TenantScaleTestCard';
 
 // עמוד עצמאי ונפרד לגמרי מה-NOC - לא על "תקלה שכבר קרתה" אלא על "האם
 // התשתית תחזיק מעמד בעומס גבוה". מיועד למנהלים בלבד (מוגן גם ברמת הניווט
@@ -18,6 +19,7 @@ export const AzureInfrastructureHealthPage: React.FC = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <CapacityFindingsCard />
       <LoadTestCard />
+      <TenantScaleTestCard />
       <AzureAppServiceHealthCard />
       <AzureSqlHealthCard />
     </div>
