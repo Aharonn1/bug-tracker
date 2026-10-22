@@ -30,6 +30,9 @@ public class RcaAgentService : IRcaAgentService
     public async Task<string> AnalyzeAndRemediateIncidentAsync(
         string errorCode,
         string errorMessage,
+        string category,
+        string subsystem,
+        string hebrewDescription,
         string? caseNumber,
         string? playbook,
         CancellationToken ct = default)
@@ -47,7 +50,7 @@ public class RcaAgentService : IRcaAgentService
                 function = new
                 {
                     name = "check_gateway_latency",
-                    description = "בודק זמינות, זמני תגובה וקוד HTTP של שערי הממשלה (NetMishpat, Tehila, ECA)",
+                    description = "בודק זמינות, זמני תגובה וקוד HTTP של שערי הממשלה (NetMishpat, Tehila, ECA). השתמש בכלי זה רק אם התקלה קשורה ישירות לחיבור לשער ממשלתי חיצוני - לא עבור שגיאות פנימיות של האפליקציה עצמה (צד-לקוח, שרת, בסיס נתונים)",
                     parameters = new
                     {
                         type = "object",
@@ -70,7 +73,7 @@ public class RcaAgentService : IRcaAgentService
                 function = new
                 {
                     name = "inspect_smartcard_cert",
-                    description = "בודק תוקף תעודת חתימה אלקטרונית ומצב דרייבר הכרטיס החכם בעמדה",
+                    description = "בודק תוקף תעודת חתימה אלקטרונית ומצב דרייבר הכרטיס החכם בעמדה. השתמש בכלי זה רק אם התקלה קשורה ישירות לחתימה דיגיטלית או לכרטיס חכם - לא עבור שגיאות פנימיות אחרות",
                     parameters = new
                     {
                         type = "object",
@@ -88,12 +91,29 @@ public class RcaAgentService : IRcaAgentService
             new JsonObject
             {
                 ["role"] = "system",
-                ["content"] = "אתה סוכן תחקור תקלות Tier-3 מומחה לשערי ממשלה ומערכות משפטיות. עליך להפעיל כלי בדיקה מתאימים (Function Call) כדי לאסוף ממצאים חיים מהמערכת לפני הסקת מסקנות סופיות."
+                // כללי בכוונה, לא ממוקד שערי ממשלה - רוב התקלות במערכת הן
+                // שגיאות פנימיות (צד-לקוח/שרת/בסיס נתונים), לא בעיות חיבור
+                // לשער חיצוני. הניתוח חייב להתבסס על הקטגוריה/תת-המערכת
+                // האמיתיות של התקרית, לא על הנחה גורפת. הכלים זמינים אבל
+                // לא חובה - רק כשבאמת רלוונטי לתוכן התקרית
+                ["content"] = "אתה סוכן תחקור תקלות Tier-3 במערכת ניטור לתוכנה משפטית (law-tech). " +
+                    "נתח את התקלה בהתבסס על הקוד, הקטגוריה, תת-המערכת והתיאור שניתנו לך. " +
+                    "אם התקלה קשורה ישירות לחיבור לשער ממשלתי חיצוני (NetMishpat/Tehila/ECA) או לחתימה דיגיטלית/כרטיס חכם - " +
+                    "השתמש בכלי הבדיקה הרלוונטי כדי לאסוף ממצאים לפני מסקנה. " +
+                    "אחרת (למשל שגיאת צד-לקוח, שגיאת שרת פנימית, בעיית בסיס נתונים, או תקרית בדיקה/הדגמה) - " +
+                    "אל תפעיל את הכלים כלל, ותן ניתוח וסקנה ישירים המבוססים רק על המידע שסופק."
             },
             new JsonObject
             {
                 ["role"] = "user",
-                ["content"] = $"תקלה לבדיקה:\nקוד: {errorCode}\nמספר תיק: {caseNumber ?? "ללא"}\nהודעה: {errorMessage}\nPlaybook: {playbook ?? "ללא"}"
+                ["content"] = $"תקלה לבדיקה:\n" +
+                    $"קוד: {errorCode}\n" +
+                    $"קטגוריה: {category}\n" +
+                    $"תת-מערכת: {subsystem}\n" +
+                    $"תיאור: {hebrewDescription}\n" +
+                    $"מספר תיק: {caseNumber ?? "ללא"}\n" +
+                    $"הודעה: {errorMessage}\n" +
+                    $"Playbook: {playbook ?? "ללא"}"
             }
         };
 

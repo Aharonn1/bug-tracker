@@ -3,9 +3,12 @@ namespace MyBackendApi.Services.Interfaces;
 public interface IRcaAgentService
 {
     Task<string> AnalyzeAndRemediateIncidentAsync(
-        string errorCode, 
-        string errorMessage, 
-        string? caseNumber, 
-        string? stackTrace, 
+        string errorCode,
+        string errorMessage,
+        string category,
+        string subsystem,
+        string hebrewDescription,
+        string? caseNumber,
+        string? playbook,
         CancellationToken ct = default);
 }

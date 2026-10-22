@@ -156,6 +156,9 @@ public class IncidentsController(
         var report = await rcaAgentService.AnalyzeAndRemediateIncidentAsync(
             incident!.ErrorCode,
             incident.ErrorMessage,
+            incident.Category,
+            incident.Subsystem,
+            incident.HebrewDescription,
             incident.CaseNumber,
             incident.ResolutionPlaybook,
             ct);
