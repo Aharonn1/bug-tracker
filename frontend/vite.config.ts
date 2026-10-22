@@ -20,6 +20,13 @@ export default defineConfig({
   define: {
     __BUILD_ID__: JSON.stringify(readBuildId()),
   },
+  build: {
+    // 'hidden' - קבצי .map נוצרים ומועלים, אבל בלי הערת sourceMappingURL
+    // בבאנדל עצמו, כך שהם לא נחשפים אוטומטית ב-DevTools. עדיין ניתנים
+    // להורדה למי שבאמת מחפש - נדרשים כדי שדיווח תקריות בצד-לקוח יוכל
+    // לפענח stack trace מכווץ בחזרה לקובץ/שורה המקוריים (ראו resolveSourceLocation.ts)
+    sourcemap: 'hidden',
+  },
   test: {
     environment: 'jsdom',
     globals: true,

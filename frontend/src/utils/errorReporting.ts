@@ -2,6 +2,7 @@ import { incidentService } from '../api/incidentService';
 import { TENANT_ID } from '../config';
 import type { CreateIncidentDto } from '../types/bug.types';
 import { SessionExpiredError } from '../api/SessionExpiredError';
+import { resolveSourceLocation } from './resolveSourceLocation';
 
 export type SilentErrorCode =
   | 'CLIENT_UNHANDLED_ERROR'
@@ -61,17 +62,21 @@ async function trySend(dto: CreateIncidentDto): Promise<boolean> {
   }
 }
 
-function buildDto(
+async function buildDto(
   errorCode: SilentErrorCode,
   message: string,
   stack?: string | null,
   extraContext?: Record<string, unknown>
-): CreateIncidentDto {
+): Promise<CreateIncidentDto> {
+  const location = await resolveSourceLocation(stack);
+
   return {
     tenantId: TENANT_ID,
     errorCode,
     errorMessage: message,
     stackTrace: stack ?? null,
+    codeLocationFilePath: location?.filePath ?? null,
+    codeLocationLine: location?.line ?? null,
     rawPayload: JSON.stringify({
       url: window.location.href,
       userAgent: navigator.userAgent,
@@ -85,7 +90,7 @@ function buildDto(
 // מוחלטת), הדיווח נשמר מקומית וייעשה עליו ניסיון חוזר כשהחיבור יחזור.
 // extraContext מאפשר לצרף פרטים ספציפיים למקרה - למשל איזה אימייל ניסה
 // להתחבר כשהכשל קרה לפני שהיה למשתמש טוקן (כדי לדעת "אצל מי" קרתה הבעיה)
-export function reportSilentError(
+export async function reportSilentError(
   errorCode: SilentErrorCode,
   message: string | null | undefined,
   stack?: string | null,
@@ -93,7 +98,7 @@ export function reportSilentError(
 ) {
   if (!message || isNoise(message)) return;
 
-  const dto = buildDto(errorCode, message, stack, extraContext);
+  const dto = await buildDto(errorCode, message, stack, extraContext);
 
   trySend(dto).then((ok) => {
     if (!ok) enqueue(dto);

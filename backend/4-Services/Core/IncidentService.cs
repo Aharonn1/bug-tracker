@@ -296,7 +296,9 @@ public class IncidentService(
             Details = new IncidentDetailPayload
             {
                 StackTrace = dto.StackTrace,
-                RawPayload = dto.RawPayload
+                RawPayload = dto.RawPayload,
+                ClientCodeLocationFilePath = dto.CodeLocationFilePath,
+                ClientCodeLocationLine = dto.CodeLocationLine
             }
         };
 
@@ -347,7 +349,12 @@ public class IncidentService(
 
     private static IncidentResponseDto MapToResponseDto(SystemErrorIncident i, ErrorCatalog? catalog)
     {
-        var (codeFile, codeLine) = StackTraceLocationParser.ExtractFirstRepoFrame(i.Details?.StackTrace);
+        // תקריות שרת (.NET): נגזר מה-StackTrace הגולמי ב-StackTraceLocationParser.
+        // תקריות צד-לקוח: הדפדפן כבר פיענח Source Map ושלח מיקום ישירות -
+        // אין התנגשות בפועל בין השניים, אז עדיפות למה שהלקוח סיפק אם קיים
+        var (serverCodeFile, serverCodeLine) = StackTraceLocationParser.ExtractFirstRepoFrame(i.Details?.StackTrace);
+        var codeFile = i.Details?.ClientCodeLocationFilePath ?? serverCodeFile;
+        var codeLine = i.Details?.ClientCodeLocationLine ?? serverCodeLine;
 
         return new(
             i.IncidentId,

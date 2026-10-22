@@ -283,6 +283,13 @@ namespace MyBackendApi.Migrations
                     b.Property<long>("IncidentId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("ClientCodeLocationFilePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("ClientCodeLocationLine")
+                        .HasColumnType("int");
+
                     b.Property<string>("RawPayload")
                         .HasColumnType("nvarchar(max)");
 

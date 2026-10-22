@@ -2,6 +2,7 @@ import React from 'react';
 import { incidentService } from '../api/incidentService';
 import { TENANT_ID } from '../config';
 import { isStaleBundleSuspected } from '../utils/versionCheck';
+import { resolveSourceLocation } from '../utils/resolveSourceLocation';
 
 interface Props {
   children: React.ReactNode;
@@ -20,12 +21,22 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
+    // componentDidCatch עצמו לא async (React לא ממתין לו בכל מקרה) - הפענוח
+    // הא-סינכרוני קורה בתוך helper נפרד, ולא חוסם את שאר מחזור החיים
+    this.reportError(error, info);
+  }
+
+  private async reportError(error: Error, info: React.ErrorInfo) {
+    const location = await resolveSourceLocation(error.stack);
+
     incidentService
       .create({
         tenantId: TENANT_ID,
         errorCode: 'CLIENT_JS_CRASH',
         errorMessage: error.message || 'שגיאת JavaScript לא מזוהה בצד הלקוח',
         stackTrace: error.stack ?? null,
+        codeLocationFilePath: location?.filePath ?? null,
+        codeLocationLine: location?.line ?? null,
         rawPayload: JSON.stringify({
           componentStack: info.componentStack,
           url: window.location.href,

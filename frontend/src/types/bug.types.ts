@@ -121,5 +121,7 @@ export interface CreateIncidentDto {
   userId?: string | null;
   errorMessage: string;
   stackTrace?: string | null;
+  codeLocationFilePath?: string | null;
+  codeLocationLine?: number | null;
   rawPayload?: string | null;
 }
