@@ -345,8 +345,11 @@ public class IncidentService(
         await context.SaveChangesAsync(ct);
     }
 
-    private static IncidentResponseDto MapToResponseDto(SystemErrorIncident i, ErrorCatalog? catalog) =>
-        new(
+    private static IncidentResponseDto MapToResponseDto(SystemErrorIncident i, ErrorCatalog? catalog)
+    {
+        var (codeFile, codeLine) = StackTraceLocationParser.ExtractFirstRepoFrame(i.Details?.StackTrace);
+
+        return new(
             i.IncidentId,
             i.TenantId,
             i.ErrorCode,
@@ -369,9 +372,13 @@ public class IncidentService(
             i.LastSeenAt,
             i.ResolvedAt,
             i.Details?.RawPayload,
+            i.Details?.StackTrace,
+            codeFile,
+            codeLine,
             i.Reporters
                 .OrderByDescending(r => r.LastSeenAt)
                 .Select(r => new IncidentReporterDto(r.UserId, r.User.FullName, r.User.Role, r.OccurrenceCount, r.LastSeenAt))
                 .ToList()
         );
+    }
 }

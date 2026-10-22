@@ -99,6 +99,9 @@ export interface SystemIncident {
   lastSeenAt: string;
   resolvedAt: string | null;
   rawPayload: string | null;
+  stackTrace: string | null;
+  codeLocationFilePath: string | null;
+  codeLocationLine: number | null;
   reportedByUsers: IncidentReporter[];
 }
 

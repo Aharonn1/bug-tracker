@@ -25,6 +25,9 @@ public record IncidentResponseDto(
     DateTime LastSeenAt,
     DateTime? ResolvedAt,
     string? RawPayload,
+    string? StackTrace,
+    string? CodeLocationFilePath,
+    int? CodeLocationLine,
     IReadOnlyList<IncidentReporterDto> ReportedByUsers
 );
 

@@ -161,6 +161,7 @@ public class IncidentsController(
             incident.HebrewDescription,
             incident.CaseNumber,
             incident.ResolutionPlaybook,
+            incident.StackTrace,
             ct);
 
         return Ok(new

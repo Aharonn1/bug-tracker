@@ -10,5 +10,6 @@ public interface IRcaAgentService
         string hebrewDescription,
         string? caseNumber,
         string? playbook,
+        string? stackTrace,
         CancellationToken ct = default);
 }

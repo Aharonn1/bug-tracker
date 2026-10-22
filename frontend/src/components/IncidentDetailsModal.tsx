@@ -16,6 +16,7 @@ function parseRawPayload(raw: string | null): Record<string, unknown> | null {
   } catch {
     return null;
   }
+  
 }
 
 export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => {
@@ -96,6 +97,56 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
               {incident.errorMessage}
             </div>
           </section>
+
+          {incident.codeLocationFilePath && (
+            <section>
+              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>📍 מיקום בקוד</div>
+              <a
+                href={`https://github.com/Aharonn1/bug-tracker/blob/main/${incident.codeLocationFilePath}#L${incident.codeLocationLine}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                dir="ltr"
+                style={{
+                  display: 'block',
+                  background: '#131f37',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #1e293b',
+                  color: '#7dd3fc',
+                  fontSize: '13px',
+                  fontFamily: 'monospace',
+                  textDecoration: 'none',
+                  textAlign: 'left',
+                }}
+              >
+                {incident.codeLocationFilePath}:{incident.codeLocationLine}
+              </a>
+              {incident.stackTrace && (
+                <details style={{ marginTop: '6px' }}>
+                  <summary style={{ color: '#64748b', fontSize: '11px', cursor: 'pointer' }}>הצג Stack Trace מלא</summary>
+                  <div
+                    dir="ltr"
+                    style={{
+                      marginTop: '6px',
+                      background: '#131f37',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: '1px solid #1e293b',
+                      color: '#94a3b8',
+                      fontSize: '11.5px',
+                      fontFamily: 'monospace',
+                      whiteSpace: 'pre-wrap',
+                      textAlign: 'left',
+                      maxHeight: '240px',
+                      overflowY: 'auto',
+                    }}
+                  >
+                    {incident.stackTrace}
+                  </div>
+                </details>
+              )}
+            </section>
+          )}
 
           {incident.resolutionPlaybook && (
             <section>

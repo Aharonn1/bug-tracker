@@ -35,6 +35,7 @@ public class RcaAgentService : IRcaAgentService
         string hebrewDescription,
         string? caseNumber,
         string? playbook,
+        string? stackTrace,
         CancellationToken ct = default)
     {
         var apiKey = _configuration["AzureOpenAI:ApiKey"];
@@ -106,6 +107,9 @@ public class RcaAgentService : IRcaAgentService
             new JsonObject
             {
                 ["role"] = "user",
+                // Stack trace מקוצר ל-2000 תווים (לא כל ה-trace) - ה-frame
+                // הראשון, הכי קרוב למקור הזריקה, כבר נמצא בתחילת הטקסט,
+                // ושם בדיוק המידע הכי רלוונטי לניתוח
                 ["content"] = $"תקלה לבדיקה:\n" +
                     $"קוד: {errorCode}\n" +
                     $"קטגוריה: {category}\n" +
@@ -113,7 +117,11 @@ public class RcaAgentService : IRcaAgentService
                     $"תיאור: {hebrewDescription}\n" +
                     $"מספר תיק: {caseNumber ?? "ללא"}\n" +
                     $"הודעה: {errorMessage}\n" +
-                    $"Playbook: {playbook ?? "ללא"}"
+                    $"Playbook: {playbook ?? "ללא"}" +
+                    (string.IsNullOrEmpty(stackTrace) ? "" :
+                        $"\nStack Trace (אם יש בו שורה עם 'in <קובץ>:line <מספר>' - " +
+                        $"זה מצביע על המיקום המדויק בקוד, ציין אותו בניתוח):\n" +
+                        stackTrace[..Math.Min(stackTrace.Length, 2000)])
             }
         };
 
