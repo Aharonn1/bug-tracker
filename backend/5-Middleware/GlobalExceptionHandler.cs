@@ -29,6 +29,7 @@ public class GlobalExceptionHandler(
         {
             BaseNotFoundException => (HttpStatusCode.NotFound, "המשאב המבוקש לא נמצא"),
             InvalidCredentialsException => (HttpStatusCode.Unauthorized, "התחברות נכשלה"),
+            IncorrectCurrentPasswordException => (HttpStatusCode.Unauthorized, "שינוי סיסמה נכשל"),
             AccountLockedException => (HttpStatusCode.Locked, "החשבון נעול זמנית"),
             IpBlockedException => (HttpStatusCode.Forbidden, "הכתובת חסומה זמנית"),
             EmailAlreadyExistsException => (HttpStatusCode.Conflict, "כתובת אימייל כבר רשומה"),

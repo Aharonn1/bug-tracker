@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using MyBackendApi.Models.DTOs.Auth;
 using MyBackendApi.Models.DTOs.Responses;
 using MyBackendApi.Services.Auth;
 using MyBackendApi.Services.Interfaces;
@@ -9,7 +11,10 @@ namespace MyBackendApi.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class UsersController(IUserDirectoryService userDirectoryService, ICurrentUserProvider currentUserProvider) : ControllerBase
+public class UsersController(
+    IUserDirectoryService userDirectoryService,
+    IAuthService authService,
+    ICurrentUserProvider currentUserProvider) : ControllerBase
 {
     // SiteAdmin בלבד - הרשימה חוצה-לקוחות (כל המשרדים, לא רק הלקוח של המזמין),
     // אז חשיפה למנהל-משרד רגיל הייתה דליפת מידע ארגוני בין לקוחות
@@ -34,6 +39,19 @@ public class UsersController(IUserDirectoryService userDirectoryService, ICurren
     public async Task<IActionResult> MarkIncidentsViewed(CancellationToken ct)
     {
         await userDirectoryService.MarkIncidentsViewedAsync(currentUserProvider.UserId!.Value, ct);
+        return NoContent();
+    }
+
+    // Rate limiting לפי IP (אותה מדיניות "auth" כמו login) - גם כאן מדובר
+    // ב-oracle לאימות סיסמה, ולא רוצים לאפשר ניחוש חוזר של הסיסמה הנוכחית
+    // רק כי יש בידי התוקף טוקן JWT גנוב, בלי עוד את הסיסמה עצמה
+    [HttpPost("me/change-password")]
+    [EnableRateLimiting("auth")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequestDto dto, CancellationToken ct)
+    {
+        await authService.ChangePasswordAsync(currentUserProvider.UserId!.Value, dto, ct);
         return NoContent();
     }
 }

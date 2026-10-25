@@ -252,6 +252,24 @@ public class AuthService(
         ));
     }
 
+    // "שכחתי סיסמה" (איפוס עצמאי בלי להיות מחובר) דורש שירות שליחת מיילים -
+    // אין כזה היום במערכת, אז זה נשאר רק לשינוי-סיסמה עצמי של משתמש שכבר
+    // מחובר. אין צורך בבדיקת נעילה/IP כאן - המשתמש כבר עבר אימות JWT תקף
+    // כדי להגיע לכאן בכלל
+    public async Task ChangePasswordAsync(int userId, ChangePasswordRequestDto dto, CancellationToken ct = default)
+    {
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId, ct)
+            ?? throw new InvalidOperationException("משתמש מאומת לא נמצא");
+
+        if (Hasher.VerifyHashedPassword(user, user.PasswordHash, dto.CurrentPassword) == PasswordVerificationResult.Failed)
+        {
+            throw new IncorrectCurrentPasswordException();
+        }
+
+        user.PasswordHash = Hasher.HashPassword(user, dto.NewPassword);
+        await context.SaveChangesAsync(ct);
+    }
+
     private AuthResponseDto BuildAuthResponse(User user)
     {
         var secretKey = configuration["Jwt:SecretKey"]

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { AuthUser } from '../types/auth.types';
 import { UserRole, isAdminOrAbove } from '../types/auth.types';
 import { colors } from '../styles/theme';
+import { ChangePasswordModal } from './ChangePasswordModal';
 
 export type DashboardView = 'incidents' | 'bugs' | 'new-bug' | 'about' | 'azure-health' | 'security' | 'offices' | 'failed-incidents' | 'login-security';
 
@@ -33,6 +34,7 @@ const NavCountBadge: React.FC<{ count: number }> = ({ count }) => (
 );
 
 export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openIncidentsCount, newIncidentsCount, officesOpenCount, failedIncidentsCount, blockedIpsCount, user, onLogout }) => {
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const getNavBtnStyle = (view: DashboardView): React.CSSProperties => {
     const isActive = currentView === view;
     return {
@@ -205,6 +207,21 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
         </div>
 
         <button
+          onClick={() => setIsChangePasswordOpen(true)}
+          style={{
+            padding: '7px 14px',
+            borderRadius: '8px',
+            border: `1px solid ${colors.border}`,
+            backgroundColor: 'transparent',
+            color: colors.textMuted,
+            fontSize: '13px',
+            cursor: 'pointer',
+          }}
+        >
+          שינוי סיסמה
+        </button>
+
+        <button
           onClick={onLogout}
           style={{
             padding: '7px 14px',
@@ -219,6 +236,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
           התנתקות
         </button>
       </div>
+
+      <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
     </header>
   );
 };
