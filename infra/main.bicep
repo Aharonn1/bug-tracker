@@ -135,6 +135,9 @@ resource appService 'Microsoft.Web/sites@2022-09-01' = {
     siteConfig: {
       linuxFxVersion: 'DOTNETCORE|8.0'
       healthCheckPath: '/health'
+      // בלי זה, Azure "מוריד" את התהליך אחרי כ-20 דקות בלי בקשות HTTP, וה-cold
+      // start של הבקשה הבאה (ואז 500-ים חולפים) נופל על המשתמש האמיתי הראשון
+      alwaysOn: true
       appSettings: [
         {
           // הפניה ל-Key Vault (לא הערך הגולמי) - Azure App Service מפענח את זה
