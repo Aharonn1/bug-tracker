@@ -162,6 +162,8 @@ public class IncidentsController(
             incident.CaseNumber,
             incident.ResolutionPlaybook,
             incident.StackTrace,
+            incident.CodeLocationFilePath,
+            incident.CodeLocationLine,
             ct);
 
         return Ok(new

@@ -36,8 +36,17 @@ public class RcaAgentService : IRcaAgentService
         string? caseNumber,
         string? playbook,
         string? stackTrace,
+        string? codeLocationFilePath,
+        int? codeLocationLine,
         CancellationToken ct = default)
     {
+        // נבנה את קישור הגיטהאב בעצמנו, בשרת - לא סומכים על המודל לנחש/לבנות
+        // אותו נכון. אותה נוסחה בדיוק כמו IncidentDetailsModal.tsx בפרונטנד,
+        // כדי שהקישור שהסוכן מצטט יהיה תמיד תקין וזהה לזה שמוצג ב-UI
+        var githubLink = !string.IsNullOrWhiteSpace(codeLocationFilePath) && codeLocationLine.HasValue
+            ? $"https://github.com/Aharonn1/bug-tracker/blob/main/{codeLocationFilePath}#L{codeLocationLine}"
+            : null;
+
         var apiKey = _configuration["AzureOpenAI:ApiKey"];
         var endpoint = _configuration["AzureOpenAI:Endpoint"]?.TrimEnd('/');
         var deployment = _configuration["AzureOpenAI:DeploymentName"];
@@ -102,7 +111,12 @@ public class RcaAgentService : IRcaAgentService
                     "אם התקלה קשורה ישירות לחיבור לשער ממשלתי חיצוני (NetMishpat/Tehila/ECA) או לחתימה דיגיטלית/כרטיס חכם - " +
                     "השתמש בכלי הבדיקה הרלוונטי כדי לאסוף ממצאים לפני מסקנה. " +
                     "אחרת (למשל שגיאת צד-לקוח, שגיאת שרת פנימית, בעיית בסיס נתונים, או תקרית בדיקה/הדגמה) - " +
-                    "אל תפעיל את הכלים כלל, ותן ניתוח וסקנה ישירים המבוססים רק על המידע שסופק."
+                    "אל תפעיל את הכלים כלל, ותן ניתוח וסקנה ישירים המבוססים רק על המידע שסופק. " +
+                    "אם סופק לך 'קישור מדויק לקוד' - זהו המיקום האמיתי והמאומת של התקלה בקוד המקור " +
+                    "(הוא כבר נפתר משורת ה-stack trace הגולמית, כולל מקרים של קובץ JavaScript מוקטן בצד-לקוח). " +
+                    "צטט את הקישור הזה *בדיוק כפי שניתן*, כקישור Markdown, תחת סעיף 'מיקום בקוד' - " +
+                    "אל תנסה לחלץ קובץ/שורה בעצמך מתוך ה-stack trace הגולמי ואל תמציא קישור משלך. " +
+                    "אם לא סופק קישור כזה, ציין זאת במפורש ואל תנחש מיקום."
             },
             new JsonObject
             {
@@ -117,10 +131,10 @@ public class RcaAgentService : IRcaAgentService
                     $"תיאור: {hebrewDescription}\n" +
                     $"מספר תיק: {caseNumber ?? "ללא"}\n" +
                     $"הודעה: {errorMessage}\n" +
-                    $"Playbook: {playbook ?? "ללא"}" +
+                    $"Playbook: {playbook ?? "ללא"}\n" +
+                    $"קישור מדויק לקוד: {githubLink ?? "לא נמצא מיקום קוד מאומת עבור תקרית זו"}" +
                     (string.IsNullOrEmpty(stackTrace) ? "" :
-                        $"\nStack Trace (אם יש בו שורה עם 'in <קובץ>:line <מספר>' - " +
-                        $"זה מצביע על המיקום המדויק בקוד, ציין אותו בניתוח):\n" +
+                        $"\nStack Trace (רקע בלבד - אל תחלץ ממנו מיקום קוד, הסתמך רק על 'קישור מדויק לקוד' לעיל):\n" +
                         stackTrace[..Math.Min(stackTrace.Length, 2000)])
             }
         };

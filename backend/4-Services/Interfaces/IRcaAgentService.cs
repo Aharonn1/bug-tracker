@@ -11,5 +11,7 @@ public interface IRcaAgentService
         string? caseNumber,
         string? playbook,
         string? stackTrace,
+        string? codeLocationFilePath,
+        int? codeLocationLine,
         CancellationToken ct = default);
 }
