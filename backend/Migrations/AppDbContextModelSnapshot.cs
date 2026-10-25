@@ -359,6 +359,41 @@ namespace MyBackendApi.Migrations
                     b.ToTable("LoginAttempts", (string)null);
                 });
 
+            modelBuilder.Entity("MyBackendApi.Models.Entities.PasswordResetToken", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PasswordResetTokens", (string)null);
+                });
+
             modelBuilder.Entity("MyBackendApi.Models.Entities.SystemErrorIncident", b =>
                 {
                     b.Property<long>("IncidentId")
@@ -773,6 +808,17 @@ namespace MyBackendApi.Migrations
                         .IsRequired();
 
                     b.Navigation("Incident");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MyBackendApi.Models.Entities.PasswordResetToken", b =>
+                {
+                    b.HasOne("MyBackendApi.Models.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });

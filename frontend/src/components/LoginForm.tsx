@@ -5,9 +5,10 @@ import { reportSilentError } from '../utils/errorReporting';
 
 interface LoginFormProps {
   onSwitchToRegister: () => void;
+  onSwitchToForgotPassword: () => void;
 }
 
-export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
+export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
   const { login, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -87,6 +88,21 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
           required
           style={inputStyle}
         />
+        <button
+          type="button"
+          onClick={onSwitchToForgotPassword}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: '#38bdf8',
+            fontSize: '12px',
+            cursor: 'pointer',
+            padding: '6px 0 0',
+            display: 'block',
+          }}
+        >
+          שכחת סיסמה?
+        </button>
       </div>
 
       {localError && (

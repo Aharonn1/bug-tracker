@@ -24,6 +24,7 @@ public class AppDbContext(
     // אותה סיבה בדיוק - ביקורת/הגנת אבטחה חוצת-לקוחות, לא מבודדת-לקוח
     public DbSet<LoginAttempt> LoginAttempts => Set<LoginAttempt>();
     public DbSet<BlockedIpAddress> BlockedIpAddresses => Set<BlockedIpAddress>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
     // חשוף כ-property על ה-Context עצמו (ולא כקריאה ישירה ל-tenantProvider בתוך ה-lambda)
     // כי כך EF Core יודע לתרגם את ה-Global Query Filter למשתנה שמוערך בזמן ריצת השאילתה

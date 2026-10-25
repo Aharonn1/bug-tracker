@@ -51,4 +51,31 @@ export const authService = {
 
     return res.json();
   },
+
+  // תמיד "מצליח" מבחינת ה-UI, בין אם האימייל קיים ובין אם לא - תואם את
+  // ההתנהגות של השרת (ראו AuthService.ForgotPasswordAsync), לא חושף למי
+  // שמנסה לנחש אילו כתובות רשומות במערכת
+  async forgotPassword(email: string): Promise<void> {
+    const res = await postAuth('forgot-password', { email });
+
+    if (res.status >= 500) {
+      throw new ApiConnectivityError('השרת אינו זמין כרגע (תקלת תשתית/ענן) - נסה שוב בעוד מספר דקות');
+    }
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      throw new Error(errorData?.message || 'הבקשה נכשלה - נסה שוב');
+    }
+  },
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const res = await postAuth('reset-password', { token, newPassword });
+
+    if (res.status >= 500) {
+      throw new ApiConnectivityError('השרת אינו זמין כרגע (תקלת תשתית/ענן) - נסה שוב בעוד מספר דקות');
+    }
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      throw new Error(errorData?.message || 'איפוס הסיסמה נכשל');
+    }
+  },
 };

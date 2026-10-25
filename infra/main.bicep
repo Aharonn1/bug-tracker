@@ -177,6 +177,13 @@ resource appService 'Microsoft.Web/sites@2022-09-01' = {
           name: 'WEBSITE_RUN_FROM_PACKAGE'
           value: '1'
         }
+        {
+          // נגזר מהמשאב עצמו, לא hardcoded - כך זה נשאר נכון גם אם ה-Static
+          // Web App נפרס מחדש מאפס עם hostname אקראי חדש. משמש לבניית קישור
+          // איפוס הסיסמה שנשלח במייל (ראו AuthService.ForgotPasswordAsync)
+          name: 'Frontend__BaseUrl'
+          value: 'https://${staticWebApp.properties.defaultHostname}'
+        }
       ]
     }
   }

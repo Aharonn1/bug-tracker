@@ -13,6 +13,8 @@ import { DbOutageBanner } from './components/DbOutageBanner';
 import { NewVersionBanner } from './components/NewVersionBanner';
 import { LoginForm } from './components/LoginForm';
 import { RegisterForm } from './components/RegisterForm';
+import { ForgotPasswordForm } from './components/ForgotPasswordForm';
+import { ResetPasswordForm } from './components/ResetPasswordForm';
 // נטען מיידית (לא lazy) כי זה ה-view הראשון שכל משתמש רואה אחרי login -
 // טעינה עצלה הייתה רק מוסיפה פנייה רשתית מיותרת לפני הצגת המסך הראשי
 import { IncidentsPage } from './pages/IncidentsPage';
@@ -37,9 +39,27 @@ const PageLoadingFallback: React.FC = () => (
   </div>
 );
 
+// טוקן איפוס סיסמה מגיע כפרמטר query על כתובת השורש (?resetToken=...) ולא
+// כנתיב ייעודי - אין בכלל router באפליקציה (ראו comment ב-config.ts על
+// TENANT_ID קבוע), אז זו הדרך הפשוטה ביותר לקשר ישירות מהמייל למסך הנכון
+function getResetTokenFromUrl(): string | null {
+  return new URLSearchParams(window.location.search).get('resetToken');
+}
+
 const AuthGate: React.FC = () => {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const initialResetToken = useRef(getResetTokenFromUrl()).current;
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot-password' | 'reset-password'>(
+    initialResetToken ? 'reset-password' : 'login'
+  );
   const { sessionExpiredMessage } = useAuth();
+
+  // מנקים את ה-query param מהכתובת אחרי שקראנו אותו - רענון מקרי של הדף לא
+  // אמור להציג שוב את מסך האיפוס עם טוקן שכבר אולי נוצל
+  useEffect(() => {
+    if (initialResetToken) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [initialResetToken]);
 
   return (
     <div style={{
@@ -70,10 +90,20 @@ const AuthGate: React.FC = () => {
           {sessionExpiredMessage}
         </div>
       )}
-      {mode === 'login' ? (
-        <LoginForm onSwitchToRegister={() => setMode('register')} />
-      ) : (
+      {mode === 'login' && (
+        <LoginForm
+          onSwitchToRegister={() => setMode('register')}
+          onSwitchToForgotPassword={() => setMode('forgot-password')}
+        />
+      )}
+      {mode === 'register' && (
         <RegisterForm onSwitchToLogin={() => setMode('login')} />
+      )}
+      {mode === 'forgot-password' && (
+        <ForgotPasswordForm onBackToLogin={() => setMode('login')} />
+      )}
+      {mode === 'reset-password' && initialResetToken && (
+        <ResetPasswordForm token={initialResetToken} onDone={() => setMode('login')} />
       )}
     </div>
   );

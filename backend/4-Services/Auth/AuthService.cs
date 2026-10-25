@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -12,6 +13,8 @@ using MyBackendApi.Models.DTOs.Auth;
 using MyBackendApi.Models.Entities;
 using MyBackendApi.Services.Diagnostics;
 using MyBackendApi.Services.Interfaces;
+using SendGrid;
+using SendGrid.Helpers.Mail;
 using static MyBackendApi.Services.Diagnostics.DatabaseExceptionDetector;
 
 namespace MyBackendApi.Services.Auth;
@@ -20,7 +23,8 @@ public class AuthService(
     AppDbContext context,
     IConfiguration configuration,
     DbOutageLog dbOutageLog,
-    IHttpContextAccessor httpContextAccessor) : IAuthService
+    IHttpContextAccessor httpContextAccessor,
+    ILogger<AuthService> logger) : IAuthService
 {
     // PasswordHasher הוא stateless ובטוח לשימוש חוזר - חלק מ-Microsoft.AspNetCore.Identity
     // (מגיע דרך ה-Shared Framework של Microsoft.NET.Sdk.Web, בלי צורך בחבילה נפרדת)
@@ -40,6 +44,10 @@ public class AuthService(
     private int IpBanDistinctAccountsThreshold => configuration.GetValue<int?>("Auth:IpBanDistinctAccountsThreshold") ?? 3;
     private int IpBanWindowHours => configuration.GetValue<int?>("Auth:IpBanWindowHours") ?? 24;
     private int IpBanDurationHours => configuration.GetValue<int?>("Auth:IpBanDurationHours") ?? 24;
+
+    // חלון קצר בכוונה - קישור איפוס סיסמה שמונח בתיבת מייל זמן רב הוא חשיפה
+    // מיותרת, ובקשת קישור חדש היא פעולה זולה וזמינה למשתמש בכל רגע
+    private TimeSpan ResetTokenValidity => TimeSpan.FromMinutes(configuration.GetValue<int?>("Auth:PasswordResetTokenMinutes") ?? 30);
 
     // X-Client-IP, לא RemoteIpAddress/X-Forwarded-For הניתנים לזיוף - ראו
     // TrustedClientIp.cs להסבר המלא
@@ -252,10 +260,116 @@ public class AuthService(
         ));
     }
 
-    // "שכחתי סיסמה" (איפוס עצמאי בלי להיות מחובר) דורש שירות שליחת מיילים -
-    // אין כזה היום במערכת, אז זה נשאר רק לשינוי-סיסמה עצמי של משתמש שכבר
-    // מחובר. אין צורך בבדיקת נעילה/IP כאן - המשתמש כבר עבר אימות JWT תקף
-    // כדי להגיע לכאן בכלל
+    // תמיד אותה תגובה (הצלחה) בין אם האימייל קיים ובין אם לא - אותו עיקרון
+    // בדיוק כמו LoginAsync: לא לחשוף לתוקף פוטנציאלי אילו כתובות רשומות
+    // במערכת. בקשת "שכחתי סיסמה" חוזרת ונשנית לאותו אימייל פשוט יוצרת כמה
+    // טוקנים תקפים במקביל - לא בעיה, כל אחד תקף לעצמו עד שמשתמשים בו/פג תוקפו
+    public async Task ForgotPasswordAsync(ForgotPasswordRequestDto dto, CancellationToken ct = default)
+    {
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email && u.IsActive, ct);
+        if (user is null) return;
+
+        var rawToken = GenerateRawToken();
+        context.PasswordResetTokens.Add(new PasswordResetToken
+        {
+            UserId = user.Id,
+            TokenHash = HashToken(rawToken),
+            ExpiresAt = DateTime.UtcNow.Add(ResetTokenValidity)
+        });
+        await context.SaveChangesAsync(ct);
+
+        await SendResetEmailAsync(user, rawToken, ct);
+    }
+
+    // גלובלי בכוונה - לא מסונן לפי tenant. הטוקן עצמו (אקראי, 256 ביט) הוא
+    // המזהה היחיד שיש כאן; הלינק באימייל לא נושא איתו X-Tenant-Id, ואין שום
+    // סיבה אבטחתית לדרוש אותו - מי שמחזיק טוקן תקף הוכיח כבר גישה לתיבת
+    // המייל של המשתמש הספציפי הזה
+    public async Task ResetPasswordAsync(ResetPasswordRequestDto dto, CancellationToken ct = default)
+    {
+        var tokenHash = HashToken(dto.Token);
+
+        var resetToken = await context.PasswordResetTokens
+            .IgnoreQueryFilters()
+            .Include(t => t.User)
+            .FirstOrDefaultAsync(t => t.TokenHash == tokenHash, ct);
+
+        if (resetToken is null || resetToken.UsedAt is not null || resetToken.ExpiresAt < DateTime.UtcNow)
+        {
+            throw new InvalidOrExpiredResetTokenException();
+        }
+
+        // איפוס מוצלח "מוכיח" בעלות על החשבון - מנקים גם נעילת brute-force
+        // קיימת, בדיוק כמו שהתחברות מוצלחת רגילה מאפסת אותה
+        resetToken.User.PasswordHash = Hasher.HashPassword(resetToken.User, dto.NewPassword);
+        resetToken.User.FailedLoginAttempts = 0;
+        resetToken.User.LockedOutUntil = null;
+        resetToken.UsedAt = DateTime.UtcNow;
+
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static string GenerateRawToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(32);
+        return Convert.ToBase64String(bytes).Replace('+', '-').Replace('/', '_').TrimEnd('=');
+    }
+
+    private static string HashToken(string rawToken) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)));
+
+    // אותו דפוס בדיוק כמו IncidentNotificationService (SendGrid כבר מוגדר
+    // ועובד במערכת עבור התראות תקריות) - כשל שליחה לא אמור להפיל את הבקשה
+    // או לחשוף למשתמש אם המייל נשלח בפועל (אותו עיקרון אנטי-enumeration)
+    private async Task SendResetEmailAsync(User user, string rawToken, CancellationToken ct)
+    {
+        var apiKey = configuration["SendGrid:ApiKey"];
+        var fromEmail = configuration["SendGrid:FromEmail"];
+        var frontendBaseUrl = configuration["Frontend:BaseUrl"];
+
+        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(fromEmail) || string.IsNullOrWhiteSpace(frontendBaseUrl))
+        {
+            logger.LogWarning("SendGrid:ApiKey/FromEmail או Frontend:BaseUrl לא מוגדרים - מדלג על שליחת מייל איפוס סיסמה למשתמש {UserId}", user.Id);
+            return;
+        }
+
+        var resetLink = $"{frontendBaseUrl.TrimEnd('/')}/?resetToken={Uri.EscapeDataString(rawToken)}";
+        const string subject = "איפוס סיסמה - BugReports";
+        var body =
+            $"""
+            שלום {user.FullName},
+
+            התקבלה בקשה לאיפוס הסיסמה שלך במערכת BugReports.
+
+            לחץ על הקישור הבא כדי לבחור סיסמה חדשה (בתוקף ל-{(int)ResetTokenValidity.TotalMinutes} דקות):
+            {resetLink}
+
+            אם לא ביקשת איפוס סיסמה, ניתן להתעלם מהודעה זו - הסיסמה הנוכחית שלך תישאר ללא שינוי.
+            """;
+
+        try
+        {
+            var client = new SendGridClient(apiKey);
+            var from = new EmailAddress(fromEmail, "BugReports - אבטחת חשבון");
+            var to = new EmailAddress(user.Email, user.FullName);
+            var msg = MailHelper.CreateSingleEmail(from, to, subject, body, null);
+
+            var response = await client.SendEmailAsync(msg, ct);
+            if ((int)response.StatusCode >= 400)
+            {
+                var errBody = await response.Body.ReadAsStringAsync(ct);
+                logger.LogError("SendGrid החזיר שגיאה ({StatusCode}) בשליחת מייל איפוס סיסמה למשתמש {UserId}: {Body}",
+                    response.StatusCode, user.Id, errBody);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "כשל בשליחת מייל איפוס סיסמה למשתמש {UserId}", user.Id);
+        }
+    }
+
+    // שינוי-סיסמה עצמי של משתמש שכבר מחובר - אין צורך בבדיקת נעילה/IP כאן,
+    // המשתמש כבר עבר אימות JWT תקף כדי להגיע לכאן בכלל
     public async Task ChangePasswordAsync(int userId, ChangePasswordRequestDto dto, CancellationToken ct = default)
     {
         var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId, ct)
