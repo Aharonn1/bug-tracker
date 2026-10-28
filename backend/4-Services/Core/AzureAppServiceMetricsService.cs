@@ -6,7 +6,7 @@ namespace MyBackendApi.Services.Core;
 // בקשות, שגיאות 5xx וזמן תגובה. אותו Service Principal כמו AzureSqlMetricsService,
 // רק שהרשאת "Monitoring Reader" כבר מוקצית ברמת ה-resource group ולכן מכסה
 // גם את המשאב הזה בלי הגדרה נוספת
-public class AzureAppServiceMetricsService(IConfiguration configuration, AzureResourceMetricsReader reader, AzureResourceHealthReader healthReader)
+public class AzureAppServiceMetricsService(IConfiguration configuration, AzureResourceMetricsReader reader, AzureResourceHealthReader healthReader, ILogger<AzureAppServiceMetricsService> logger)
 {
     private readonly string? _resourceId = configuration["Monitoring:AppServiceResourceId"];
 
@@ -19,7 +19,17 @@ public class AzureAppServiceMetricsService(IConfiguration configuration, AzureRe
         var metrics = await reader.QueryAsync(_resourceId, MetricNames, window, ct);
         if (metrics is null) return null;
 
-        var resourceHealth = await healthReader.GetAvailabilityAsync(_resourceId, ct);
+        // תוספת, לא הליבה של הכרטיס - כשל כאן לא אמור להפיל את הצגת המדדים
+        // העיקריים (שכבר נשלפו בהצלחה למעלה), רק להישאר null ולהתלונן בלוג
+        ResourceHealthStatusDto? resourceHealth = null;
+        try
+        {
+            resourceHealth = await healthReader.GetAvailabilityAsync(_resourceId, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "לא ניתן היה לקבל Resource Health עבור ה-App Service - ממשיכים בלי זה");
+        }
 
         return new AppServiceHealthMetricsDto(
             CpuTimeSeconds: metrics["CpuTime"],

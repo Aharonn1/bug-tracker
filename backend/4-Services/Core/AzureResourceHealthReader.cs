@@ -60,7 +60,16 @@ public class AzureResourceHealthReader
                 throw new HttpRequestException($"Azure Resource Health החזיר {(int)response.StatusCode}: {body}");
             }
 
-            return Parse(body);
+            var parsed = Parse(body);
+            if (parsed is null)
+            {
+                // תגובה מוצלחת (200) אבל בפורמט שלא תואם את מה שציפינו - זה
+                // עצמו חריג שראוי להיחשף עם גוף התשובה המלא בלוג, לא "אין
+                // מידע" בשקט - אותו עיקרון בדיוק כמו שאר ה-readers בקבוצה הזו
+                throw new HttpRequestException($"Azure Resource Health החזיר תשובה בפורמט לא צפוי: {body}");
+            }
+
+            return parsed;
         }
         catch (Exception ex) when (ex is not AzureResourceHealthQueryFailedException)
         {
