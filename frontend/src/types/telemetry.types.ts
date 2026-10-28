@@ -61,3 +61,20 @@ export interface AppServiceHealthMetricsDto {
   httpQueueLength: MetricPointDto[];
   generatedAt: string;
 }
+
+// תקלה שמיקרוסופט עצמה מכריזה עליה (Service Issue / Planned Maintenance /
+// Health Advisory) ברמת ה-subscription/אזור - לא נגזר ממדדים שלנו, שונה
+// מהותית מ-AppServiceHealthMetricsDto/SqlHealthMetricsDto
+export interface ServiceHealthEventDto {
+  eventType: string;
+  status: string;
+  title: string;
+  summary: string | null;
+  lastUpdateTime: string | null;
+  impactedServices: string[];
+}
+
+export interface AzureServiceHealthDto {
+  activeEvents: ServiceHealthEventDto[];
+  generatedAt: string;
+}

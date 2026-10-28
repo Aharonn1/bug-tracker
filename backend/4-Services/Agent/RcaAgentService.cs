@@ -38,6 +38,7 @@ public class RcaAgentService : IRcaAgentService
         string? stackTrace,
         string? codeLocationFilePath,
         int? codeLocationLine,
+        string? activeAzureServiceHealthSummary,
         CancellationToken ct = default)
     {
         // נבנה את קישור הגיטהאב בעצמנו, בשרת - לא סומכים על המודל לנחש/לבנות
@@ -116,7 +117,11 @@ public class RcaAgentService : IRcaAgentService
                     "(הוא כבר נפתר משורת ה-stack trace הגולמית, כולל מקרים של קובץ JavaScript מוקטן בצד-לקוח). " +
                     "צטט את הקישור הזה *בדיוק כפי שניתן*, כקישור Markdown, תחת סעיף 'מיקום בקוד' - " +
                     "אל תנסה לחלץ קובץ/שורה בעצמך מתוך ה-stack trace הגולמי ואל תמציא קישור משלך. " +
-                    "אם לא סופק קישור כזה, ציין זאת במפורש ואל תנחש מיקום."
+                    "אם לא סופק קישור כזה, ציין זאת במפורש ואל תנחש מיקום. " +
+                    "אם סופק לך 'תקלת Azure Service Health פעילה' - זו עובדה מאומתת שמיקרוסופט עצמה " +
+                    "מכריזה עליה כרגע ברמת ה-subscription/אזור, לא ניחוש. אם התקלה הנוכחית עשויה להיות " +
+                    "קשורה לשירות ה-Azure הספציפי שמוזכר שם, ציין זאת במפורש כגורם אפשרי לצד הניתוח " +
+                    "הרגיל - אל תתעלם מהמידע הזה כשהוא רלוונטי, ואל תמציא קשר אם אין סיבה אמיתית לחשוב שיש."
             },
             new JsonObject
             {
@@ -132,7 +137,8 @@ public class RcaAgentService : IRcaAgentService
                     $"מספר תיק: {caseNumber ?? "ללא"}\n" +
                     $"הודעה: {errorMessage}\n" +
                     $"Playbook: {playbook ?? "ללא"}\n" +
-                    $"קישור מדויק לקוד: {githubLink ?? "לא נמצא מיקום קוד מאומת עבור תקרית זו"}" +
+                    $"קישור מדויק לקוד: {githubLink ?? "לא נמצא מיקום קוד מאומת עבור תקרית זו"}\n" +
+                    $"תקלת Azure Service Health פעילה: {activeAzureServiceHealthSummary ?? "אין תקלה מוכרזת כרגע (או שהבדיקה לא זמינה)"}" +
                     (string.IsNullOrEmpty(stackTrace) ? "" :
                         $"\nStack Trace (רקע בלבד - אל תחלץ ממנו מיקום קוד, הסתמך רק על 'קישור מדויק לקוד' לעיל):\n" +
                         stackTrace[..Math.Min(stackTrace.Length, 2000)])

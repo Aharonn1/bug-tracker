@@ -16,6 +16,7 @@ public class TelemetryController(
     OpsInsightsService opsInsightsService,
     AzureSqlMetricsService sqlMetricsService,
     AzureAppServiceMetricsService appServiceMetricsService,
+    AzureServiceHealthReader serviceHealthReader,
     ICurrentTenantProvider tenantProvider,
     ICurrentUserProvider currentUserProvider) : ControllerBase
 {
@@ -106,5 +107,22 @@ public class TelemetryController(
         var metrics = await appServiceMetricsService.GetAppServiceHealthAsync(window, ct);
 
         return metrics is not null ? Ok(metrics) : NoContent();
+    }
+
+    // מנהלים בלבד - אותו שיקול כמו שאר מדדי ה-Azure. שונה מהותית מהם: זו לא
+    // שאילתת מדדים על משאב שלנו, אלא "האם ל-Azure עצמו יש תקלה מוכרזת"
+    [HttpGet("azure-service-health")]
+    [ProducesResponseType(typeof(AzureServiceHealthDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAzureServiceHealth(CancellationToken ct)
+    {
+        if (!currentUserProvider.IsAdminOrAbove)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "רק מנהל מערכת יכול לגשת לסטטוס Azure Service Health" });
+        }
+
+        var health = await serviceHealthReader.GetActiveEventsAsync(ct);
+        return health is not null ? Ok(health) : NoContent();
     }
 }

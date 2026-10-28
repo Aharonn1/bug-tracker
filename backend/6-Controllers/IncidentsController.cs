@@ -5,6 +5,7 @@ using MyBackendApi.Models.DTOs.Common;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Responses;
 using MyBackendApi.Services.Auth;
+using MyBackendApi.Services.Core;
 using MyBackendApi.Services.Diagnostics;
 using MyBackendApi.Services.Interfaces;
 using MyBackendApi.Services.Queues;
@@ -19,10 +20,12 @@ public class IncidentsController(
     IIncidentService incidentService,
     IncidentChannelQueue queue,
     IRcaAgentService rcaAgentService,
+    AzureServiceHealthReader serviceHealthReader,
     ICurrentTenantProvider tenantProvider,
     ICurrentUserProvider currentUserProvider,
     IUserDirectoryService userDirectoryService,
-    DbOutageLog dbOutageLog) : ControllerBase
+    DbOutageLog dbOutageLog,
+    ILogger<IncidentsController> logger) : ControllerBase
 {
     /// <summary>
     /// יומן זיכרון-בלבד של תקלות "אין גישה ל-DB" - לא נוגע ב-EF Core/SQL בכלל,
@@ -153,6 +156,25 @@ public class IncidentsController(
         var restrictToUserId = currentUserProvider.IsAdminOrAbove ? null : currentUserProvider.UserId;
         var incident = await incidentService.GetIncidentByIdAsync(id, restrictToUserId, ct);
 
+        // תוספת-עזר לניתוח, לא חלק מהליבה שלו - אם Service Health עצמו נופל
+        // (לא מוגדר, בעיית הרשאות), זה לא אמור למנוע את האבחון הרגיל של
+        // התקרית. נבלע את הכשל כאן, לא ב-reader עצמו (שם זה עדיין נזרק
+        // במפורש, כדי שהכרטיס בדשבורד כן יראה כשל אמיתי)
+        string? azureServiceHealthSummary = null;
+        try
+        {
+            var health = await serviceHealthReader.GetActiveEventsAsync(ct);
+            if (health is { ActiveEvents.Count: > 0 })
+            {
+                azureServiceHealthSummary = string.Join("; ", health.ActiveEvents.Select(e =>
+                    $"{e.Title} ({e.EventType}, שירותים מושפעים: {(e.ImpactedServices.Count > 0 ? string.Join(", ", e.ImpactedServices) : "לא צוין")})"));
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "לא ניתן היה לבדוק Azure Service Health עבור ניתוח תקרית {IncidentId} - ממשיכים בלעדיו", id);
+        }
+
         var report = await rcaAgentService.AnalyzeAndRemediateIncidentAsync(
             incident!.ErrorCode,
             incident.ErrorMessage,
@@ -164,6 +186,7 @@ public class IncidentsController(
             incident.StackTrace,
             incident.CodeLocationFilePath,
             incident.CodeLocationLine,
+            azureServiceHealthSummary,
             ct);
 
         return Ok(new
