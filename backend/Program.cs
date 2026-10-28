@@ -221,6 +221,7 @@ builder.Services.AddSingleton<AzureResourceMetricsReader>();
 builder.Services.AddSingleton<AzureSqlMetricsService>();
 builder.Services.AddSingleton<AzureAppServiceMetricsService>();
 builder.Services.AddSingleton<AzureServiceHealthReader>();
+builder.Services.AddSingleton<AzureResourceHealthReader>();
 
 // זיהוי הלקוח (Tenant) הנוכחי מתוך ה-header של הבקשה - נדרש עבור ה-Global Query
 // Filter ב-AppDbContext שמבדיל בין לקוחות שונים

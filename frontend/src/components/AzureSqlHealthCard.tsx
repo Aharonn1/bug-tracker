@@ -3,6 +3,7 @@ import { useSqlHealthMetrics } from '../hooks/useSqlHealthMetrics';
 import { toMetricChartData } from '../utils/metricChartData';
 import { colors } from '../styles/theme';
 import { Card } from './ui/Card';
+import { ResourceHealthBadge } from './ui/ResourceHealthBadge';
 import { TrendAreaChart } from './charts/TrendAreaChart';
 
 // מדדי משאב Azure SQL בזמן אמת (DTU/Workers/Sessions), כדי לענות ישירות על
@@ -46,20 +47,23 @@ export const AzureSqlHealthCard: React.FC = () => {
           Azure Monitor למדדי SQL לא מוגדר כרגע עבור משתמש זה (חסרה הרשאת Monitoring Reader על משאב ה-SQL, או שהפרטים עדיין לא הוגדרו ב-App Settings).
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
-          <div>
-            <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>DTU percentage</div>
-            <TrendAreaChart data={dtuData} color={colors.accentSoft} />
+        <>
+          <ResourceHealthBadge health={metrics?.resourceHealth ?? null} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+            <div>
+              <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>DTU percentage</div>
+              <TrendAreaChart data={dtuData} color={colors.accentSoft} />
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>Workers percentage</div>
+              <TrendAreaChart data={workersData} color={colors.violet} />
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>Sessions percentage</div>
+              <TrendAreaChart data={sessionsData} color={colors.warningSoft} />
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>Workers percentage</div>
-            <TrendAreaChart data={workersData} color={colors.violet} />
-          </div>
-          <div>
-            <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>Sessions percentage</div>
-            <TrendAreaChart data={sessionsData} color={colors.warningSoft} />
-          </div>
-        </div>
+        </>
       )}
 
       <div style={{ fontSize: '11px', color: colors.textFaint, marginTop: '14px', lineHeight: 1.6 }}>

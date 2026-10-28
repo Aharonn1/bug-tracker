@@ -7,5 +7,6 @@ public record AppServiceHealthMetricsDto(
     List<MetricPointDto> Http5xx,
     List<MetricPointDto> AverageResponseTimeSeconds,
     List<MetricPointDto> HttpQueueLength,
-    DateTimeOffset GeneratedAt
+    DateTimeOffset GeneratedAt,
+    ResourceHealthStatusDto? ResourceHealth = null
 );

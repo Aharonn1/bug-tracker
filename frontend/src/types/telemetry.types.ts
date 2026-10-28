@@ -45,11 +45,21 @@ export interface MetricPointDto {
   value: number | null;
 }
 
+// "האם Azure עצמו מסמן את המשאב הזה בדיוק כ-Unavailable/Degraded" - לא
+// נגזר מהמדדים שמסביב, שאלה נפרדת לגמרי (ראו AzureResourceHealthReader)
+export interface ResourceHealthStatusDto {
+  availabilityState: string;
+  title: string | null;
+  summary: string | null;
+  reportedTime: string | null;
+}
+
 export interface SqlHealthMetricsDto {
   dtuPercent: MetricPointDto[];
   workersPercent: MetricPointDto[];
   sessionsPercent: MetricPointDto[];
   generatedAt: string;
+  resourceHealth: ResourceHealthStatusDto | null;
 }
 
 export interface AppServiceHealthMetricsDto {
@@ -60,6 +70,7 @@ export interface AppServiceHealthMetricsDto {
   averageResponseTimeSeconds: MetricPointDto[];
   httpQueueLength: MetricPointDto[];
   generatedAt: string;
+  resourceHealth: ResourceHealthStatusDto | null;
 }
 
 // תקלה שמיקרוסופט עצמה מכריזה עליה (Service Issue / Planned Maintenance /

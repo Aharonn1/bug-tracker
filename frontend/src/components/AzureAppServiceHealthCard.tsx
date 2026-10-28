@@ -3,6 +3,7 @@ import { useAppServiceHealthMetrics } from '../hooks/useAppServiceHealthMetrics'
 import { toMetricChartData } from '../utils/metricChartData';
 import { colors } from '../styles/theme';
 import { Card } from './ui/Card';
+import { ResourceHealthBadge } from './ui/ResourceHealthBadge';
 import { TrendAreaChart } from './charts/TrendAreaChart';
 
 // מדדי משאב ה-App Service (הבקאנד עצמו) - CPU, זיכרון, בקשות, שגיאות 5xx
@@ -49,7 +50,9 @@ export const AzureAppServiceHealthCard: React.FC = () => {
           Azure Monitor למדדי App Service לא מוגדר כרגע (חסרה הרשאת Monitoring Reader, או שהפרטים עדיין לא הוגדרו ב-App Settings).
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+        <>
+          <ResourceHealthBadge health={metrics?.resourceHealth ?? null} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
           <div>
             <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>CPU Time (שניות)</div>
             <TrendAreaChart data={cpuData} color={colors.accentSoft} />
@@ -74,7 +77,8 @@ export const AzureAppServiceHealthCard: React.FC = () => {
             <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>אורך תור HTTP (HttpQueueLength)</div>
             <TrendAreaChart data={queueLengthData} color="#f472b6" />
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       <div style={{ fontSize: '11px', color: colors.textFaint, marginTop: '14px', lineHeight: 1.6 }}>

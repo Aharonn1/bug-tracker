@@ -6,5 +6,6 @@ public record SqlHealthMetricsDto(
     List<MetricPointDto> DtuPercent,
     List<MetricPointDto> WorkersPercent,
     List<MetricPointDto> SessionsPercent,
-    DateTimeOffset GeneratedAt
+    DateTimeOffset GeneratedAt,
+    ResourceHealthStatusDto? ResourceHealth = null
 );

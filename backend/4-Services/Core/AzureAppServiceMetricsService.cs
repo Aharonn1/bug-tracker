@@ -6,7 +6,7 @@ namespace MyBackendApi.Services.Core;
 // בקשות, שגיאות 5xx וזמן תגובה. אותו Service Principal כמו AzureSqlMetricsService,
 // רק שהרשאת "Monitoring Reader" כבר מוקצית ברמת ה-resource group ולכן מכסה
 // גם את המשאב הזה בלי הגדרה נוספת
-public class AzureAppServiceMetricsService(IConfiguration configuration, AzureResourceMetricsReader reader)
+public class AzureAppServiceMetricsService(IConfiguration configuration, AzureResourceMetricsReader reader, AzureResourceHealthReader healthReader)
 {
     private readonly string? _resourceId = configuration["Monitoring:AppServiceResourceId"];
 
@@ -19,6 +19,8 @@ public class AzureAppServiceMetricsService(IConfiguration configuration, AzureRe
         var metrics = await reader.QueryAsync(_resourceId, MetricNames, window, ct);
         if (metrics is null) return null;
 
+        var resourceHealth = await healthReader.GetAvailabilityAsync(_resourceId, ct);
+
         return new AppServiceHealthMetricsDto(
             CpuTimeSeconds: metrics["CpuTime"],
             MemoryWorkingSetBytes: metrics["MemoryWorkingSet"],
@@ -26,7 +28,8 @@ public class AzureAppServiceMetricsService(IConfiguration configuration, AzureRe
             Http5xx: metrics["Http5xx"],
             AverageResponseTimeSeconds: metrics["AverageResponseTime"],
             HttpQueueLength: metrics["HttpQueueLength"],
-            GeneratedAt: DateTimeOffset.UtcNow
+            GeneratedAt: DateTimeOffset.UtcNow,
+            ResourceHealth: resourceHealth
         );
     }
 }
