@@ -36,11 +36,13 @@ export const AzureServiceHealthCard: React.FC = () => {
         <div style={{ color: colors.dangerSoft, fontSize: '13px' }}>
           שגיאה בבדיקת Azure Service Health: {error}
         </div>
-      ) : !loading && !health ? (
+      ) : loading && !health ? (
+        <div style={{ color: colors.textFaint, fontSize: '13px' }}>טוען...</div>
+      ) : !health ? (
         <div style={{ color: colors.textFaint, fontSize: '13px' }}>
           Azure Service Health לא מוגדר כרגע (חסרה הרשאת Reader על ה-subscription, או שהפרטים עדיין לא הוגדרו ב-App Settings).
         </div>
-      ) : health && health.activeEvents.length === 0 ? (
+      ) : health.activeEvents.length === 0 ? (
         <div
           style={{
             display: 'flex',
@@ -59,7 +61,7 @@ export const AzureServiceHealthCard: React.FC = () => {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {health!.activeEvents.map((ev, i) => (
+          {health.activeEvents.map((ev, i) => (
             <div
               key={i}
               style={{
