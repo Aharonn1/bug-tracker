@@ -5,11 +5,6 @@ import { colors } from '../styles/theme';
 // ממקור חיצוני, וזו בחירה אבטחתית שלא כדאי לרופף רק בשביל קישוט מסך
 // הכניסה. SVG/CSS מצוירים בעצמנו עונים גם על "מרשים" וגם נשארים מהמקור
 // שלנו בלבד - ועם אנימציה, יש כאן תחושת "חי" גם בלי קובץ וידאו אמיתי
-const FEATURES = [
-  { label: 'בידוד מלא בין לקוחות', icon: '🔒' },
-  { label: 'סוכן AI לחקירת תקלות', icon: '🧭' },
-  { label: 'ניטור Azure בזמן אמת', icon: '📡' },
-];
 
 export const AuthBrandPanel: React.FC = () => (
   <div className="auth-brand-panel" style={{ position: 'relative', overflow: 'hidden' }}>
@@ -17,8 +12,10 @@ export const AuthBrandPanel: React.FC = () => (
       .auth-brand-panel {
         display: flex;
         flex-direction: column;
+        align-items: center;
         justify-content: center;
-        gap: 28px;
+        text-align: center;
+        gap: 32px;
         flex: 1 1 50%;
         max-width: 560px;
         padding: 56px 48px;
@@ -53,39 +50,34 @@ export const AuthBrandPanel: React.FC = () => (
       <rect width="100%" height="100%" fill="url(#authGrid)" />
     </svg>
 
-    <div style={{ position: 'relative' }}>
-      <div
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-          fontSize: '12px',
-          fontWeight: 700,
-          letterSpacing: '0.04em',
-          color: colors.accentSoft,
-          backgroundColor: 'rgba(56,189,248,0.12)',
-          border: `1px solid rgba(56,189,248,0.3)`,
-          padding: '5px 12px',
-          borderRadius: '999px',
-          marginBottom: '22px',
-        }}
-      >
-        <span className="pulse-dot" style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: colors.accentSoft, display: 'inline-block' }} />
-        מערכת פעילה
-      </div>
-
-      <h1 style={{ margin: 0, fontSize: '32px', fontWeight: 800, lineHeight: 1.3, textWrap: 'balance' as any, color: colors.textPrimary }}>
-        ניטור תקריות חכם
-        <br />
-        למשרדי עורכי דין
-      </h1>
-      <p style={{ margin: '14px 0 0', fontSize: '15px', color: colors.textMuted, lineHeight: 1.7, maxWidth: '420px' }}>
-        זיהוי תקלות בזמן אמת, חקירת שורש-הבעיה בעזרת AI, ובידוד נתונים מלא בין כל לקוח ולקוח - הכול במקום אחד.
-      </p>
+    <div
+      style={{
+        position: 'relative',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '8px',
+        fontSize: '12px',
+        fontWeight: 700,
+        letterSpacing: '0.04em',
+        color: colors.accentSoft,
+        backgroundColor: 'rgba(56,189,248,0.12)',
+        border: `1px solid rgba(56,189,248,0.3)`,
+        padding: '5px 12px',
+        borderRadius: '999px',
+      }}
+    >
+      <span className="pulse-dot" style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: colors.accentSoft, display: 'inline-block' }} />
+      מערכת פעילה
     </div>
 
+    <h1 style={{ margin: 0, fontSize: '32px', fontWeight: 800, lineHeight: 1.3, textWrap: 'balance' as any, color: colors.textPrimary, position: 'relative' }}>
+      ניטור תקריות חכם
+      <br />
+      למשרדי עורכי דין
+    </h1>
+
     {/* "פס דופק" חי - מדמה גרף ניטור בזמן אמת, אנימציה רציפה */}
-    <svg viewBox="0 0 400 80" style={{ width: '100%', height: '72px', position: 'relative' }} preserveAspectRatio="none">
+    <svg viewBox="0 0 400 80" style={{ width: '100%', maxWidth: '320px', height: '64px', position: 'relative' }} preserveAspectRatio="none">
       <polyline
         className="pulse-line"
         points="0,40 40,40 55,15 70,65 85,40 140,40 155,25 170,55 185,40 400,40"
@@ -99,30 +91,6 @@ export const AuthBrandPanel: React.FC = () => (
       />
       <circle cx="185" cy="40" r="4" fill={colors.accentSoft} className="pulse-dot" />
     </svg>
-
-    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {FEATURES.map((f) => (
-        <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: colors.textSecondary }}>
-          <span
-            style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '8px',
-              backgroundColor: colors.card,
-              border: `1px solid ${colors.border}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '14px',
-              flexShrink: 0,
-            }}
-          >
-            {f.icon}
-          </span>
-          {f.label}
-        </div>
-      ))}
-    </div>
   </div>
 );
 
