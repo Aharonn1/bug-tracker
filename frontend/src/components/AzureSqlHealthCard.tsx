@@ -49,6 +49,31 @@ export const AzureSqlHealthCard: React.FC = () => {
       ) : (
         <>
           <ResourceHealthBadge health={metrics?.resourceHealth ?? null} />
+          {metrics?.diagnosticSummary && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px', marginBottom: '18px' }}>
+              {([
+                ['Deadlocks', metrics.diagnosticSummary.deadlocksCount],
+                ['Blocks', metrics.diagnosticSummary.blocksCount],
+                ['Errors', metrics.diagnosticSummary.errorsCount],
+                ['Timeouts', metrics.diagnosticSummary.timeoutsCount],
+              ] as const).map(([label, count]) => (
+                <div
+                  key={label}
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    backgroundColor: count > 0 ? colors.dangerBg : colors.surfaceRaised,
+                    border: `1px solid ${count > 0 ? colors.dangerBorder : colors.border}`,
+                  }}
+                >
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: count > 0 ? colors.dangerSoft : colors.textSecondary }}>
+                    {count}
+                  </div>
+                  <div style={{ fontSize: '11px', color: colors.textFaint, marginTop: '2px' }}>{label}</div>
+                </div>
+              ))}
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
             <div>
               <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>DTU percentage</div>
@@ -68,6 +93,8 @@ export const AzureSqlHealthCard: React.FC = () => {
 
       <div style={{ fontSize: '11px', color: colors.textFaint, marginTop: '14px', lineHeight: 1.6 }}>
         אם כל המדדים נמוכים לאורך זמן (רחוק מ-100%), תקלות "בסיס נתונים לא נגיש" כנראה לא נובעות מעומס על המשאב - כדאי לחפש את הסיבה בקוד או בבדיקות ידניות שבוצעו.
+        <br />
+        <strong>Deadlocks/Blocks/Errors/Timeouts</strong> הם אירועים נקודתיים (לא אחוזי ניצול) - כל ספירה מעל 0 שווה בדיקה ישירה, גם אם המדדים למעלה נראים תקינים לגמרי.
       </div>
     </Card>
   );

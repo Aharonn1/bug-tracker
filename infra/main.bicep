@@ -275,6 +275,24 @@ resource sqlDatabase 'Microsoft.Sql/servers/databases@2022-05-01-preview' = {
   }
 }
 
+// זרימת לוגים ייעודית ל-DB - שונה מהמדדים הכלליים (DTU/Workers/Sessions):
+// Deadlocks/Blocks/Errors/Timeouts הם אירועים נקודתיים, לא אחוזים לאורך
+// זמן, ולא נראים בכלל במדדי ה-Monitor הרגילים. יעד "Azure diagnostics"
+// (טבלה משותפת AzureDiagnostics, לא "Dedicated") כי זה הפשוט ביותר לשאילתה
+resource sqlDatabaseDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'sql-diagnostics-to-law'
+  scope: sqlDatabase
+  properties: {
+    workspaceId: logAnalytics.id
+    logs: [
+      { category: 'Errors', enabled: true }
+      { category: 'Blocks', enabled: true }
+      { category: 'Deadlocks', enabled: true }
+      { category: 'Timeouts', enabled: true }
+    ]
+  }
+}
+
 // ==========================================
 // Static Web App (Frontend)
 // ==========================================

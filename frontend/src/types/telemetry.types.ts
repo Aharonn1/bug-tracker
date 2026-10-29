@@ -54,12 +54,23 @@ export interface ResourceHealthStatusDto {
   reportedTime: string | null;
 }
 
+// ספירות אירועים נקודתיים (לא אחוזי ניצול לאורך זמן) - מגיע מ-Diagnostic
+// Settings שמוזרמים ל-Log Analytics, לא ממדדי Azure Monitor הרגילים
+export interface SqlDiagnosticSummaryDto {
+  errorsCount: number;
+  blocksCount: number;
+  deadlocksCount: number;
+  timeoutsCount: number;
+  generatedAt: string;
+}
+
 export interface SqlHealthMetricsDto {
   dtuPercent: MetricPointDto[];
   workersPercent: MetricPointDto[];
   sessionsPercent: MetricPointDto[];
   generatedAt: string;
   resourceHealth: ResourceHealthStatusDto | null;
+  diagnosticSummary: SqlDiagnosticSummaryDto | null;
 }
 
 export interface AppServiceHealthMetricsDto {
