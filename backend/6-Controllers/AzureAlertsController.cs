@@ -9,9 +9,12 @@ using MyBackendApi.Services.Queues;
 
 namespace MyBackendApi.Controllers;
 
-// מקבל webhook מ-Azure Monitor Alert (Action Group) כש-Service Health
-// מכריז על תקלה - "push", לא "pull" כמו AzureServiceHealthReader. נפרד
-// לגמרי מ-IncidentsController.IngestIncident (ה-/ingest הרגיל) כי זה
+// מקבל webhook מ-Azure Monitor Alert (Action Group) - במקור נבנה עבור
+// Service Health, אבל ה-route נשאר גם היעד ל-Alert Rule נוסף מסוג
+// Resource Health (ראו שם ה-method). שני סוגי ה-Alert חולקים את אותו
+// "מעטפת" (data.essentials) ב-Common Alert Schema, אז הפענוח הגנרי כאן
+// עובד לשניהם בלי שינוי - "push", לא "pull" כמו שני ה-readers האחרים.
+// נפרד לגמרי מ-IncidentsController.IngestIncident (ה-/ingest הרגיל) כי זה
 // סומך על X-Tenant-Id שמגיע מהלקוח - כאן אין "לקוח" במובן הזה, Azure לא
 // שולח header כזה, אז ה-tenant קבוע בקוד (זו לא תקלה ספציפית ללקוח כלשהו)
 [ApiController]
@@ -33,7 +36,7 @@ public class AzureAlertsController(
     [HttpPost("service-health")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> ReceiveServiceHealthAlert(
+    public async Task<IActionResult> ReceiveAzureMonitorAlert(
         [FromQuery] string? token,
         CancellationToken ct)
     {
@@ -106,7 +109,7 @@ public class AzureAlertsController(
             // לא JSON תקין בכלל - עדיין נרשם כתקרית, עם ה-RawPayload הגולמי
         }
 
-        return "התקבל Alert מ-Azure Service Health (ראה RawPayload לפרטים המלאים)";
+        return "התקבל Alert מ-Azure Monitor (ראה RawPayload לפרטים המלאים)";
     }
 
     private static string? GetString(JsonElement el, string prop) =>
