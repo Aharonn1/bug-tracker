@@ -17,8 +17,7 @@ export const AuthBrandPanel: React.FC = () => (
         text-align: center;
         gap: 32px;
         flex: 1 1 50%;
-        max-width: 560px;
-        padding: 56px 48px;
+        padding: 48px 40px;
         background: linear-gradient(160deg, #0b0f19 0%, #0f1a33 55%, #131033 100%);
         color: ${colors.textPrimary};
       }

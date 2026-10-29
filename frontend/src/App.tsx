@@ -66,52 +66,67 @@ const AuthGate: React.FC = () => {
     <div style={{
       minHeight: '100vh',
       display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       backgroundColor: colors.bg,
       direction: 'rtl',
+      padding: '24px',
+      boxSizing: 'border-box',
     }}>
-      <AuthBrandPanel />
-
       <div style={{
-        flex: '1 1 50%',
         display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-        boxSizing: 'border-box',
-        gap: '16px',
+        width: '100%',
+        maxWidth: '920px',
+        borderRadius: '20px',
+        overflow: 'hidden',
+        boxShadow: '0 30px 80px rgba(0,0,0,0.45)',
+        border: `1px solid ${colors.border}`,
       }}>
-        {sessionExpiredMessage && (
-          <div style={{
-            padding: '10px 16px',
-            backgroundColor: colors.warningBg,
-            border: `1px solid ${colors.warning}`,
-            borderRadius: '8px',
-            color: colors.warningSoft,
-            fontSize: '13px',
-            maxWidth: '380px',
-            width: '100%',
-            textAlign: 'center',
-            boxSizing: 'border-box',
-          }}>
-            {sessionExpiredMessage}
-          </div>
-        )}
-        {mode === 'login' && (
-          <LoginForm
-            onSwitchToRegister={() => setMode('register')}
-            onSwitchToForgotPassword={() => setMode('forgot-password')}
-          />
-        )}
-        {mode === 'register' && (
-          <RegisterForm onSwitchToLogin={() => setMode('login')} />
-        )}
-        {mode === 'forgot-password' && (
-          <ForgotPasswordForm onBackToLogin={() => setMode('login')} />
-        )}
-        {mode === 'reset-password' && initialResetToken && (
-          <ResetPasswordForm token={initialResetToken} onDone={() => setMode('login')} />
-        )}
+        <AuthBrandPanel />
+
+        <div style={{
+          flex: '1 1 50%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '40px 28px',
+          boxSizing: 'border-box',
+          gap: '16px',
+          backgroundColor: colors.bg,
+        }}>
+          {sessionExpiredMessage && (
+            <div style={{
+              padding: '10px 16px',
+              backgroundColor: colors.warningBg,
+              border: `1px solid ${colors.warning}`,
+              borderRadius: '8px',
+              color: colors.warningSoft,
+              fontSize: '13px',
+              maxWidth: '380px',
+              width: '100%',
+              textAlign: 'center',
+              boxSizing: 'border-box',
+            }}>
+              {sessionExpiredMessage}
+            </div>
+          )}
+          {mode === 'login' && (
+            <LoginForm
+              onSwitchToRegister={() => setMode('register')}
+              onSwitchToForgotPassword={() => setMode('forgot-password')}
+            />
+          )}
+          {mode === 'register' && (
+            <RegisterForm onSwitchToLogin={() => setMode('login')} />
+          )}
+          {mode === 'forgot-password' && (
+            <ForgotPasswordForm onBackToLogin={() => setMode('login')} />
+          )}
+          {mode === 'reset-password' && initialResetToken && (
+            <ResetPasswordForm token={initialResetToken} onDone={() => setMode('login')} />
+          )}
+        </div>
       </div>
     </div>
   );
