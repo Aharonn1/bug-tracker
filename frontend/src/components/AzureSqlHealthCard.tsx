@@ -76,7 +76,7 @@ export const AzureSqlHealthCard: React.FC = () => {
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
             <div>
-              <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>DTU percentage</div>
+              <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>DTU percentage - סף התראה 80%</div>
               <TrendAreaChart data={dtuData} color={colors.accentSoft} />
             </div>
             <div>

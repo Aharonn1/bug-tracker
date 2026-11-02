@@ -82,6 +82,10 @@ export interface AppServiceHealthMetricsDto {
   httpQueueLength: MetricPointDto[];
   generatedAt: string;
   resourceHealth: ResourceHealthStatusDto | null;
+  // אחוזים ברמת ה-App Service Plan - אותם מדדים בדיוק ש-backend-cpu-high-alert
+  // ו-backend-memory-high-alert מתריעים עליהם, לראות את המגמה לפני שהיא חוצה סף
+  cpuPercent: MetricPointDto[] | null;
+  memoryPercent: MetricPointDto[] | null;
 }
 
 // תקלה שמיקרוסופט עצמה מכריזה עליה (Service Issue / Planned Maintenance /

@@ -9,10 +9,15 @@ namespace MyBackendApi.Services.Core;
 public class AzureAppServiceMetricsService(IConfiguration configuration, AzureResourceMetricsReader reader, AzureResourceHealthReader healthReader, ILogger<AzureAppServiceMetricsService> logger)
 {
     private readonly string? _resourceId = configuration["Monitoring:AppServiceResourceId"];
+    // משאב נפרד מה-App Service עצמו - CpuPercentage/MemoryPercentage נמדדים
+    // ברמת ה-Plan (Microsoft.Web/serverfarms), לא ברמת ה-site, בדיוק כמו
+    // backend-cpu-high-alert/backend-memory-high-alert שמוגדרים על אותו משאב
+    private readonly string? _planResourceId = configuration["Monitoring:AppServicePlanResourceId"];
 
     // HttpQueueLength הוא המדד הכי ישיר למצב שגילינו בבדיקת העומס - כמה
     // בקשות ממתינות בתור כי אין worker thread פנוי לטפל בהן, בלי קשר ל-DB בכלל
     private static readonly string[] MetricNames = ["CpuTime", "MemoryWorkingSet", "Requests", "Http5xx", "AverageResponseTime", "HttpQueueLength"];
+    private static readonly string[] PlanMetricNames = ["CpuPercentage", "MemoryPercentage"];
 
     public async Task<AppServiceHealthMetricsDto?> GetAppServiceHealthAsync(TimeSpan window, CancellationToken ct = default)
     {
@@ -31,6 +36,22 @@ public class AzureAppServiceMetricsService(IConfiguration configuration, AzureRe
             logger.LogWarning(ex, "לא ניתן היה לקבל Resource Health עבור ה-App Service - ממשיכים בלי זה");
         }
 
+        List<MetricPointDto>? cpuPercent = null;
+        List<MetricPointDto>? memoryPercent = null;
+        try
+        {
+            var planMetrics = await reader.QueryAsync(_planResourceId, PlanMetricNames, window, ct);
+            if (planMetrics is not null)
+            {
+                cpuPercent = planMetrics["CpuPercentage"];
+                memoryPercent = planMetrics["MemoryPercentage"];
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "לא ניתן היה לקבל CPU%/Memory% ברמת ה-App Service Plan - ממשיכים בלי זה");
+        }
+
         return new AppServiceHealthMetricsDto(
             CpuTimeSeconds: metrics["CpuTime"],
             MemoryWorkingSetBytes: metrics["MemoryWorkingSet"],
@@ -39,7 +60,9 @@ public class AzureAppServiceMetricsService(IConfiguration configuration, AzureRe
             AverageResponseTimeSeconds: metrics["AverageResponseTime"],
             HttpQueueLength: metrics["HttpQueueLength"],
             GeneratedAt: DateTimeOffset.UtcNow,
-            ResourceHealth: resourceHealth
+            ResourceHealth: resourceHealth,
+            CpuPercent: cpuPercent,
+            MemoryPercent: memoryPercent
         );
     }
 }

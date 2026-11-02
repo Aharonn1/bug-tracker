@@ -18,6 +18,8 @@ export const AzureAppServiceHealthCard: React.FC = () => {
   const http5xxData = useMemo(() => (metrics ? toMetricChartData(metrics.http5xx) : []), [metrics]);
   const responseTimeData = useMemo(() => (metrics ? toMetricChartData(metrics.averageResponseTimeSeconds) : []), [metrics]);
   const queueLengthData = useMemo(() => (metrics ? toMetricChartData(metrics.httpQueueLength) : []), [metrics]);
+  const cpuPercentData = useMemo(() => (metrics?.cpuPercent ? toMetricChartData(metrics.cpuPercent) : []), [metrics]);
+  const memoryPercentData = useMemo(() => (metrics?.memoryPercent ? toMetricChartData(metrics.memoryPercent) : []), [metrics]);
 
   return (
     <Card
@@ -54,6 +56,14 @@ export const AzureAppServiceHealthCard: React.FC = () => {
           <ResourceHealthBadge health={metrics?.resourceHealth ?? null} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
           <div>
+            <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>CPU % (App Service Plan) - סף התראה 80%</div>
+            <TrendAreaChart data={cpuPercentData} color={colors.accentSoft} />
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>Memory % (App Service Plan) - סף התראה 85%</div>
+            <TrendAreaChart data={memoryPercentData} color={colors.violet} />
+          </div>
+          <div>
             <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>CPU Time (שניות)</div>
             <TrendAreaChart data={cpuData} color={colors.accentSoft} />
           </div>
@@ -70,7 +80,7 @@ export const AzureAppServiceHealthCard: React.FC = () => {
             <TrendAreaChart data={http5xxData} color={colors.dangerSoft} />
           </div>
           <div>
-            <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>זמן תגובה ממוצע (שניות)</div>
+            <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>זמן תגובה ממוצע (שניות) - סף התראה 3 שניות</div>
             <TrendAreaChart data={responseTimeData} color={colors.warningSoft} />
           </div>
           <div>
