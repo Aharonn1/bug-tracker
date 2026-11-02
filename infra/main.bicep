@@ -360,6 +360,141 @@ resource healthCheckAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   }
 }
 
+// ==========================================
+// Metric Alerts - ביצועים (CPU / Memory / זמן תגובה / SQL DTU)
+// ==========================================
+// שונה מ-healthCheckAlert למעלה: זה תופס קריסה מוחלטת (health check נכשל).
+// האלה תופסים "עוד חי אבל נחנק" - משאב שעדיין עונה אך עם ביצועים גרועים,
+// מצב ש-Resource Health של Azure לא מסמן בכלל כ-Unavailable/Degraded כי
+// מבחינת Azure המשאב "עובד" - רק לאט מדי למשתמשים האמיתיים
+resource cpuHighAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+  name: 'backend-cpu-high-alert'
+  location: 'global'
+  properties: {
+    severity: 3
+    enabled: true
+    scopes: [
+      appServicePlan.id
+    ]
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT10M'
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          criterionType: 'StaticThresholdCriterion'
+          name: 'CpuHighCriterion'
+          metricName: 'CpuPercentage'
+          operator: 'GreaterThan'
+          threshold: 80
+          timeAggregation: 'Average'
+        }
+      ]
+    }
+    actions: [
+      {
+        actionGroupId: actionGroup.id
+      }
+    ]
+  }
+}
+
+resource memoryHighAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+  name: 'backend-memory-high-alert'
+  location: 'global'
+  properties: {
+    severity: 3
+    enabled: true
+    scopes: [
+      appServicePlan.id
+    ]
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT10M'
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          criterionType: 'StaticThresholdCriterion'
+          name: 'MemoryHighCriterion'
+          metricName: 'MemoryPercentage'
+          operator: 'GreaterThan'
+          threshold: 85
+          timeAggregation: 'Average'
+        }
+      ]
+    }
+    actions: [
+      {
+        actionGroupId: actionGroup.id
+      }
+    ]
+  }
+}
+
+resource responseTimeHighAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+  name: 'backend-response-time-high-alert'
+  location: 'global'
+  properties: {
+    severity: 2
+    enabled: true
+    scopes: [
+      appService.id
+    ]
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT5M'
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          criterionType: 'StaticThresholdCriterion'
+          name: 'ResponseTimeHighCriterion'
+          metricName: 'AverageResponseTime'
+          operator: 'GreaterThan'
+          threshold: 3
+          timeAggregation: 'Average'
+        }
+      ]
+    }
+    actions: [
+      {
+        actionGroupId: actionGroup.id
+      }
+    ]
+  }
+}
+
+resource sqlDtuHighAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
+  name: 'sql-dtu-high-alert'
+  location: 'global'
+  properties: {
+    severity: 3
+    enabled: true
+    scopes: [
+      sqlDatabase.id
+    ]
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT10M'
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          criterionType: 'StaticThresholdCriterion'
+          name: 'SqlDtuHighCriterion'
+          metricName: 'dtu_consumption_percent'
+          operator: 'GreaterThan'
+          threshold: 80
+          timeAggregation: 'Average'
+        }
+      ]
+    }
+    actions: [
+      {
+        actionGroupId: actionGroup.id
+      }
+    ]
+  }
+}
+
 output appServiceHostName string = appService.properties.defaultHostName
 output staticWebAppHostName string = staticWebApp.properties.defaultHostname
 output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
