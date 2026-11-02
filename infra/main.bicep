@@ -361,17 +361,29 @@ resource healthCheckAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
 }
 
 // ==========================================
+// Action Group קיים (webhook) - נוצר ידנית ב-Portal יחד עם Service Health/
+// Resource Health Alert Rules, "existing" כאן רק כדי שה-metric alerts
+// למטה יוכלו להפנות אליו ב-IaC - לא חושף את ה-webhook URL/secret שלו,
+// שנשארים רק בפועל ב-Azure, בדיוק כמו שאר הסודות בפרויקט הזה
+resource webhookActionGroup 'Microsoft.Insights/actionGroups@2023-01-01' existing = {
+  name: 'ag-bugtracker-servicehealth'
+}
+
+// ==========================================
 // Metric Alerts - ביצועים (CPU / Memory / זמן תגובה / SQL DTU)
 // ==========================================
 // שונה מ-healthCheckAlert למעלה: זה תופס קריסה מוחלטת (health check נכשל).
 // האלה תופסים "עוד חי אבל נחנק" - משאב שעדיין עונה אך עם ביצועים גרועים,
 // מצב ש-Resource Health של Azure לא מסמן בכלל כ-Unavailable/Degraded כי
-// מבחינת Azure המשאב "עובד" - רק לאט מדי למשתמשים האמיתיים
+// מבחינת Azure המשאב "עובד" - רק לאט מדי למשתמשים האמיתיים.
+// severity 2=Warning, 1=Error (בסולם של Azure: 0 Critical/1 Error/2 Warning/
+// 3 Informational/4 Verbose - זמן תגובה גולש פוגע במשתמשים ישירות, לכן חמור
+// יותר מ-CPU/Memory/DTU גבוהים שעדיין "רק" מתקרבים לבעיה)
 resource cpuHighAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   name: 'backend-cpu-high-alert'
   location: 'global'
   properties: {
-    severity: 3
+    severity: 2
     enabled: true
     scopes: [
       appServicePlan.id
@@ -395,6 +407,9 @@ resource cpuHighAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
       {
         actionGroupId: actionGroup.id
       }
+      {
+        actionGroupId: webhookActionGroup.id
+      }
     ]
   }
 }
@@ -403,7 +418,7 @@ resource memoryHighAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   name: 'backend-memory-high-alert'
   location: 'global'
   properties: {
-    severity: 3
+    severity: 2
     enabled: true
     scopes: [
       appServicePlan.id
@@ -427,6 +442,9 @@ resource memoryHighAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
       {
         actionGroupId: actionGroup.id
       }
+      {
+        actionGroupId: webhookActionGroup.id
+      }
     ]
   }
 }
@@ -435,7 +453,7 @@ resource responseTimeHighAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   name: 'backend-response-time-high-alert'
   location: 'global'
   properties: {
-    severity: 2
+    severity: 1
     enabled: true
     scopes: [
       appService.id
@@ -459,6 +477,9 @@ resource responseTimeHighAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
       {
         actionGroupId: actionGroup.id
       }
+      {
+        actionGroupId: webhookActionGroup.id
+      }
     ]
   }
 }
@@ -467,7 +488,7 @@ resource sqlDtuHighAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   name: 'sql-dtu-high-alert'
   location: 'global'
   properties: {
-    severity: 3
+    severity: 2
     enabled: true
     scopes: [
       sqlDatabase.id
@@ -490,6 +511,9 @@ resource sqlDtuHighAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
     actions: [
       {
         actionGroupId: actionGroup.id
+      }
+      {
+        actionGroupId: webhookActionGroup.id
       }
     ]
   }
