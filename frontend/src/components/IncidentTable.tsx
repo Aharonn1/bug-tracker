@@ -8,7 +8,7 @@ import { useAgentDiagnosis } from '../hooks/useAgentDiagnosis';
 
 interface Props {
   incidents: SystemIncident[];
-  onResolve: (id: number) => void;
+  onResolve: (id: number, resolutionNotes?: string) => void;
 }
 
 function extractAttemptedEmail(rawPayload: string | null): string | null {
@@ -228,7 +228,15 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
 
                         {!resolved && (
                           <button
-                            onClick={() => onResolve(i.incidentId)}
+                            onClick={() => {
+                              // prompt() כי זו שורה בודדת בטבלה בלי מודאל ייעודי
+                              // לפעולה הזו - עקבי עם ה-alert() הקיים כבר בהוק הזה
+                              // לשגיאות. null (Cancel) מבטל את כל הפעולה; שדה
+                              // ריק (OK בלי טקסט) כן סוגר, רק בלי הערה
+                              const notes = window.prompt('מה פתר את התקלה? (אופציונלי - אפשר להשאיר ריק)');
+                              if (notes === null) return;
+                              onResolve(i.incidentId, notes.trim() || undefined);
+                            }}
                             style={{
                               padding: '6px 10px',
                               background: '#15803d',

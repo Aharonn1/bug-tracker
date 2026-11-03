@@ -43,12 +43,14 @@ export const useIncidents = () => {
     }
   }, [unresolvedOnly, filterSubsystem, page]);
 
-  const resolveIncident = async (id: number) => {
+  const resolveIncident = async (id: number, resolutionNotes?: string) => {
     try {
-      await incidentService.resolve(id);
+      await incidentService.resolve(id, resolutionNotes);
 
       setIncidents(prev => prev.map(inc =>
-        inc.incidentId === id ? { ...inc, isResolved: true, resolvedAt: new Date().toISOString() } : inc
+        inc.incidentId === id
+          ? { ...inc, isResolved: true, resolvedAt: new Date().toISOString(), resolutionNotes: resolutionNotes || inc.resolutionNotes }
+          : inc
       ));
     } catch (err: any) {
       alert(`שגיאה: ${err.message}`);

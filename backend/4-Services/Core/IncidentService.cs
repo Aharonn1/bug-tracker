@@ -104,8 +104,9 @@ public class IncidentService(
         // תועד בקטלוג עדיין חייבת להישמר ולהיות גלויה כאן. נעשה בזיכרון כי אין
         // הרבה שורות בקטלוג, ומאפשר לשלב עם ה-Include של Reporters למעלה
         var catalogs = await context.ErrorCatalogs.AsNoTracking().ToDictionaryAsync(c => c.ErrorCode, ct);
+        var deployments = await context.DeploymentRecords.AsNoTracking().ToListAsync(ct);
 
-        var items = incidents.Select(i => MapToResponseDto(i, catalogs.GetValueOrDefault(i.ErrorCode))).ToList();
+        var items = incidents.Select(i => MapToResponseDto(i, catalogs.GetValueOrDefault(i.ErrorCode), deployments)).ToList();
 
         return new PagedResultDto<IncidentResponseDto>(items, totalCount, page, pageSize);
     }
@@ -147,8 +148,9 @@ public class IncidentService(
         var catalog = await context.ErrorCatalogs
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.ErrorCode == incident.ErrorCode, ct);
+        var deployments = await context.DeploymentRecords.AsNoTracking().ToListAsync(ct);
 
-        return MapToResponseDto(incident, catalog);
+        return MapToResponseDto(incident, catalog, deployments);
     }
 
     public async Task<IncidentResponseDto> IngestIncidentAsync(CreateIncidentDto dto, CancellationToken ct = default)
@@ -219,8 +221,9 @@ public class IncidentService(
         var catalog = await context.ErrorCatalogs
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.ErrorCode == saved.ErrorCode, ct);
+        var deployments = await context.DeploymentRecords.AsNoTracking().ToListAsync(ct);
 
-        return MapToResponseDto(saved, catalog);
+        return MapToResponseDto(saved, catalog, deployments);
     }
 
     private const int MaxConcurrencyRetries = 5;
@@ -325,7 +328,7 @@ public class IncidentService(
         return incident.IncidentId;
     }
 
-    public async Task MarkAsResolvedAsync(long id, int? restrictToUserId = null, CancellationToken ct = default)
+    public async Task MarkAsResolvedAsync(long id, int? restrictToUserId = null, string? resolutionNotes = null, CancellationToken ct = default)
     {
         // שאילתת Where מפורשת (ולא FindAsync) כדי להבטיח שה-Global Query Filter
         // של ה-Tenant מוחל - כך תקרית של לקוח אחר תיחשב "לא נמצאה" ולא ניתנת לעדכון.
@@ -343,11 +346,15 @@ public class IncidentService(
         incident.IsResolved = true;
         incident.Status = IncidentStatus.Closed;
         incident.ResolvedAt = DateTime.UtcNow;
+        if (!string.IsNullOrWhiteSpace(resolutionNotes))
+        {
+            incident.ResolutionNotes = resolutionNotes;
+        }
 
         await context.SaveChangesAsync(ct);
     }
 
-    private static IncidentResponseDto MapToResponseDto(SystemErrorIncident i, ErrorCatalog? catalog)
+    private static IncidentResponseDto MapToResponseDto(SystemErrorIncident i, ErrorCatalog? catalog, IReadOnlyList<DeploymentRecord> deployments)
     {
         // תקריות שרת (.NET): נגזר מה-StackTrace הגולמי ב-StackTraceLocationParser.
         // תקריות צד-לקוח: הדפדפן כבר פיענח Source Map ושלח מיקום ישירות -
@@ -355,6 +362,7 @@ public class IncidentService(
         var (serverCodeFile, serverCodeLine) = StackTraceLocationParser.ExtractFirstRepoFrame(i.Details?.StackTrace);
         var codeFile = i.Details?.ClientCodeLocationFilePath ?? serverCodeFile;
         var codeLine = i.Details?.ClientCodeLocationLine ?? serverCodeLine;
+        var codeLocationRef = ResolveCodeLocationRef(codeFile, i.CreatedAt, deployments);
 
         return new(
             i.IncidentId,
@@ -378,14 +386,38 @@ public class IncidentService(
             i.CreatedAt,
             i.LastSeenAt,
             i.ResolvedAt,
+            i.ResolutionNotes,
             i.Details?.RawPayload,
             i.Details?.StackTrace,
             codeFile,
             codeLine,
+            codeLocationRef,
             i.Reporters
                 .OrderByDescending(r => r.LastSeenAt)
                 .Select(r => new IncidentReporterDto(r.UserId, r.User.FullName, r.User.Role, r.OccurrenceCount, r.LastSeenAt))
                 .ToList()
         );
+    }
+
+    // "main" כברירת מחדל - אין דיפלוי מתועד (תקרית ישנה מלפני התכונה הזו,
+    // או שאין בכלל מיקום קוד). אחרת, הדיפלוי האחרון של אותה קומפוננטה
+    // (backend/frontend, נגזר מקידומת הנתיב) שהיה חי *לפני או בדיוק ב*-
+    // CreatedAt של התקרית - זה מה שבאמת היה בפרודקשן כשהתקרית נוצרה,
+    // לא מה ש-main מצביע עליו היום (שעלול כבר להיות שונה)
+    private static string ResolveCodeLocationRef(string? codeFile, DateTime incidentCreatedAt, IReadOnlyList<DeploymentRecord> deployments)
+    {
+        if (string.IsNullOrWhiteSpace(codeFile)) return "main";
+
+        var component = codeFile.StartsWith("backend/", StringComparison.Ordinal) ? "backend"
+            : codeFile.StartsWith("frontend/", StringComparison.Ordinal) ? "frontend"
+            : null;
+        if (component is null) return "main";
+
+        var match = deployments
+            .Where(d => d.Component == component && d.DeployedAt <= incidentCreatedAt)
+            .OrderByDescending(d => d.DeployedAt)
+            .FirstOrDefault();
+
+        return match?.CommitSha ?? "main";
     }
 }

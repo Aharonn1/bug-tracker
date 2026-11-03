@@ -77,10 +77,11 @@ export const incidentService = {
     return res.json();
   },
 
-  async resolve(id: number): Promise<void> {
+  async resolve(id: number, resolutionNotes?: string): Promise<void> {
     const res = await fetch(`${BASE_URL}/${id}/resolve`, {
       method: 'PATCH',
-      headers: tenantHeaders({ 'Accept': 'application/json' })
+      headers: tenantHeaders({ 'Accept': 'application/json', 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ resolutionNotes: resolutionNotes || null }),
     });
 
     if (!res.ok) {

@@ -102,7 +102,7 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
             <section>
               <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>📍 מיקום בקוד</div>
               <a
-                href={`https://github.com/Aharonn1/bug-tracker/blob/main/${incident.codeLocationFilePath}#L${incident.codeLocationLine}`}
+                href={`https://github.com/Aharonn1/bug-tracker/blob/${incident.codeLocationRef}/${incident.codeLocationFilePath}#L${incident.codeLocationLine}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 dir="ltr"
@@ -145,6 +145,15 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
                   </div>
                 </details>
               )}
+            </section>
+          )}
+
+          {incident.isResolved && incident.resolutionNotes && (
+            <section>
+              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>✅ איך זה נפתר</div>
+              <div style={{ background: '#052e16', padding: '14px', borderRadius: '8px', border: '1px solid #166534', color: '#bbf7d0', fontSize: '13px', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+                {incident.resolutionNotes}
+              </div>
             </section>
           )}
 

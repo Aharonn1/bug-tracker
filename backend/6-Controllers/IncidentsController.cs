@@ -21,6 +21,7 @@ public class IncidentsController(
     IncidentChannelQueue queue,
     IRcaAgentService rcaAgentService,
     AzureServiceHealthReader serviceHealthReader,
+    DeploymentHistoryService deploymentHistory,
     ICurrentTenantProvider tenantProvider,
     ICurrentUserProvider currentUserProvider,
     IUserDirectoryService userDirectoryService,
@@ -138,10 +139,11 @@ public class IncidentsController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ResolveIncident(
         [FromRoute] long id,
+        [FromBody] ResolveIncidentDto? dto,
         CancellationToken ct)
     {
         var restrictToUserId = currentUserProvider.IsAdminOrAbove ? null : currentUserProvider.UserId;
-        await incidentService.MarkAsResolvedAsync(id, restrictToUserId, ct);
+        await incidentService.MarkAsResolvedAsync(id, restrictToUserId, dto?.ResolutionNotes, ct);
         return NoContent();
     }
 
@@ -175,6 +177,30 @@ public class IncidentsController(
             logger.LogWarning(ex, "לא ניתן היה לבדוק Azure Service Health עבור ניתוח תקרית {IncidentId} - ממשיכים בלעדיו", id);
         }
 
+        // אותו שיקול בדיוק כמו Service Health למעלה - תוספת-עזר, לא הליבה.
+        // component נגזר מקידומת הנתיב, בדיוק כמו IncidentService.ResolveCodeLocationRef
+        string? deployContextSummary = null;
+        try
+        {
+            var codeFile = incident!.CodeLocationFilePath;
+            var component = codeFile?.StartsWith("backend/", StringComparison.Ordinal) == true ? "backend"
+                : codeFile?.StartsWith("frontend/", StringComparison.Ordinal) == true ? "frontend"
+                : null;
+
+            if (component is not null)
+            {
+                var lastDeploy = await deploymentHistory.GetLastDeployBeforeAsync(component, incident.CreatedAt, ct);
+                deployContextSummary = lastDeploy is null
+                    ? $"אין דיפלוי מתועד של {component} לפני תקרית זו"
+                    : $"הדיפלוי האחרון של {component} (commit {lastDeploy.CommitSha[..Math.Min(8, lastDeploy.CommitSha.Length)]}) " +
+                      $"היה ב-{(incident.CreatedAt - lastDeploy.DeployedAt).TotalMinutes:F0} דקות לפני שהתקרית נראתה לראשונה";
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "לא ניתן היה לקבל הקשר דיפלוי עבור ניתוח תקרית {IncidentId} - ממשיכים בלעדיו", id);
+        }
+
         var report = await rcaAgentService.AnalyzeAndRemediateIncidentAsync(
             incident!.ErrorCode,
             incident.ErrorMessage,
@@ -186,7 +212,9 @@ public class IncidentsController(
             incident.StackTrace,
             incident.CodeLocationFilePath,
             incident.CodeLocationLine,
+            incident.CodeLocationRef,
             azureServiceHealthSummary,
+            deployContextSummary,
             ct);
 
         return Ok(new

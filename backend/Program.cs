@@ -225,6 +225,7 @@ builder.Services.AddSingleton<AzureResourceHealthReader>();
 // Scoped (לא Singleton כמו שכניה למעלה) - תלוי ב-AppDbContext שעצמו Scoped,
 // Singleton כאן היה גורם ל-captive dependency
 builder.Services.AddScoped<AzureAlertOccurrenceService>();
+builder.Services.AddScoped<DeploymentHistoryService>();
 
 // זיהוי הלקוח (Tenant) הנוכחי מתוך ה-header של הבקשה - נדרש עבור ה-Global Query
 // Filter ב-AppDbContext שמבדיל בין לקוחות שונים

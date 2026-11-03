@@ -29,6 +29,9 @@ public class AppDbContext(
     // שוב אותה סיבה - לוג תפעולי חוצה-לקוחות (ראו הסבר ב-AzureAlertOccurrence)
     public DbSet<AzureAlertOccurrence> AzureAlertOccurrences => Set<AzureAlertOccurrence>();
 
+    // אותה סיבה שוב - לוג תפעולי חוצה-לקוחות (ראו הסבר ב-DeploymentRecord)
+    public DbSet<DeploymentRecord> DeploymentRecords => Set<DeploymentRecord>();
+
     // חשוף כ-property על ה-Context עצמו (ולא כקריאה ישירה ל-tenantProvider בתוך ה-lambda)
     // כי כך EF Core יודע לתרגם את ה-Global Query Filter למשתנה שמוערך בזמן ריצת השאילתה
     public string CurrentTenantId => tenantProvider.TenantId;

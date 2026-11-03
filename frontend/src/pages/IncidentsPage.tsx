@@ -30,7 +30,7 @@ interface IncidentsPageProps {
   setFilterSubsystem: (value: string) => void;
   unresolvedOnly: boolean;
   setUnresolvedOnly: (value: boolean) => void;
-  resolveIncident: (id: number) => void;
+  resolveIncident: (id: number, resolutionNotes?: string) => void;
   reload: () => void;
 }
 

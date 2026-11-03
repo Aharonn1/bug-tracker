@@ -38,14 +38,17 @@ public class RcaAgentService : IRcaAgentService
         string? stackTrace,
         string? codeLocationFilePath,
         int? codeLocationLine,
+        string codeLocationRef,
         string? activeAzureServiceHealthSummary,
+        string? deployContextSummary,
         CancellationToken ct = default)
     {
         // נבנה את קישור הגיטהאב בעצמנו, בשרת - לא סומכים על המודל לנחש/לבנות
-        // אותו נכון. אותה נוסחה בדיוק כמו IncidentDetailsModal.tsx בפרונטנד,
-        // כדי שהקישור שהסוכן מצטט יהיה תמיד תקין וזהה לזה שמוצג ב-UI
+        // אותו נכון. codeLocationRef (ברירת מחדל "main", או commit sha שהיה
+        // חי בפועל כשהתקרית נוצרה) מגיע כבר פתור מ-IncidentService - אותו
+        // מקור אמת בדיוק כמו מה ש-IncidentDetailsModal.tsx בפרונטנד מציג
         var githubLink = !string.IsNullOrWhiteSpace(codeLocationFilePath) && codeLocationLine.HasValue
-            ? $"https://github.com/Aharonn1/bug-tracker/blob/main/{codeLocationFilePath}#L{codeLocationLine}"
+            ? $"https://github.com/Aharonn1/bug-tracker/blob/{codeLocationRef}/{codeLocationFilePath}#L{codeLocationLine}"
             : null;
 
         var apiKey = _configuration["AzureOpenAI:ApiKey"];
@@ -121,7 +124,11 @@ public class RcaAgentService : IRcaAgentService
                     "אם סופק לך 'תקלת Azure Service Health פעילה' - זו עובדה מאומתת שמיקרוסופט עצמה " +
                     "מכריזה עליה כרגע ברמת ה-subscription/אזור, לא ניחוש. אם התקלה הנוכחית עשויה להיות " +
                     "קשורה לשירות ה-Azure הספציפי שמוזכר שם, ציין זאת במפורש כגורם אפשרי לצד הניתוח " +
-                    "הרגיל - אל תתעלם מהמידע הזה כשהוא רלוונטי, ואל תמציא קשר אם אין סיבה אמיתית לחשוב שיש."
+                    "הרגיל - אל תתעלם מהמידע הזה כשהוא רלוונטי, ואל תמציא קשר אם אין סיבה אמיתית לחשוב שיש. " +
+                    "אם סופק לך 'הקשר דיפלוי' - זו עובדה מאומתת (לא ניחוש) על מתי הדיפלוי האחרון של " +
+                    "הקומפוננטה הרלוונטית (backend/frontend) קרה ביחס לתחילת התקרית. אם הדיפלוי קרה זמן " +
+                    "קצר (עד כמה שעות) לפני שהתקרית נראתה לראשונה, זה סימן חזק לרגרסיה - ציין זאת במפורש " +
+                    "כחשד מרכזי. אם הדיפלוי היה הרבה לפני (ימים+) או שאין מידע, אל תמציא קשר שאין לו בסיס."
             },
             new JsonObject
             {
@@ -138,7 +145,8 @@ public class RcaAgentService : IRcaAgentService
                     $"הודעה: {errorMessage}\n" +
                     $"Playbook: {playbook ?? "ללא"}\n" +
                     $"קישור מדויק לקוד: {githubLink ?? "לא נמצא מיקום קוד מאומת עבור תקרית זו"}\n" +
-                    $"תקלת Azure Service Health פעילה: {activeAzureServiceHealthSummary ?? "אין תקלה מוכרזת כרגע (או שהבדיקה לא זמינה)"}" +
+                    $"תקלת Azure Service Health פעילה: {activeAzureServiceHealthSummary ?? "אין תקלה מוכרזת כרגע (או שהבדיקה לא זמינה)"}\n" +
+                    $"הקשר דיפלוי: {deployContextSummary ?? "אין מידע על דיפלויים עבור הקומפוננטה הרלוונטית"}" +
                     (string.IsNullOrEmpty(stackTrace) ? "" :
                         $"\nStack Trace (רקע בלבד - אל תחלץ ממנו מיקום קוד, הסתמך רק על 'קישור מדויק לקוד' לעיל):\n" +
                         stackTrace[..Math.Min(stackTrace.Length, 2000)])

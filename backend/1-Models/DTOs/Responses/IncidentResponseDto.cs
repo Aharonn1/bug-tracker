@@ -24,10 +24,17 @@ public record IncidentResponseDto(
     DateTime CreatedAt,
     DateTime LastSeenAt,
     DateTime? ResolvedAt,
+    string? ResolutionNotes,
     string? RawPayload,
     string? StackTrace,
     string? CodeLocationFilePath,
     int? CodeLocationLine,
+    // "main" כברירת מחדל, או commit sha אם נמצא דיפלוי מתועד של הקומפוננטה
+    // הרלוונטית (backend/frontend, נגזר מהקידומת של CodeLocationFilePath)
+    // שהיה חי בזמן שהתקרית נוצרה - ראו IncidentService.ResolveCodeLocationRef.
+    // זה מקור האמת היחיד לבניית קישור GitHub - גם ה-UI וגם ה-RCA agent
+    // משתמשים בזה, במקום לבנות "main" בעצמם בנפרד
+    string CodeLocationRef,
     IReadOnlyList<IncidentReporterDto> ReportedByUsers
 );
 

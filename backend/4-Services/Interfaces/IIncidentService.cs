@@ -27,5 +27,5 @@ public interface IIncidentService
 
     Task<IncidentResponseDto> IngestIncidentAsync(CreateIncidentDto dto, CancellationToken ct = default);
 
-    Task MarkAsResolvedAsync(long id, int? restrictToUserId = null, CancellationToken ct = default);
+    Task MarkAsResolvedAsync(long id, int? restrictToUserId = null, string? resolutionNotes = null, CancellationToken ct = default);
 }

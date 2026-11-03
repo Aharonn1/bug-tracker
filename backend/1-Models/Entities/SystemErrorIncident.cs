@@ -43,6 +43,13 @@ public class SystemErrorIncident : AuditableEntity
 
     public DateTime? ResolvedAt { get; set; }
 
+    // מה בפועל פתר את זה - לא נאכף כחובה (סגירה מהירה בלי הסבר עדיין אפשרית),
+    // אבל בלי זה כל "איך תוקן בפעם הקודמת" הולך לאיבוד ברגע שתקרית נסגרת.
+    // תקרית עתידית עם אותו Fingerprint לא קיימת (ממילא הייתה מתמזגת לשורה
+    // הזו דרך ApplyToExistingIncidentAsync) - זה שימושי בעיקר לתקרית דומה
+    // אך לא זהה, שמפתח/סוכן AI יכול לקרוא ידנית כהקשר היסטורי
+    public string? ResolutionNotes { get; set; }
+
     // Navigation Properties
     // הערה: אין ניווט EF-מנוהל ל-ErrorCatalog בכוונה - הקישור נעשה בשכבת השירות
     // כ"חיפוש רך" לפי ErrorCode (ראו IncidentService), כי אילוץ FK אמיתי ידחה

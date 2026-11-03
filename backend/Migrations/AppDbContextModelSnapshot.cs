@@ -147,6 +147,34 @@ namespace MyBackendApi.Migrations
                     b.ToTable("BugReports");
                 });
 
+            modelBuilder.Entity("MyBackendApi.Models.Entities.DeploymentRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CommitSha")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("Component")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("DeployedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Component", "DeployedAt");
+
+                    b.ToTable("DeploymentRecords", (string)null);
+                });
+
             modelBuilder.Entity("MyBackendApi.Models.Entities.ErrorCatalog", b =>
                 {
                     b.Property<string>("ErrorCode")
@@ -470,6 +498,9 @@ namespace MyBackendApi.Migrations
 
                     b.Property<int>("OccurrencesCount")
                         .HasColumnType("int");
+
+                    b.Property<string>("ResolutionNotes")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("ResolvedAt")
                         .HasColumnType("datetime2");

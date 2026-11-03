@@ -98,10 +98,15 @@ export interface SystemIncident {
   createdAt: string;
   lastSeenAt: string;
   resolvedAt: string | null;
+  resolutionNotes: string | null;
   rawPayload: string | null;
   stackTrace: string | null;
   codeLocationFilePath: string | null;
   codeLocationLine: number | null;
+  // "main", או commit sha שהיה חי בפועל כשהתקרית נוצרה (ראו
+  // IncidentService.ResolveCodeLocationRef בבקאנד) - מקור האמת היחיד
+  // לבניית קישור GitHub, לא לבנות "main" בעצמנו כאן
+  codeLocationRef: string;
   reportedByUsers: IncidentReporter[];
 }
 

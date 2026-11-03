@@ -13,6 +13,8 @@ public interface IRcaAgentService
         string? stackTrace,
         string? codeLocationFilePath,
         int? codeLocationLine,
+        string codeLocationRef,
         string? activeAzureServiceHealthSummary,
+        string? deployContextSummary,
         CancellationToken ct = default);
 }

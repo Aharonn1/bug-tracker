@@ -56,6 +56,18 @@ jobs:
           app_location: 'frontend'
           output_location: 'dist'
 
+      # רק על push אמיתי ל-main - לא על כל PR preview environment. אותו
+      # שיקול non-critical/retry כמו ב-backend-deploy.yml
+      - name: Record deployment for incident correlation
+        if: github.event_name == 'push'
+        continue-on-error: true
+        run: |
+          curl -sf --retry 5 --retry-delay 10 --retry-all-errors \
+            -X POST "https://bugtracker-api-aharon-fuaucng8a3ckhqck.israelcentral-01.azurewebsites.net/api/deployments" \
+            -H "Authorization: Bearer ${{ secrets.DEPLOY_LOG_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"component\":\"frontend\",\"commitSha\":\"${{ github.sha }}\"}"
+
   close_pull_request:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
