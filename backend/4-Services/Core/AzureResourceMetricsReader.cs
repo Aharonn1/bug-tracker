@@ -29,10 +29,21 @@ public class AzureResourceMetricsReader
         }
     }
 
-    public async Task<Dictionary<string, List<MetricPointDto>>?> QueryAsync(
+    public Task<Dictionary<string, List<MetricPointDto>>?> QueryAsync(
         string? resourceId,
         IReadOnlyList<string> metricNames,
         TimeSpan window,
+        CancellationToken ct = default) =>
+        QueryAsync(resourceId, metricNames, new QueryTimeRange(window), TimeSpan.FromMinutes(5), ct);
+
+    // גרסה עם טווח/גרנולריות מפורשים - משמשת למגמה חודשית (DateTimeOffset
+    // קבוע, לא "X שעות אחורה מעכשיו"), עם גרנולריות יומית כדי לא להחזיר
+    // אלפי נקודות לחודש שלם. אותה לוגיקה בדיוק מתחתיה - רק המקור לטווח שונה
+    public async Task<Dictionary<string, List<MetricPointDto>>?> QueryAsync(
+        string? resourceId,
+        IReadOnlyList<string> metricNames,
+        QueryTimeRange timeRange,
+        TimeSpan granularity,
         CancellationToken ct = default)
     {
         if (_client is null || string.IsNullOrEmpty(resourceId))
@@ -43,8 +54,8 @@ public class AzureResourceMetricsReader
 
         var options = new MetricsQueryOptions
         {
-            TimeRange = new QueryTimeRange(window),
-            Granularity = TimeSpan.FromMinutes(5),
+            TimeRange = timeRange,
+            Granularity = granularity,
         };
         options.Aggregations.Add(MetricAggregationType.Average);
 

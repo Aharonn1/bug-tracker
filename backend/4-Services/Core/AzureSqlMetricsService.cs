@@ -60,7 +60,7 @@ public class AzureSqlMetricsService(IConfiguration configuration, AzureResourceM
         SqlDiagnosticSummaryDto? diagnosticSummary = null;
         try
         {
-            diagnosticSummary = await GetDiagnosticSummaryAsync(window, ct);
+            diagnosticSummary = await GetDiagnosticSummaryAsync(new QueryTimeRange(window), ct);
         }
         catch (Exception ex)
         {
@@ -77,7 +77,37 @@ public class AzureSqlMetricsService(IConfiguration configuration, AzureResourceM
         );
     }
 
-    private async Task<SqlDiagnosticSummaryDto?> GetDiagnosticSummaryAsync(TimeSpan window, CancellationToken ct)
+    // למגמה חודשית: גרנולריות יומית (לא 5 דקות - חודש שלם ב-5 דקות הוא
+    // אלפי נקודות), בלי ResourceHealth (זה תמיד "עכשיו", לא רלוונטי לעבר).
+    // Log Analytics שומר רק 30 יום (retentionInDays ב-bicep) - אבחוני SQL
+    // לחודשים ישנים יותר פשוט יחזרו ריקים, זו מגבלת Azure עצמה לא תקלה
+    public async Task<SqlHealthMetricsDto?> GetSqlHealthForRangeAsync(DateTimeOffset start, DateTimeOffset end, CancellationToken ct = default)
+    {
+        var timeRange = new QueryTimeRange(start, end);
+        var metrics = await reader.QueryAsync(_resourceId, MetricNames, timeRange, TimeSpan.FromDays(1), ct);
+        if (metrics is null) return null;
+
+        SqlDiagnosticSummaryDto? diagnosticSummary = null;
+        try
+        {
+            diagnosticSummary = await GetDiagnosticSummaryAsync(timeRange, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "לא ניתן היה לקבל אבחוני SQL חודשיים - ייתכן שמחוץ לטווח השמירה של Log Analytics (30 יום)");
+        }
+
+        return new SqlHealthMetricsDto(
+            DtuPercent: metrics["dtu_consumption_percent"],
+            WorkersPercent: metrics["workers_percent"],
+            SessionsPercent: metrics["sessions_percent"],
+            GeneratedAt: DateTimeOffset.UtcNow,
+            ResourceHealth: null,
+            DiagnosticSummary: diagnosticSummary
+        );
+    }
+
+    private async Task<SqlDiagnosticSummaryDto?> GetDiagnosticSummaryAsync(QueryTimeRange timeRange, CancellationToken ct)
     {
         if (_logsClient is null || string.IsNullOrEmpty(_workspaceId))
         {
@@ -87,7 +117,7 @@ public class AzureSqlMetricsService(IConfiguration configuration, AzureResourceM
 
         try
         {
-            var response = await _logsClient.QueryWorkspaceAsync(_workspaceId, DiagnosticsQuery, new QueryTimeRange(window), cancellationToken: ct);
+            var response = await _logsClient.QueryWorkspaceAsync(_workspaceId, DiagnosticsQuery, timeRange, cancellationToken: ct);
 
             var counts = new Dictionary<string, long>();
             foreach (var row in response.Value.Table.Rows)

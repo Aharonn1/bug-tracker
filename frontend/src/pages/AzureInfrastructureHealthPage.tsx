@@ -4,6 +4,7 @@ import { CapacityFindingsCard } from '../components/CapacityFindingsCard';
 import { AzureSqlHealthCard } from '../components/AzureSqlHealthCard';
 import { AzureAppServiceHealthCard } from '../components/AzureAppServiceHealthCard';
 import { AzureServiceHealthCard } from '../components/AzureServiceHealthCard';
+import { AzureHealthMonthlyCard } from '../components/AzureHealthMonthlyCard';
 import { LoadTestCard } from '../components/LoadTestCard';
 import { TenantScaleTestCard } from '../components/TenantScaleTestCard';
 
@@ -18,6 +19,7 @@ export const AzureInfrastructureHealthPage: React.FC = () => (
     />
 
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <AzureHealthMonthlyCard />
       <AzureServiceHealthCard />
       <CapacityFindingsCard />
       <LoadTestCard />

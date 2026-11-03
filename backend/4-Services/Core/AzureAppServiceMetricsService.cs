@@ -1,3 +1,4 @@
+using Azure.Monitor.Query;
 using MyBackendApi.Models.DTOs.Telemetry;
 
 namespace MyBackendApi.Services.Core;
@@ -61,6 +62,46 @@ public class AzureAppServiceMetricsService(IConfiguration configuration, AzureRe
             HttpQueueLength: metrics["HttpQueueLength"],
             GeneratedAt: DateTimeOffset.UtcNow,
             ResourceHealth: resourceHealth,
+            CpuPercent: cpuPercent,
+            MemoryPercent: memoryPercent
+        );
+    }
+
+    // למגמה חודשית: גרנולריות יומית, בלי ResourceHealth (תמיד "עכשיו", לא
+    // רלוונטי לעבר). Azure Monitor Metrics שומר מדדים גולמיים 93 יום בלבד
+    // (מגבלת פלטפורמה קבועה, לא ניתנת להארכה) - חודש ישן יותר יחזור ריק,
+    // וזה מצופה, לא תקלה
+    public async Task<AppServiceHealthMetricsDto?> GetAppServiceHealthForRangeAsync(DateTimeOffset start, DateTimeOffset end, CancellationToken ct = default)
+    {
+        var timeRange = new QueryTimeRange(start, end);
+        var metrics = await reader.QueryAsync(_resourceId, MetricNames, timeRange, TimeSpan.FromDays(1), ct);
+        if (metrics is null) return null;
+
+        List<MetricPointDto>? cpuPercent = null;
+        List<MetricPointDto>? memoryPercent = null;
+        try
+        {
+            var planMetrics = await reader.QueryAsync(_planResourceId, PlanMetricNames, timeRange, TimeSpan.FromDays(1), ct);
+            if (planMetrics is not null)
+            {
+                cpuPercent = planMetrics["CpuPercentage"];
+                memoryPercent = planMetrics["MemoryPercentage"];
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "לא ניתן היה לקבל CPU%/Memory% חודשי ברמת ה-App Service Plan - ממשיכים בלי זה");
+        }
+
+        return new AppServiceHealthMetricsDto(
+            CpuTimeSeconds: metrics["CpuTime"],
+            MemoryWorkingSetBytes: metrics["MemoryWorkingSet"],
+            Requests: metrics["Requests"],
+            Http5xx: metrics["Http5xx"],
+            AverageResponseTimeSeconds: metrics["AverageResponseTime"],
+            HttpQueueLength: metrics["HttpQueueLength"],
+            GeneratedAt: DateTimeOffset.UtcNow,
+            ResourceHealth: null,
             CpuPercent: cpuPercent,
             MemoryPercent: memoryPercent
         );

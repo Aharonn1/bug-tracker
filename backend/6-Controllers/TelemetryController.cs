@@ -17,8 +17,10 @@ public class TelemetryController(
     AzureSqlMetricsService sqlMetricsService,
     AzureAppServiceMetricsService appServiceMetricsService,
     AzureServiceHealthReader serviceHealthReader,
+    AzureAlertOccurrenceService alertOccurrenceService,
     ICurrentTenantProvider tenantProvider,
-    ICurrentUserProvider currentUserProvider) : ControllerBase
+    ICurrentUserProvider currentUserProvider,
+    ILogger<TelemetryController> logger) : ControllerBase
 {
     [HttpPost("probe")]
     [ProducesResponseType(typeof(TelemetryDiagnosticReport), StatusCodes.Status200OK)]
@@ -124,5 +126,56 @@ public class TelemetryController(
 
         var health = await serviceHealthReader.GetActiveEventsAsync(ct);
         return health is not null ? Ok(health) : NoContent();
+    }
+
+    // מנהלים בלבד - מגמה חודשית של בריאות Azure (ברירת מחדל: החודש הנוכחי,
+    // עם אפשרות ניווט אחורה דרך year/month). משלב שני מקורות שונים לגמרי:
+    // ספירת התרעות מדויקת מ-AzureAlertOccurrences (בלי מגבלת שמירה - נשמר
+    // ב-DB שלנו לתמיד), ומדדי ביצועים גולמיים מ-Azure Monitor/Log Analytics
+    // (כפופים למגבלות השמירה של Azure עצמו - 93 יום למדדים, 30 יום ל-Log
+    // Analytics - חודש ישן מדי פשוט יחזיר null שם, לא תקלה)
+    [HttpGet("azure-health-monthly")]
+    [ProducesResponseType(typeof(AzureHealthMonthlyDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAzureHealthMonthly(
+        [FromQuery] int? year,
+        [FromQuery] int? month,
+        CancellationToken ct)
+    {
+        if (!currentUserProvider.IsAdminOrAbove)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "רק מנהל מערכת יכול לגשת לנתוני בריאות Azure" });
+        }
+
+        var now = DateTime.UtcNow;
+        var y = year is > 0 ? year.Value : now.Year;
+        var m = month is >= 1 and <= 12 ? month.Value : now.Month;
+
+        var occurrenceSummary = await alertOccurrenceService.GetMonthlySummaryAsync(y, m, ct);
+
+        var start = new DateTimeOffset(new DateTime(y, m, 1, 0, 0, 0, DateTimeKind.Utc));
+        var end = start.AddMonths(1);
+
+        AppServiceHealthMetricsDto? appServiceMetrics = null;
+        try
+        {
+            appServiceMetrics = await appServiceMetricsService.GetAppServiceHealthForRangeAsync(start, end, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "לא ניתן היה לקבל מדדי App Service חודשיים ({Year}-{Month}) - ממשיכים בלי זה", y, m);
+        }
+
+        SqlHealthMetricsDto? sqlMetrics = null;
+        try
+        {
+            sqlMetrics = await sqlMetricsService.GetSqlHealthForRangeAsync(start, end, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "לא ניתן היה לקבל מדדי SQL חודשיים ({Year}-{Month}) - ממשיכים בלי זה", y, m);
+        }
+
+        return Ok(new AzureHealthMonthlyDto(occurrenceSummary, appServiceMetrics, sqlMetrics));
     }
 }

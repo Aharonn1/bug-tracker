@@ -4,7 +4,9 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using MyBackendApi.Data;
 using MyBackendApi.Models.DTOs.Ingestion;
+using MyBackendApi.Models.Entities;
 using MyBackendApi.Services.Queues;
 
 namespace MyBackendApi.Controllers;
@@ -24,6 +26,7 @@ namespace MyBackendApi.Controllers;
 public class AzureAlertsController(
     IncidentChannelQueue queue,
     IConfiguration configuration,
+    AppDbContext db,
     ILogger<AzureAlertsController> logger) : ControllerBase
 {
     private const string PlatformTenantId = "default-tenant";
@@ -50,7 +53,7 @@ public class AzureAlertsController(
         using var reader = new StreamReader(Request.Body);
         var body = await reader.ReadToEndAsync(ct);
 
-        var summary = ParseAlertSummary(body);
+        var (summary, alertType) = ParseAlert(body);
 
         await queue.QueueIncidentAsync(new CreateIncidentDto(
             TenantId: PlatformTenantId,
@@ -63,6 +66,25 @@ public class AzureAlertsController(
             StackTrace: null,
             RawPayload: body
         ), ct);
+
+        // לוג נפרד, בלי דה-דופליקציה בכלל - ראו ההסבר ב-AzureAlertOccurrence.
+        // שורה אחת לכל קריאת webhook, גם אם queue.QueueIncidentAsync למעלה
+        // ממזג את זה לתקרית קיימת. כשל כאן לא אמור לדחות את ה-webhook עצמו
+        // (Azure עשוי לנסות שוב ולהציף), רק להישאר בלוג
+        try
+        {
+            db.AzureAlertOccurrences.Add(new AzureAlertOccurrence
+            {
+                TenantId = PlatformTenantId,
+                AlertType = alertType,
+                FiredAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "נכשלה כתיבת AzureAlertOccurrence - ה-webhook עצמו עדיין הסתיים בהצלחה");
+        }
 
         return Accepted();
     }
@@ -80,8 +102,10 @@ public class AzureAlertsController(
     // מבנה ה-payload הוא "Common Alert Schema" של Azure Monitor - מתועד,
     // אבל לא מאומת כאן מול תשובה חיה (אין עדיין Alert Rule מוגדר בפועל).
     // קריאה סלחנית (TryGetProperty בכל שלב): אם שדה חסר או שהמבנה משתנה,
-    // עדיין נוצרת תקרית עם ה-RawPayload המלא לבדיקה ידנית, לא נזרקת שגיאה
-    private static string ParseAlertSummary(string json)
+    // עדיין נוצרת תקרית עם ה-RawPayload המלא לבדיקה ידנית, לא נזרקת שגיאה.
+    // מחזיר גם alertType (alertRule, או monitoringService כ-fallback) -
+    // זה המפתח שלפיו מקובצת המגמה החודשית לפי סוג התרעה
+    private static (string Summary, string AlertType) ParseAlert(string json)
     {
         try
         {
@@ -93,15 +117,18 @@ public class AzureAlertsController(
                 var description = GetString(essentials, "description");
                 var severity = GetString(essentials, "severity");
                 var alertRule = GetString(essentials, "alertRule");
+                var monitoringService = GetString(essentials, "monitoringService");
+                var alertType = alertRule ?? monitoringService ?? "Unknown";
 
                 if (!string.IsNullOrWhiteSpace(description))
                 {
-                    return severity is not null ? $"[{severity}] {description}" : description;
+                    return (severity is not null ? $"[{severity}] {description}" : description, alertType);
                 }
                 if (!string.IsNullOrWhiteSpace(alertRule))
                 {
-                    return alertRule;
+                    return (alertRule, alertType);
                 }
+                return ("התקבל Alert מ-Azure Monitor (ראה RawPayload לפרטים המלאים)", alertType);
             }
         }
         catch (JsonException)
@@ -109,7 +136,7 @@ public class AzureAlertsController(
             // לא JSON תקין בכלל - עדיין נרשם כתקרית, עם ה-RawPayload הגולמי
         }
 
-        return "התקבל Alert מ-Azure Monitor (ראה RawPayload לפרטים המלאים)";
+        return ("התקבל Alert מ-Azure Monitor (ראה RawPayload לפרטים המלאים)", "Unknown");
     }
 
     private static string? GetString(JsonElement el, string prop) =>

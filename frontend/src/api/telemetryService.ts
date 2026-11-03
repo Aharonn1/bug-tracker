@@ -1,4 +1,4 @@
-import type { AppServiceHealthMetricsDto, AzureServiceHealthDto, ClientTelemetryProbeDto, OpsSummaryDto, SqlHealthMetricsDto, TelemetryDiagnosticReport } from '../types/telemetry.types';
+import type { AppServiceHealthMetricsDto, AzureHealthMonthlyDto, AzureServiceHealthDto, ClientTelemetryProbeDto, OpsSummaryDto, SqlHealthMetricsDto, TelemetryDiagnosticReport } from '../types/telemetry.types';
 import { API_BASE_URL, tenantHeaders } from '../config';
 import { throwIfSessionExpired } from './sessionGuard';
 
@@ -56,6 +56,16 @@ export const telemetryService = {
 
     if (res.status === 204 || res.status === 403) return null;
     if (!res.ok) { throwIfSessionExpired(res); throw new Error(`כשל בטעינת סטטוס Azure Service Health (${res.status})`); }
+    return res.json();
+  },
+
+  async getAzureHealthMonthly(year: number, month: number): Promise<AzureHealthMonthlyDto | null> {
+    const res = await fetch(`${BASE_URL}/azure-health-monthly?year=${year}&month=${month}`, {
+      headers: tenantHeaders({ Accept: 'application/json' }),
+    });
+
+    if (res.status === 403) return null;
+    if (!res.ok) { throwIfSessionExpired(res); throw new Error(`כשל בטעינת מגמת בריאות Azure חודשית (${res.status})`); }
     return res.json();
   },
 };

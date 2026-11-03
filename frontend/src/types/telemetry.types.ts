@@ -104,3 +104,34 @@ export interface AzureServiceHealthDto {
   activeEvents: ServiceHealthEventDto[];
   generatedAt: string;
 }
+
+export interface DailyOccurrenceCountDto {
+  day: number;
+  count: number;
+}
+
+export interface AlertTypeCountDto {
+  alertType: string;
+  count: number;
+}
+
+// נספר מתוך לוג הוספה-בלבד (AzureAlertOccurrences בבקאנד), לא מתקריות
+// מדודפלקות - ראו הסבר בבקאנד. earliestTrackedOccurrence הוא null אם
+// עדיין לא נרשמה אף התרעה אי-פעם; כל תאריך לפני הערך הזה הוא "עוד לא
+// עקבנו באותה תקופה", לא "לא קרה כלום"
+export interface AzureHealthMonthlySummaryDto {
+  year: number;
+  month: number;
+  totalOccurrences: number;
+  dailyBreakdown: DailyOccurrenceCountDto[];
+  byAlertType: AlertTypeCountDto[];
+  earliestTrackedOccurrence: string | null;
+}
+
+// metrics הם null כש-Azure עצמו כבר לא שומר נתונים לטווח הזה (93 יום
+// למדדים, 30 יום ל-Log Analytics) - לא תקלה, מגבלת פלטפורמה
+export interface AzureHealthMonthlyDto {
+  occurrences: AzureHealthMonthlySummaryDto;
+  appServiceMetrics: AppServiceHealthMetricsDto | null;
+  sqlMetrics: SqlHealthMetricsDto | null;
+}
