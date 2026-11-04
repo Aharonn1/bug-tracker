@@ -58,9 +58,62 @@ jobs:
           name: backend-app
           path: backend/publish-output
 
-  deploy:
+  # מייצר את סקריפט ה-SQL האידמפוטנטי אוטומטית מה-migrations בקוד - במקום
+  # שמישהו (אני, בצ'אט) יריץ "dotnet ef migrations script" ידנית ויעביר את
+  # התוצאה למשתמש כל פעם. idempotent בלי "from" מפורש = כל מיגרציה שעוד
+  # לא ב-__EFMigrationsHistory של ה-DB בפועל, מוגן ב-IF NOT EXISTS - בטוח
+  # להריץ גם מול DB שכבר מעודכן חלקית
+  generate-migration-script:
     if: github.event_name == 'push'
     needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install EF Core tools
+        run: dotnet tool install --global dotnet-ef --version 8.*
+
+      - name: Generate idempotent migration script
+        run: dotnet ef migrations script --idempotent --output migration.sql
+        working-directory: backend
+
+      - name: Upload migration script
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-script
+          path: backend/migration.sql
+
+  # environment: production-db - זה מה שמפעיל את שער האישור של GitHub (אם
+  # הוגדרו required reviewers ב-Settings -> Environments -> production-db).
+  # בלי זה, ה-step הבא היה מריץ SQL על ה-DB האמיתי אוטומטית לגמרי, בלי שום
+  # עין אנושית - בדיוק ההפך ממה שרצינו. הסוד (connection string) גר רק
+  # ב-secret של ה-environment הזה, לא repo-level, כדי שהגישה אליו תהיה
+  # כפופה לאותו שער אישור
+  apply-migration:
+    if: github.event_name == 'push'
+    needs: generate-migration-script
+    runs-on: ubuntu-latest
+    environment: production-db
+    steps:
+      - name: Download migration script
+        uses: actions/download-artifact@v4
+        with:
+          name: migration-script
+
+      - name: Apply migration to production database
+        uses: azure/sql-action@v2.3
+        with:
+          connection-string: ${{ secrets.PRODUCTION_SQL_CONNECTION_STRING }}
+          path: migration.sql
+
+  deploy:
+    if: github.event_name == 'push'
+    needs: [build, apply-migration]
     runs-on: ubuntu-latest
     steps:
       - name: Download artifact
