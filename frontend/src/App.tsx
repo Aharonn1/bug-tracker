@@ -48,7 +48,12 @@ function getResetTokenFromUrl(): string | null {
 }
 
 const AuthGate: React.FC = () => {
-  const initialResetToken = useRef(getResetTokenFromUrl()).current;
+  // useState עם אתחול עצל (לא useRef(...).current) - קריאת ref.current
+  // בזמן render היא לא בטוחה (React Compiler ו-lint גם מסמנים את זה
+  // כבאג), כי זה עוקף את מנגנון המעקב של React אחר מה שהרינדור תלוי בו.
+  // useState(fn) מבטיח הרצה פעם אחת בלבד ב-mount, ונשאר יציב לאורך זמן -
+  // בדיוק מה שהיה נחוץ כאן, בלי לגעת ב-ref בזמן render
+  const [initialResetToken] = useState(getResetTokenFromUrl);
   const [mode, setMode] = useState<'login' | 'register' | 'forgot-password' | 'reset-password'>(
     initialResetToken ? 'reset-password' : 'login'
   );
@@ -142,6 +147,7 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
     setPage,
     pageSize,
     loading,
+    fetching,
     error,
     filterSubsystem,
     setFilterSubsystem,
@@ -204,6 +210,7 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
             setPage={setPage}
             pageSize={pageSize}
             loading={loading}
+            fetching={fetching}
             error={error}
             filterSubsystem={filterSubsystem}
             setFilterSubsystem={setFilterSubsystem}

@@ -16,7 +16,17 @@ function readBuildId(): string {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      // React Compiler - ממיין memoization אוטומטית בזמן build לכל
+      // קומפוננטה/hook, בלי useMemo/useCallback/React.memo ידניים. הפרויקט
+      // הזה על @vitejs/plugin-react v6 (מבוסס Oxc, לא Babel), אז האינטגרציה
+      // היא דרך compiler:true (oxc-transform-react) ולא babel-plugin-react-compiler
+      // הרגיל. בטוח לצד קוד שכבר ממומן ידנית (לא דורס, רק מדלג על מה שהוא
+      // כבר עשה) - לכן לא היה צורך להסיר את ה-useMemo/useCallback הקיימים
+      compiler: true,
+    }),
+  ],
   define: {
     __BUILD_ID__: JSON.stringify(readBuildId()),
   },

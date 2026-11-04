@@ -25,6 +25,7 @@ interface IncidentsPageProps {
   setPage: (page: number) => void;
   pageSize: number;
   loading: boolean;
+  fetching: boolean;
   error: string | null;
   filterSubsystem: string;
   setFilterSubsystem: (value: string) => void;
@@ -41,6 +42,7 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
   setPage,
   pageSize,
   loading,
+  fetching,
   error,
   filterSubsystem,
   setFilterSubsystem,
@@ -263,7 +265,7 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
         <IncidentTable incidents={visibleIncidents} onResolve={resolveIncident} />
       )}
 
-      <Pager page={page} pageSize={pageSize} totalCount={totalCount} onPageChange={setPage} disabled={loading} />
+      <Pager page={page} pageSize={pageSize} totalCount={totalCount} onPageChange={setPage} disabled={fetching} />
     </section>
   );
 };

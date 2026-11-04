@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { incidentService } from '../api/incidentService';
 import type { PagedResult } from '../types/bug.types';
 import type { SystemIncident } from '../types/bug.types';
@@ -26,9 +26,15 @@ export const useIncidents = () => {
 
   const queryKey = ['incidents', unresolvedOnly, filterSubsystem, page] as const;
 
-  const { data, isLoading, error, refetch } = useQuery({
+  // placeholderData: keepPreviousData - במעבר עמוד/פילטר, הטבלה ממשיכה
+  // להציג את הנתונים הישנים עד שהחדשים מגיעים, במקום להבזיק למסך טעינה
+  // ריק כל פעם. isLoading נשאר true רק בטעינה האמיתית הראשונה; isFetching
+  // מבדיל "יש כבר נתונים, מביאים עדכון ברקע" - משמש לנטרל את הדפדוף
+  // בזמן הבאת העמוד הבא, בלי לנקות את הטבלה הקיימת
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey,
     queryFn: () => incidentService.getAll(unresolvedOnly, filterSubsystem || undefined, page, PAGE_SIZE),
+    placeholderData: keepPreviousData,
   });
 
   // עדכון ישיר של המטמון אחרי resolve - אותה תחושת מיידיות שהייתה ב-setIncidents
@@ -64,6 +70,7 @@ export const useIncidents = () => {
     setPage,
     pageSize: PAGE_SIZE,
     loading: isLoading,
+    fetching: isFetching,
     error: error ? 'כשל בתקשורת מול שרת ה-API' : null,
     filterSubsystem,
     setFilterSubsystem,

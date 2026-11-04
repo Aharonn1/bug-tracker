@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type CreateBugDto, BugStatus } from '../types/bug.types';
 import { bugService } from '../api/bugService';
 
@@ -13,9 +13,10 @@ export function useBugs() {
   const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ['bugs', page],
     queryFn: () => bugService.getAll(undefined, page, PAGE_SIZE),
+    placeholderData: keepPreviousData,
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['bugs'] });
@@ -53,6 +54,7 @@ export function useBugs() {
     setPage,
     pageSize: PAGE_SIZE,
     loading: isLoading,
+    fetching: isFetching,
     error: error ? 'שגיאה בשליפת הבאגים' : null,
     refreshBugs: invalidate,
     addBug: (dto: CreateBugDto) => addMutation.mutateAsync(dto),

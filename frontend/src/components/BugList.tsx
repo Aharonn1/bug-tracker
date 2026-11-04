@@ -5,7 +5,7 @@ import { UserActivitySummary } from './UserActivitySummary';
 import { Pager } from './ui/Pager';
 
 export const BugList: React.FC = () => {
-  const { bugs, totalCount, page, setPage, pageSize, loading, error, refreshBugs, removeBug, updateBugStatus } = useBugs();
+  const { bugs, totalCount, page, setPage, pageSize, loading, fetching, error, refreshBugs, removeBug, updateBugStatus } = useBugs();
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
   // מבוסס על העמוד הנוכחי בלבד (ראו הערה מקבילה ב-useIncidents/IncidentsPage) -
@@ -201,7 +201,7 @@ export const BugList: React.FC = () => {
       </div>
       </div>
 
-      <Pager page={page} pageSize={pageSize} totalCount={totalCount} onPageChange={setPage} disabled={loading} />
+      <Pager page={page} pageSize={pageSize} totalCount={totalCount} onPageChange={setPage} disabled={fetching} />
     </>
   );
 };
