@@ -40,6 +40,20 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 // ==========================================
+// 0.25 גודל בקשה מקסימלי - ברירת המחדל של Kestrel היא 30MB, נדיב בהרבה
+// ממה שה-API הזה בפועל צריך (JSON בלבד, אין העלאת קבצים בשום endpoint).
+// רלוונטי במיוחד ל-endpoints האנונימיים (webhook/ingest) שפתוחים בלי
+// אימות - בלי תקרה הדוקה יותר, גוף בקשה ענק הוא וקטור DoS זול (עומס
+// רשת/זיכרון) שלא עובר דרך שום הגנה אחרת שכבר יש (Rate Limiting סופר
+// בקשות, לא בייטים)
+// ==========================================
+const long MaxRequestBodyBytes = 2 * 1024 * 1024; // 2MB
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = MaxRequestBodyBytes;
+});
+
+// ==========================================
 // 0.5 Rate Limiting - שני סוגי הגנה שונים, לא רק אחד:
 //
 // 1) לפי-IP (SlidingWindow) - מונע מגורם בודד להציף את המערכת. לא עוזר
@@ -110,11 +124,20 @@ builder.Services.AddRateLimiter(options =>
 // Settings), לא AllowAnyOrigin גורף. origin פתוח לגמרי מאפשר לכל אתר באינטרנט
 // לשלוח בקשות XHR/fetch ל-API הזה (עם קרדנציאלס שהם עצמם מחזיקים, לא שלנו -
 // אין פה cookies אז זה לא CSRF קלאסי, אבל זו עדיין פרצה מיותרת ללא שום תועלת
-// עבור API שמשרת origin יחיד ידוע). אם לא מוגדר (למשל בפיתוח מקומי לפני
-// שהוגדר), נופלים חזרה ל-AllowAnyOrigin כדי לא לנעול בטעות - בפרודקשן זה
-// חייב להיות מוגדר
+// עבור API שמשרת origin יחיד ידוע). הנפילה ל-AllowAnyOrigin מוגבלת ל-
+// Development בלבד - לא "אם לא מוגדר", כמו שהיה קודם: fallback על חוסר
+// הגדרה היה "fail open" שקט - אם Cors:AllowedOrigins יימחק/יתרוקן בטעות
+// בפרודקשן (App Setting שנמחק, טעות הקלדה בשם), האתר היה נפתח ל-CORS גורף
+// בלי שום אזהרה. עכשיו זה "fail loud": בכל סביבה שאינה Development, רשימה
+// ריקה גורמת לקריסה מיידית בעליית השרת במקום לנחש בשקט
 // ==========================================
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
+if (allowedOrigins.Length == 0 && !builder.Environment.IsDevelopment())
+{
+    throw new InvalidOperationException(
+        "חסר Cors:AllowedOrigins בהגדרות השרת - חובה מחוץ לסביבת Development, כדי לא ליפול בשקט ל-CORS פתוח לכל מקור");
+}
 
 builder.Services.AddCors(options =>
 {
@@ -128,6 +151,7 @@ builder.Services.AddCors(options =>
         }
         else
         {
+            // מגיעים לכאן רק ב-Development (נאכף למעלה) - נוחות לפיתוח מקומי
             policy.AllowAnyOrigin()
                   .AllowAnyMethod()
                   .AllowAnyHeader();

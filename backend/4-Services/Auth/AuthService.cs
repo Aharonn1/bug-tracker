@@ -30,6 +30,11 @@ public class AuthService(
     // (מגיע דרך ה-Shared Framework של Microsoft.NET.Sdk.Web, בלי צורך בחבילה נפרדת)
     private static readonly PasswordHasher<User> Hasher = new();
 
+    // Hash קבוע, לא סוד ולא משויך לאף משתמש אמיתי - נוצר פעם אחת בעליית
+    // התהליך, משמש רק כ"עבודה מדומה" לאיזון תזמון בנתיב "אימייל לא קיים"
+    // (ראו LoginAsync) כדי לא לחשוף קיום/אי-קיום חשבון דרך זמן תגובה
+    private static readonly string DummyPasswordHash = Hasher.HashPassword(new User(), "dummy-password-for-timing-equalization-only");
+
     // ברירות מחדל: 5 ניסיונות כושלים נועלים את החשבון ל-15 דקות. זו הגנה
     // עצמאית לגמרי מה-rate limiter הגלובלי (שפועל לפי IP, ראו Program.cs) -
     // תוקף עם הרבה כתובות IP/פרוקסי יכול לעקוף הגבלה לפי-IP בקלות יחסית,
@@ -145,6 +150,12 @@ public class AuthService(
 
         if (user is null)
         {
+            // "עבודה מדומה" - מריצים PBKDF2 מול hash קבוע גם כשהמשתמש לא קיים
+            // בכלל, כדי שזמן התגובה לא יבגוד את מה שההודעה עצמה מכוונת להסתיר.
+            // בלי זה, "אימייל לא קיים" חוזר כמעט מיידית בעוד "סיסמה שגויה"
+            // (למטה) כולל PBKDF2 יקר בכוונה - פער תזמון מדיד שחושף קיום/אי-קיום
+            // חשבון, גם כששתי התשובות זהות לגמרי בתוכן ובקוד הסטטוס
+            Hasher.VerifyHashedPassword(new User(), DummyPasswordHash, dto.Password);
             await LogAttemptAsync(dto.Email, LoginAttemptOutcome.UnknownEmail, ct);
             throw new InvalidCredentialsException();
         }
