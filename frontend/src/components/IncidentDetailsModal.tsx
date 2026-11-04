@@ -2,6 +2,7 @@ import React from 'react';
 import type { SystemIncident } from '../types/bug.types';
 import { UserRole } from '../types/auth.types';
 import { isSiteAdminEmail } from '../constants/siteAdmin';
+import { GITHUB_REPO_URL } from '../config';
 
 interface Props {
   incident: SystemIncident | null;
@@ -102,7 +103,7 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
             <section>
               <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>📍 מיקום בקוד</div>
               <a
-                href={`https://github.com/Aharonn1/bug-tracker/blob/${incident.codeLocationRef}/${incident.codeLocationFilePath}#L${incident.codeLocationLine}`}
+                href={`${GITHUB_REPO_URL}/blob/${incident.codeLocationRef}/${incident.codeLocationFilePath}#L${incident.codeLocationLine}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 dir="ltr"

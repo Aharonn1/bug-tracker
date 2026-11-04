@@ -15,6 +15,13 @@ const securityHeadersUrl = (domain: string) => `https://securityheaders.com/?q=h
 // ידנית של מדיניות ה-CSP עצמה, אז במקום כפתור לכל דומיין מציגים את שתי
 // המדיניות (אתר + API) כטקסט להעתקה, לצד קישור יחיד לכלי
 const CSP_EVALUATOR_URL = 'https://csp-evaluator.withgoogle.com/';
+
+// שני אלה הם עותק-טקסט לתצוגה, לא המדיניות האוכפת בפועל - אין API סטנדרטי
+// שמאפשר לדף לקרוא את ה-CSP header שהוא עצמו הוגש איתו, אז זה לא נגזר
+// אוטומטית. אם המדיניות האמיתית משתנה בלי לעדכן כאן, הדף הזה - שכל מטרתו
+// להציג מדיניות אבטחה אמינה - יציג משהו שגוי. מקור האמת לכל אחד:
+// FRONTEND_CSP: frontend/public/staticwebapp.config.json -> globalHeaders
+// BACKEND_CSP:  backend/Program.cs, ליד "X-Frame-Options" (אותו בלוק)
 const FRONTEND_CSP =
   "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://bugtracker-api-aharon-fuaucng8a3ckhqck.israelcentral-01.azurewebsites.net https://www.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 const BACKEND_CSP = "default-src 'none'; frame-ancestors 'none'";
