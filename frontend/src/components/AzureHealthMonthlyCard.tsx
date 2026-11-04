@@ -76,7 +76,7 @@ export const AzureHealthMonthlyCard: React.FC = () => {
           <button onClick={goNext} disabled={loading || isCurrentMonth} style={navButtonStyle(loading || isCurrentMonth)}>
             חודש הבא
           </button>
-          <button onClick={reload} disabled={loading} style={{ ...navButtonStyle(loading), marginInlineStart: '6px' }}>
+          <button onClick={() => reload()} disabled={loading} style={{ ...navButtonStyle(loading), marginInlineStart: '6px' }}>
             {loading ? 'טוען...' : 'רענן'}
           </button>
         </div>

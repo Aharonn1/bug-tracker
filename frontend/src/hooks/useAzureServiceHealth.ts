@@ -1,29 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { telemetryService } from '../api/telemetryService';
-import type { AzureServiceHealthDto } from '../types/telemetry.types';
-import { reportHandledApiFailure } from '../utils/errorReporting';
 
+// הודעת שגיאה/reportHandledApiFailure מטופלות גלובלית (ראו main.tsx) - לא
+// צריך עוד try/catch ידני כאן. health=null מציין "לא מוגדר/204", לא שגיאה
 export const useAzureServiceHealth = () => {
-  const [health, setHealth] = useState<AzureServiceHealthDto | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['azureServiceHealth'],
+    queryFn: () => telemetryService.getAzureServiceHealth(),
+  });
 
-  const reload = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      setHealth(await telemetryService.getAzureServiceHealth());
-    } catch (err: any) {
-      setError(err.message || 'כשל בטעינת סטטוס Azure Service Health');
-      reportHandledApiFailure(err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
-
-  return { health, loading, error, reload };
+  return {
+    health: data ?? null,
+    loading: isLoading,
+    error: error ? 'כשל בטעינת סטטוס Azure Service Health' : null,
+    reload: refetch,
+  };
 };

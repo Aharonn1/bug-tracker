@@ -16,7 +16,7 @@ export const OpsSummaryPanel: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
         <span style={{ fontSize: '13px', color: colors.textMuted }}>ניטור חי (Azure Monitor) · שעה אחרונה</span>
         <button
-          onClick={reload}
+          onClick={() => reload()}
           disabled={loading}
           style={{
             backgroundColor: 'transparent',

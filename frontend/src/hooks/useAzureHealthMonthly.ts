@@ -1,31 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { telemetryService } from '../api/telemetryService';
-import type { AzureHealthMonthlyDto } from '../types/telemetry.types';
-import { reportHandledApiFailure } from '../utils/errorReporting';
 
-// year/month כפרמטרים (לא פנימיים ל-hook) - כך שינוי חודש בעמוד הוא
-// רק state מתחלף, לא remount; ה-reload רץ מחדש אוטומטית דרך ה-dependency
+// year/month בתוך ה-queryKey (לא רק תלות ב-useEffect) - זה בדיוק מה ש-React
+// Query משתמש בו כדי לדעת מתי יש מטמון קיים לחודש הזה (למשל אחרי שחוזרים
+// אליו שוב) לעומת מתי צריך fetch חדש
 export const useAzureHealthMonthly = (year: number, month: number) => {
-  const [data, setData] = useState<AzureHealthMonthlyDto | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['azureHealthMonthly', year, month],
+    queryFn: () => telemetryService.getAzureHealthMonthly(year, month),
+  });
 
-  const reload = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      setData(await telemetryService.getAzureHealthMonthly(year, month));
-    } catch (err: any) {
-      setError(err.message || 'כשל בטעינת מגמת בריאות Azure חודשית');
-      reportHandledApiFailure(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [year, month]);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
-
-  return { data, loading, error, reload };
+  return {
+    data: data ?? null,
+    loading: isLoading,
+    error: error ? 'כשל בטעינת מגמת בריאות Azure חודשית' : null,
+    reload: refetch,
+  };
 };

@@ -15,7 +15,7 @@ export const AzureServiceHealthCard: React.FC = () => {
       title="Azure Service Health - תקלות מוכרזות של מיקרוסופט"
       action={
         <button
-          onClick={reload}
+          onClick={() => reload()}
           disabled={loading}
           style={{
             backgroundColor: 'transparent',

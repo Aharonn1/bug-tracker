@@ -26,7 +26,7 @@ export const AzureAppServiceHealthCard: React.FC = () => {
       title="בריאות App Service (הבקאנד) - 24 שעות אחרונות"
       action={
         <button
-          onClick={reload}
+          onClick={() => reload()}
           disabled={loading}
           style={{
             backgroundColor: 'transparent',

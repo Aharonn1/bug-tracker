@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { DbOutageEntry } from '../types/bug.types';
+import { useQuery } from '@tanstack/react-query';
 import { incidentService } from '../api/incidentService';
 
 const POLL_INTERVAL_MS = 60_000;
@@ -9,40 +8,19 @@ const POLL_INTERVAL_MS = 60_000;
 //
 // הבאנר הזה מוצג בלי תנאי לכל משתמש מחובר (ראה DbOutageBanner), אז ה-poll
 // הזה רץ ברקע אצל כל אחד, תמיד - גם כש-99.9% מהזמן אין שום outage להציג.
-// בקנה מידה של אלפי משתמשים זה מצטבר למעמסה אמיתית על ה-API, בשביל באנר
-// שכמעט תמיד ריק. שני דברים מצמצמים את זה: המרווח עלה מ-15 שניות (שהיה
-// אגרסיבי מדי) ל-60, וה-poll לא רץ בכלל כשהטאב לא גלוי (visibilitychange) -
-// רק חוזר מיד כשחוזרים לטאב, כדי לא לפספס outage שקרה בזמן שהוא ברקע
+// refetchIntervalInBackground: false (גם ברירת המחדל של React Query) +
+// refetchOnWindowFocus (ברירת המחדל הגלובלית, ראו main.tsx) נותנים בדיוק
+// את מה שהיה מומש ידנית: poll רק כשהטאב גלוי, וחוזר מיד כשחוזרים אליו
 export function useDbOutageLog() {
-  const [entries, setEntries] = useState<DbOutageEntry[]>([]);
+  const { data } = useQuery({
+    queryKey: ['dbOutageLog'],
+    queryFn: () => incidentService.getDbOutageLog(),
+    refetchInterval: POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+    // אם גם ה-endpoint הקליל הזה נכשל - אין מה להציג, משאירים את המצב
+    // הקודם (לא retry אגרסיבי על באנר שממילא best-effort)
+    retry: false,
+  });
 
-  const poll = useCallback(async () => {
-    try {
-      const data = await incidentService.getDbOutageLog();
-      setEntries(data);
-    } catch {
-      // אם גם ה-endpoint הקליל הזה נכשל (למשל אין טוקן תקף, או שהשרת כולו
-      // למטה) - אין מה להציג, פשוט משאירים את המצב הקודם
-    }
-  }, []);
-
-  useEffect(() => {
-    poll();
-
-    const intervalId = setInterval(() => {
-      if (document.visibilityState === 'visible') poll();
-    }, POLL_INTERVAL_MS);
-
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') poll();
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-
-    return () => {
-      clearInterval(intervalId);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-  }, [poll]);
-
-  return { entries };
+  return { entries: data ?? [] };
 }

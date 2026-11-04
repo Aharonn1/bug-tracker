@@ -1,70 +1,62 @@
-import { useState, useEffect, useCallback } from 'react';
-import { type BugReport, type CreateBugDto, BugStatus } from '../types/bug.types';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { type CreateBugDto, BugStatus } from '../types/bug.types';
 import { bugService } from '../api/bugService';
-import { reportHandledApiFailure } from '../utils/errorReporting';
 
 const PAGE_SIZE = 50;
 
+// BugForm ו-BugList קוראים ל-hook הזה בנפרד (שני instance-ים), אבל חולקים
+// את אותו queryKey ['bugs', page] - כשBugForm יוצר באג חדש, ה-invalidate
+// מעדכן את הרשימה גם ב-BugList בלי שום קריאה ישירה ביניהם. ב-useState
+// המקורי זה לא היה קורה בכלל: ל-BugForm היה עותק נפרד ולא-מוצג של הרשימה
 export function useBugs() {
-  const [bugs, setBugs] = useState<BugReport[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetchBugs = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await bugService.getAll(undefined, page, PAGE_SIZE);
-      setBugs(data.items);
-      setTotalCount(data.totalCount);
-    } catch (err: any) {
-      setError(err.message || 'שגיאה בשליפת הבאגים');
-      reportHandledApiFailure(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page]);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['bugs', page],
+    queryFn: () => bugService.getAll(undefined, page, PAGE_SIZE),
+  });
 
-  useEffect(() => {
-    fetchBugs();
-  }, [fetchBugs]);
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['bugs'] });
 
-  const addBug = async (dto: CreateBugDto) => {
-    setLoading(true);
-    try {
-      await bugService.create(dto);
-      await fetchBugs();
-    } catch (err: any) {
-      setError(err.message || 'שגיאה ביצירת הבאג');
-      reportHandledApiFailure(err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+  const addMutation = useMutation({
+    mutationFn: (dto: CreateBugDto) => bugService.create(dto),
+    onSuccess: invalidate,
+  });
+
+  // עדכון ישיר של המטמון (לא invalidate+refetch) - שומר על אותה תחושת
+  // מיידיות שהייתה ב-setBugs הידני המקורי, בלי סיבוב רשת נוסף בשביל
+  // תוצאה שכבר ידועה לנו במדויק (הפריט הוסר/הסטטוס שלו התעדכן)
+  const removeMutation = useMutation({
+    mutationFn: (id: number) => bugService.delete(id),
+    onSuccess: (_, id) => {
+      queryClient.setQueryData(['bugs', page], (old: typeof data) =>
+        old ? { ...old, items: old.items.filter((bug) => bug.id !== id), totalCount: Math.max(0, old.totalCount - 1) } : old
+      );
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: BugStatus }) => bugService.updateStatus(id, status),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['bugs', page], (old: typeof data) =>
+        old ? { ...old, items: old.items.map((bug) => (bug.id === updated.id ? updated : bug)) } : old
+      );
+    },
+  });
+
+  return {
+    bugs: data?.items ?? [],
+    totalCount: data?.totalCount ?? 0,
+    page,
+    setPage,
+    pageSize: PAGE_SIZE,
+    loading: isLoading,
+    error: error ? 'שגיאה בשליפת הבאגים' : null,
+    refreshBugs: invalidate,
+    addBug: (dto: CreateBugDto) => addMutation.mutateAsync(dto),
+    removeBug: (id: number) => removeMutation.mutateAsync(id),
+    updateBugStatus: (id: number, status: BugStatus) => updateStatusMutation.mutateAsync({ id, status }),
   };
-
-  const removeBug = async (id: number) => {
-    try {
-      await bugService.delete(id);
-      setBugs((prev) => prev.filter((bug) => bug.id !== id));
-      setTotalCount((prev) => Math.max(0, prev - 1));
-    } catch (err: any) {
-      setError(err.message || 'שגיאה במחיקת הבאג');
-      reportHandledApiFailure(err);
-    }
-  };
-
-  const updateBugStatus = async (id: number, status: BugStatus) => {
-    try {
-      const updated = await bugService.updateStatus(id, status);
-      setBugs((prev) => prev.map((bug) => (bug.id === id ? updated : bug)));
-    } catch (err: any) {
-      setError(err.message || 'שגיאה בעדכון הסטטוס');
-      reportHandledApiFailure(err);
-    }
-  };
-
-  return { bugs, totalCount, page, setPage, pageSize: PAGE_SIZE, loading, error, refreshBugs: fetchBugs, addBug, removeBug, updateBugStatus };
 }

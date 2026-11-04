@@ -1,46 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { failedIncidentService } from '../api/failedIncidentService';
-import type { FailedIncidentSummary } from '../types/failedIncident.types';
+import React from 'react';
+import { useFailedIncidents } from '../hooks/useFailedIncidents';
 import { colors, radius, spacing } from '../styles/theme';
 import { SectionHeader } from '../components/ui/SectionHeader';
 
 export const FailedIncidentsPage: React.FC = () => {
-  const [items, setItems] = useState<FailedIncidentSummary[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [retryingId, setRetryingId] = useState<number | null>(null);
+  const { items, loading, error, retryingId, retry } = useFailedIncidents();
 
-  const load = async () => {
-    try {
-      setLoading(true);
-      setItems(await failedIncidentService.getUnresolved());
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'כשל בטעינת תור התקריות שנכשלו');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const handleRetry = async (id: number) => {
-    setRetryingId(id);
-    try {
-      const result = await failedIncidentService.retryNow(id);
-      if (result.succeeded) {
-        // הצליח - מוסרים מהרשימה המקומית בלי לחכות ל-fetch מלא נוסף
-        setItems((cur) => cur?.filter((item) => item.id !== id) ?? cur);
-      } else {
-        // נכשל שוב - מרעננים את כל הרשימה כדי לקבל את מונה-הניסיונות המעודכן
-        await load();
-      }
-    } catch (err: any) {
-      setError(err.message || 'כשל בניסיון חוזר');
-    } finally {
-      setRetryingId(null);
-    }
-  };
+  const handleRetry = (id: number) => retry(id);
 
   if (loading) {
     return (

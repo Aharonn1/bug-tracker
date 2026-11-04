@@ -1,33 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { telemetryService } from '../api/telemetryService';
-import type { OpsSummaryDto } from '../types/telemetry.types';
-import { reportHandledApiFailure } from '../utils/errorReporting';
 
 const AUTO_REFRESH_MS = 45_000;
 
 export const useOpsSummary = (minutes: number = 60) => {
-  const [summary, setSummary] = useState<OpsSummaryDto | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['opsSummary', minutes],
+    queryFn: () => telemetryService.getOpsSummary(minutes),
+    refetchInterval: AUTO_REFRESH_MS,
+  });
 
-  const reload = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      setSummary(await telemetryService.getOpsSummary(minutes));
-    } catch (err: any) {
-      setError(err.message || 'כשל בטעינת נתוני ניטור');
-      reportHandledApiFailure(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [minutes]);
-
-  useEffect(() => {
-    reload();
-    const intervalId = setInterval(reload, AUTO_REFRESH_MS);
-    return () => clearInterval(intervalId);
-  }, [reload]);
-
-  return { summary, loading, error, reload };
+  return {
+    summary: data ?? null,
+    loading: isLoading,
+    error: error ? 'כשל בטעינת נתוני ניטור' : null,
+    reload: refetch,
+  };
 };

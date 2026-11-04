@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { loginSecurityService } from '../api/loginSecurityService';
-import type { BlockedIpSummary, LoginAttemptOutcome, LoginAttemptSummary } from '../types/loginSecurity.types';
+import React, { useState } from 'react';
+import { useLoginSecurity } from '../hooks/useLoginSecurity';
+import type { LoginAttemptOutcome } from '../types/loginSecurity.types';
 import { colors, radius, spacing } from '../styles/theme';
 import { SectionHeader } from '../components/ui/SectionHeader';
 
@@ -26,45 +26,12 @@ const inputStyle: React.CSSProperties = {
 };
 
 export const LoginSecurityPage: React.FC = () => {
-  const [attempts, setAttempts] = useState<LoginAttemptSummary[] | null>(null);
-  const [blockedIps, setBlockedIps] = useState<BlockedIpSummary[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [busyIp, setBusyIp] = useState<string | null>(null);
+  const { attempts, blockedIps, loading, error, busyIp, unblock, block } = useLoginSecurity();
 
   const [manualIp, setManualIp] = useState('');
   const [manualHours, setManualHours] = useState('24');
 
-  const load = async () => {
-    try {
-      setLoading(true);
-      const [attemptsResult, blockedResult] = await Promise.all([
-        loginSecurityService.getAttempts(),
-        loginSecurityService.getBlockedIps(),
-      ]);
-      setAttempts(attemptsResult);
-      setBlockedIps(blockedResult);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'כשל בטעינת נתוני אבטחת ההתחברות');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const handleUnblock = async (ip: string) => {
-    setBusyIp(ip);
-    try {
-      await loginSecurityService.unblock(ip);
-      setBlockedIps((cur) => cur?.filter((b) => b.ipAddress !== ip) ?? cur);
-    } catch (err: any) {
-      setError(err.message || 'כשל בביטול חסימה');
-    } finally {
-      setBusyIp(null);
-    }
-  };
+  const handleUnblock = (ip: string) => unblock(ip);
 
   const handleManualBlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,15 +39,12 @@ export const LoginSecurityPage: React.FC = () => {
     const hours = Number(manualHours) || 24;
     if (!ip) return;
 
-    setBusyIp(ip);
     try {
-      await loginSecurityService.block(ip, hours);
+      await block(ip, hours);
       setManualIp('');
-      await load();
-    } catch (err: any) {
-      setError(err.message || 'כשל בחסימה ידנית');
-    } finally {
-      setBusyIp(null);
+    } catch {
+      // onError בתוך ה-hook כבר הציג alert - כאן רק מונעים את ניקוי
+      // השדה כשהחסימה נכשלה, לא מציגים הודעה כפולה
     }
   };
 

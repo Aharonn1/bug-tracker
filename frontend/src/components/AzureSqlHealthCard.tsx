@@ -21,7 +21,7 @@ export const AzureSqlHealthCard: React.FC = () => {
       title="בריאות משאב Azure SQL - 24 שעות אחרונות"
       action={
         <button
-          onClick={reload}
+          onClick={() => reload()}
           disabled={loading}
           style={{
             backgroundColor: 'transparent',

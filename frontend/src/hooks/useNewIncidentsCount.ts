@@ -1,37 +1,25 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { incidentService } from '../api/incidentService';
 
 const POLL_INTERVAL_MS = 2 * 60 * 1000; // 2 דקות
+const QUERY_KEY = ['newIncidentsCount'];
 
-// תג "חדשות מאז הביקור האחרון" בניווט - בודק בעלייה, בכל חזרה לטאב, ואז
-// תקופתית. כשל נבלע בשקט (best-effort, לא מפיל את הדשבורד) - אותו עיקרון
-// כמו useVersionCheck
+// תג "חדשות מאז הביקור האחרון" בניווט. resetToZero היא לא refetch - היא
+// דריסה מקומית מיידית של המטמון (queryClient.setQueryData) אחרי שהצד
+// שקורא ל-hook כבר סימן בשרת "נצפה" (ראו App.tsx) - אין טעם לחכות
+// לפולינג הבא כדי שהתג ייעלם, וגם לא צריך קריאת רשת נוספת בשביל זה
 export function useNewIncidentsCount() {
-  const [newCount, setNewCount] = useState(0);
+  const queryClient = useQueryClient();
 
-  const refresh = useCallback(async () => {
-    try {
-      const result = await incidentService.getNewCount();
-      setNewCount(result.newCount);
-    } catch {
-      // best-effort - משאירים את הערך הקודם
-    }
-  }, []);
+  const { data } = useQuery({
+    queryKey: QUERY_KEY,
+    queryFn: () => incidentService.getNewCount(),
+    refetchInterval: POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+  });
 
-  useEffect(() => {
-    refresh();
-    const intervalId = setInterval(refresh, POLL_INTERVAL_MS);
-
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') refresh();
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-
-    return () => {
-      clearInterval(intervalId);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-  }, [refresh]);
-
-  return { newCount, resetToZero: () => setNewCount(0) };
+  return {
+    newCount: data?.newCount ?? 0,
+    resetToZero: () => queryClient.setQueryData(QUERY_KEY, { newCount: 0 }),
+  };
 }

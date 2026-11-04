@@ -1,18 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { SystemIncident } from '../types/bug.types';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { incidentService } from '../api/incidentService';
-import { reportHandledApiFailure } from '../utils/errorReporting';
+import type { PagedResult } from '../types/bug.types';
+import type { SystemIncident } from '../types/bug.types';
 
 const PAGE_SIZE = 50;
 
 export const useIncidents = () => {
-  const [incidents, setIncidents] = useState<SystemIncident[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
   const [filterSubsystem, setFilterSubsystemState] = useState<string>('');
   const [unresolvedOnly, setUnresolvedOnlyState] = useState<boolean>(false);
+  const queryClient = useQueryClient();
 
   // שינוי פילטר תמיד חוזר לעמוד 1 - אחרת אפשר "להישאר" בעמוד 5 של פילטר
   // קודם שבפילטר החדש כבר לא קיים בכלל
@@ -26,55 +24,52 @@ export const useIncidents = () => {
     setPage(1);
   };
 
-  const loadIncidents = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const queryKey = ['incidents', unresolvedOnly, filterSubsystem, page] as const;
 
-      const data = await incidentService.getAll(unresolvedOnly, filterSubsystem || undefined, page, PAGE_SIZE);
-      setIncidents(Array.isArray(data?.items) ? data.items : []);
-      setTotalCount(data?.totalCount ?? 0);
-    } catch (err: any) {
-      console.error('Error fetching incidents:', err);
-      setError(err.message || 'כשל בתקשורת מול שרת ה-API');
-      reportHandledApiFailure(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [unresolvedOnly, filterSubsystem, page]);
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey,
+    queryFn: () => incidentService.getAll(unresolvedOnly, filterSubsystem || undefined, page, PAGE_SIZE),
+  });
 
-  const resolveIncident = async (id: number, resolutionNotes?: string) => {
-    try {
-      await incidentService.resolve(id, resolutionNotes);
-
-      setIncidents(prev => prev.map(inc =>
-        inc.incidentId === id
-          ? { ...inc, isResolved: true, resolvedAt: new Date().toISOString(), resolutionNotes: resolutionNotes || inc.resolutionNotes }
-          : inc
-      ));
-    } catch (err: any) {
+  // עדכון ישיר של המטמון אחרי resolve - אותה תחושת מיידיות שהייתה ב-setIncidents
+  // הידני, בלי לחכות לסיבוב רשת נוסף על נתון שכבר ידוע לנו. לא throw-ing
+  // (mutate, לא mutateAsync) כי זה תואם את ההתנהגות הקודמת - alert מקומי,
+  // לא מפיל את הקריאה. reportHandledApiFailure כבר רץ גלובלית (ראו main.tsx)
+  const resolveMutation = useMutation({
+    mutationFn: ({ id, resolutionNotes }: { id: number; resolutionNotes?: string }) =>
+      incidentService.resolve(id, resolutionNotes),
+    onSuccess: (_, { id, resolutionNotes }) => {
+      queryClient.setQueryData(queryKey, (old?: PagedResult<SystemIncident>) =>
+        old
+          ? {
+              ...old,
+              items: old.items.map((inc) =>
+                inc.incidentId === id
+                  ? { ...inc, isResolved: true, resolvedAt: new Date().toISOString(), resolutionNotes: resolutionNotes || inc.resolutionNotes }
+                  : inc
+              ),
+            }
+          : old
+      );
+    },
+    onError: (err: Error) => {
       alert(`שגיאה: ${err.message}`);
-      reportHandledApiFailure(err);
-    }
-  };
-
-  useEffect(() => {
-    loadIncidents();
-  }, [loadIncidents]);
+    },
+  });
 
   return {
-    incidents,
-    totalCount,
+    incidents: data?.items ?? [],
+    totalCount: data?.totalCount ?? 0,
     page,
     setPage,
     pageSize: PAGE_SIZE,
-    loading,
-    error,
+    loading: isLoading,
+    error: error ? 'כשל בתקשורת מול שרת ה-API' : null,
     filterSubsystem,
     setFilterSubsystem,
     unresolvedOnly,
     setUnresolvedOnly,
-    reload: loadIncidents,
-    resolveIncident,
+    reload: refetch,
+    resolveIncident: (id: number, resolutionNotes?: string) => resolveMutation.mutate({ id, resolutionNotes }),
   };
 };
