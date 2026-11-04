@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using MyBackendApi.Data;
 using MyBackendApi.Models.Common;
 using MyBackendApi.Models.Entities;
+using MyBackendApi.Services.Core;
 using MyBackendApi.Services.Interfaces;
 using SendGrid;
 using SendGrid.Helpers.Mail;
@@ -11,6 +12,7 @@ namespace MyBackendApi.Services.Notifications;
 public class IncidentNotificationService(
     AppDbContext context,
     IConfiguration configuration,
+    ErrorCatalogCacheService catalogCache,
     ILogger<IncidentNotificationService> logger) : IIncidentNotificationService
 {
     public async Task NotifyNewIncidentAsync(SystemErrorIncident incident, CancellationToken ct = default)
@@ -41,9 +43,7 @@ public class IncidentNotificationService(
             return;
         }
 
-        var catalog = await context.ErrorCatalogs
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.ErrorCode == incident.ErrorCode, ct);
+        var catalog = await catalogCache.GetByCodeAsync(incident.ErrorCode, ct);
 
         var subject = $"[תקרית חדשה] {incident.ErrorCode} - {incident.TenantId}";
         var body =

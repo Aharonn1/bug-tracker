@@ -41,6 +41,15 @@ public class SystemErrorIncidentConfiguration : IEntityTypeConfiguration<SystemE
             .IsUnique()
             .HasDatabaseName("IX_SystemErrorIncidents_Tenant_Fingerprint");
 
+        // מכסה את השאילתה הכי נפוצה באפליקציה: רשימת התקריות (מסך ה-NOC) -
+        // תמיד מסוננת לפי TenantId (Global Query Filter, על כל שאילתה) וממוינת
+        // לפי CreatedAt יורד. בלי האינדקס הזה, כל טעינת רשימה אצל כל לקוח
+        // הייתה נשענת על סריקת כל התקריות של אותו Tenant (אין אינדקס תומך
+        // ל-ORDER BY) - בקנה מידה של אלפי לקוחות עם היסטוריה מצטברת, זה רק
+        // מחמיר עם הזמן. לא ייחודי (אין אילוץ, רק ביצועים)
+        builder.HasIndex(i => new { i.TenantId, i.CreatedAt })
+            .HasDatabaseName("IX_SystemErrorIncidents_Tenant_CreatedAt");
+
         // קשר של 1 ל-1 עם טבלת ה-Payload הכבדה
         builder.HasOne(i => i.Details)
             .WithOne(d => d.Incident)

@@ -215,6 +215,11 @@ builder.Services.AddScoped<IIncidentNotificationService, IncidentNotificationSer
 builder.Services.AddScoped<IUserDirectoryService, UserDirectoryService>();
 builder.Services.AddScoped<IFailedIncidentService, FailedIncidentService>();
 builder.Services.AddScoped<ILoginSecurityService, LoginSecurityService>();
+
+// IMemoryCache (Singleton, מובנה ב-ASP.NET Core) + העטיפה מעליו ל-ErrorCatalogs
+// (Scoped כי תלוי ב-AppDbContext) - ראו הסבר מלא ב-ErrorCatalogCacheService
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<ErrorCatalogCacheService>();
 builder.Services.AddScoped<TelemetryAnalysisService>();
 builder.Services.AddSingleton<OpsInsightsService>();
 builder.Services.AddSingleton<AzureResourceMetricsReader>();

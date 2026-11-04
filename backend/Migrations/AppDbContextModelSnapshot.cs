@@ -530,6 +530,9 @@ namespace MyBackendApi.Migrations
 
                     b.HasKey("IncidentId");
 
+                    b.HasIndex("TenantId", "CreatedAt")
+                        .HasDatabaseName("IX_SystemErrorIncidents_Tenant_CreatedAt");
+
                     b.HasIndex("TenantId", "ErrorFingerprintHash")
                         .IsUnique()
                         .HasDatabaseName("IX_SystemErrorIncidents_Tenant_Fingerprint");

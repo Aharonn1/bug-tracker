@@ -73,8 +73,11 @@ public class AuthService(
 
     private async Task EnsureIpNotBlockedAsync(CancellationToken ct)
     {
+        // AsNoTracking - נקרא בכל ניסיון התחברות בודד בלי יוצא מן הכלל, אף
+        // פעם לא כותב את ה-entity הזה חזרה (רק קורא BlockedUntil), אז אין
+        // סיבה שה-change tracker של EF יעקוב אחריו
         var ip = ClientIp;
-        var block = await context.BlockedIpAddresses.FirstOrDefaultAsync(b => b.IpAddress == ip, ct);
+        var block = await context.BlockedIpAddresses.AsNoTracking().FirstOrDefaultAsync(b => b.IpAddress == ip, ct);
         if (block is not null && block.BlockedUntil > DateTime.UtcNow)
         {
             await LogAttemptAsync("", LoginAttemptOutcome.IpBlocked, ct);

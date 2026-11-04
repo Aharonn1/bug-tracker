@@ -16,6 +16,7 @@ public class IncidentService(
     AppDbContext context,
     ErrorDeduplicationService deduplicationService,
     IIncidentNotificationService notificationService,
+    ErrorCatalogCacheService catalogCache,
     ILogger<IncidentService> logger) : IIncidentService
 {
     private const int MaxPageSize = 200;
@@ -84,9 +85,14 @@ public class IncidentService(
         // העמוד *לפני* הסינון, ומקבלים עמודים עם פחות (או אפס) תוצאות אחריו
         if (!string.IsNullOrWhiteSpace(subsystem))
         {
-            var errorCodesForSubsystem = context.ErrorCatalogs
+            // מהמטמון, לא שאילתה נפרדת - עדיין מתורגם ל-SQL IN (...) תקין
+            // (EF מתרגם Contains על אוסף-בזיכרון לפרמטר), אז עדיין לא חוזרים
+            // לבאג ה-pagination שהוזכר למעלה (הסינון עדיין קורה ב-SQL, לא בזיכרון)
+            var allCatalogs = await catalogCache.GetAllAsync(ct);
+            var errorCodesForSubsystem = allCatalogs.Values
                 .Where(c => c.Subsystem == subsystem)
-                .Select(c => c.ErrorCode);
+                .Select(c => c.ErrorCode)
+                .ToList();
             query = query.Where(i => errorCodesForSubsystem.Contains(i.ErrorCode));
         }
 
@@ -101,9 +107,9 @@ public class IncidentService(
             .ToListAsync(ct);
 
         // Join "רך" מול הקטלוג (לא FK אמיתי) - כי תקרית עם קוד שגיאה שעוד לא
-        // תועד בקטלוג עדיין חייבת להישמר ולהיות גלויה כאן. נעשה בזיכרון כי אין
-        // הרבה שורות בקטלוג, ומאפשר לשלב עם ה-Include של Reporters למעלה
-        var catalogs = await context.ErrorCatalogs.AsNoTracking().ToDictionaryAsync(c => c.ErrorCode, ct);
+        // תועד בקטלוג עדיין חייבת להישמר ולהיות גלויה כאן. מהמטמון (לא
+        // שאילתה חדשה בכל קריאה) - ראו ErrorCatalogCacheService
+        var catalogs = await catalogCache.GetAllAsync(ct);
         var deployments = await context.DeploymentRecords.AsNoTracking().ToListAsync(ct);
 
         var items = incidents.Select(i => MapToResponseDto(i, catalogs.GetValueOrDefault(i.ErrorCode), deployments)).ToList();
@@ -145,9 +151,7 @@ public class IncidentService(
             throw new IncidentNotFoundException(id);
         }
 
-        var catalog = await context.ErrorCatalogs
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.ErrorCode == incident.ErrorCode, ct);
+        var catalog = await catalogCache.GetByCodeAsync(incident.ErrorCode, ct);
         var deployments = await context.DeploymentRecords.AsNoTracking().ToListAsync(ct);
 
         return MapToResponseDto(incident, catalog, deployments);
@@ -218,9 +222,7 @@ public class IncidentService(
             .Include(i => i.Reporters).ThenInclude(r => r.User)
             .FirstAsync(i => i.IncidentId == incidentId, ct);
 
-        var catalog = await context.ErrorCatalogs
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.ErrorCode == saved.ErrorCode, ct);
+        var catalog = await catalogCache.GetByCodeAsync(saved.ErrorCode, ct);
         var deployments = await context.DeploymentRecords.AsNoTracking().ToListAsync(ct);
 
         return MapToResponseDto(saved, catalog, deployments);
