@@ -53,7 +53,7 @@ jobs:
 
       - name: Upload artifact
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-app
           path: backend/publish-output
@@ -83,7 +83,7 @@ jobs:
         working-directory: backend
 
       - name: Upload migration script
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: migration-script
           path: backend/migration.sql
