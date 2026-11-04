@@ -51,6 +51,12 @@ const long MaxRequestBodyBytes = 2 * 1024 * 1024; // 2MB
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.Limits.MaxRequestBodySize = MaxRequestBodyBytes;
+
+    // AddServerHeader=false מוריד את ה-"Server: Kestrel" מכל תגובה - לא חור
+    // אבטחה בפני עצמו, אבל זה fingerprinting חינמי לתוקף (מגלה בדיוק על
+    // איזו טכנולוגיה הוא עובד). הסרה היא שינוי קונפיגורציה בלבד, אפס עלות
+    // ביצועים - לא עוד בדיקה שרצה per-request, פשוט דילוג על הוספת header
+    options.AddServerHeader = false;
 });
 
 // ==========================================
@@ -327,6 +333,12 @@ builder.Services.AddHsts(options =>
 {
     options.MaxAge = TimeSpan.FromDays(365);
     options.IncludeSubDomains = true;
+    // preload - מאפשר הגשת מועמדות לרשימת ה-HSTS Preload המובנית בדפדפנים
+    // (hstspreload.org), כך שגם ביקור ראשון-אי-פעם באתר (שעדיין לא ראה
+    // את header ה-HSTS בתגובה קודמת) כבר נאכף ל-HTTPS בלבד מראש. לא עושה
+    // כלום לבד - עדיין צריך להגיש את הדומיין ידנית ל-hstspreload.org כדי
+    // שזה ייכנס בפועל לרשימה, אבל ה-header חייב לכלול את הדגל הזה כתנאי סף
+    options.Preload = true;
 });
 
 var app = builder.Build();
@@ -380,6 +392,30 @@ app.Use(async (context, next) =>
     if (!app.Environment.IsDevelopment())
     {
         context.Response.Headers.Append("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+    }
+
+    await next();
+});
+
+// דוחה בקשות POST/PUT/PATCH עם גוף שה-Content-Type שלו הוא לא JSON, לפני
+// שהן מגיעות ל-CORS/Rate Limiting/Auth/Model Binding - ה-API הזה כולו
+// JSON בלבד (אין שום endpoint שמצפה ל-multipart/form-data או טופס). דחייה
+// כאן זולה (בדיקת header, בלי לגעת ב-DB/רשת) ומונעת מגוף עם Content-Type
+// מתוחכם/מזויף להמשיך הלאה ולעבוד מול לוגיקת ה-binding בכלל
+app.Use(async (context, next) =>
+{
+    var method = context.Request.Method;
+    var hasBody = context.Request.ContentLength is > 0 || context.Request.Headers.TransferEncoding.Count > 0;
+
+    if (hasBody && (HttpMethods.IsPost(method) || HttpMethods.IsPut(method) || HttpMethods.IsPatch(method)))
+    {
+        var contentType = context.Request.ContentType;
+        if (string.IsNullOrEmpty(contentType) || !contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Response.StatusCode = StatusCodes.Status415UnsupportedMediaType;
+            await context.Response.WriteAsJsonAsync(new { message = "Content-Type נדרש להיות application/json" });
+            return;
+        }
     }
 
     await next();
