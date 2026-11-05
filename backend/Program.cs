@@ -343,6 +343,16 @@ builder.Services.AddHsts(options =>
 
 var app = builder.Build();
 
+// מתחיל ניקוז מסודר של תור התקריות (IncidentChannelQueue) כשהכיבוי מתחיל -
+// בלי זה, כל תקרית שעדיין ממתינה בתור בזיכרון (Channel<T>, לא persisted)
+// הייתה נאבדת בשקט ברגע שה-Worker מתבטל. CompleteWriting() רק סוגר את
+// האפשרות לכתיבות *חדשות* - מה שכבר בתור ממשיך להיקרא ולהתעבד עד שמתרוקן
+// או עד שחלון הכיבוי (HostOptions.ShutdownTimeout) נגמר
+app.Lifetime.ApplicationStopping.Register(() =>
+{
+    app.Services.GetRequiredService<IncidentChannelQueue>().CompleteWriting();
+});
+
 // ==========================================
 // 7. Request Pipeline Configuration
 // ==========================================

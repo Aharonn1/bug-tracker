@@ -33,7 +33,14 @@ public class IncidentIngestionWorker(
             CancellationToken = stoppingToken,
         };
 
-        await Parallel.ForEachAsync(queue.ReadAllAsync(stoppingToken), options, async (dto, ct) =>
+        // ReadAllAsync בלי stoppingToken בכוונה: בכיבוי, Program.cs קורא ל-
+        // queue.CompleteWriting() על ApplicationStopping, וזה מסיים את ה-
+        // enumerable הזה באופן טבעי רק אחרי שכל מה שכבר בתור נוקז - לא
+        // באופן מיידי כמו שהיה קורה אם stoppingToken מועבר כאן (שמתבטל כבר
+        // בתחילת הכיבוי ומפסיק את הקריאה מהתור גם אם נשארו פריטים ממתינים).
+        // stoppingToken עדיין משמש כרשת-הצלה דרך ParallelOptions.CancellationToken -
+        // אם עיבוד פריט בודד נתקע, הוא עדיין יבוטל כשחלון הכיבוי (HostOptions.ShutdownTimeout) מתקרב לסופו
+        await Parallel.ForEachAsync(queue.ReadAllAsync(), options, async (dto, ct) =>
         {
             try
             {
