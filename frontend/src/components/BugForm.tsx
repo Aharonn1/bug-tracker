@@ -51,8 +51,9 @@ export const BugForm: React.FC<BugFormProps> = ({ onBugCreated }) => {
   return (
     <form onSubmit={handleSubmit} style={{ background: '#1e293b', padding: '24px', borderRadius: '12px', border: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div>
-        <label style={{ fontSize: '13px', color: '#94a3b8' }}>כותרת התקלה</label>
+        <label htmlFor="bug-title" style={{ fontSize: '13px', color: '#94a3b8' }}>כותרת התקלה</label>
         <input
+          id="bug-title"
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -63,8 +64,9 @@ export const BugForm: React.FC<BugFormProps> = ({ onBugCreated }) => {
       </div>
 
       <div>
-        <label style={{ fontSize: '13px', color: '#94a3b8' }}>מודול מערכת</label>
+        <label htmlFor="bug-system-module" style={{ fontSize: '13px', color: '#94a3b8' }}>מודול מערכת</label>
         <select
+          id="bug-system-module"
           value={systemModule}
           onChange={(e) => setSystemModule(e.target.value)}
           style={inputStyle}
@@ -78,8 +80,9 @@ export const BugForm: React.FC<BugFormProps> = ({ onBugCreated }) => {
       </div>
 
       <div>
-        <label style={{ fontSize: '13px', color: '#94a3b8' }}>רמת עדיפות</label>
+        <label htmlFor="bug-priority" style={{ fontSize: '13px', color: '#94a3b8' }}>רמת עדיפות</label>
         <select
+          id="bug-priority"
           value={priority}
           onChange={(e) => setPriority(Number(e.target.value) as BugPriority)}
           style={inputStyle}
@@ -92,8 +95,9 @@ export const BugForm: React.FC<BugFormProps> = ({ onBugCreated }) => {
       </div>
 
       <div>
-        <label style={{ fontSize: '13px', color: '#94a3b8' }}>פירוט טכני והודעת שגיאה</label>
+        <label htmlFor="bug-description" style={{ fontSize: '13px', color: '#94a3b8' }}>פירוט טכני והודעת שגיאה</label>
         <textarea
+          id="bug-description"
           rows={4}
           value={description}
           onChange={(e) => setDescription(e.target.value)}

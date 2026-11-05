@@ -113,6 +113,7 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
         actions={
           <>
             <select
+              aria-label="סינון לפי מערכת"
               value={filterSubsystem}
               onChange={(e) => setFilterSubsystem(e.target.value)}
               style={selectStyle}
@@ -223,6 +224,7 @@ export const IncidentsPage: React.FC<IncidentsPageProps> = ({
               {f.label}
               <button
                 onClick={f.clear}
+                aria-label={`הסר סינון: ${f.label}`}
                 style={{
                   width: '16px',
                   height: '16px',

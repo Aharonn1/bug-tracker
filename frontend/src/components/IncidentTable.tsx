@@ -71,7 +71,7 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
           <tbody>
             {incidents.length === 0 ? (
               <tr>
-                <td colSpan={10} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                <td colSpan={10} style={{ textAlign: 'center', padding: '24px', color: '#90a0b5' }}>
                   אין אירועי תקלות להצגה
                 </td>
               </tr>
@@ -167,7 +167,7 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                             {extractAttemptedEmail(i.rawPayload)}
                           </span>
                         ) : (
-                          <span style={{ color: '#64748b' }}>לא מזוהה</span>
+                          <span style={{ color: '#90a0b5' }}>לא מזוהה</span>
                         )
                       ) : employeeReporters.length === 1 ? (
                         <span style={{ color: '#e2e8f0', whiteSpace: 'nowrap' }}>

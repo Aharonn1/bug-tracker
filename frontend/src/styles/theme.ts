@@ -14,7 +14,11 @@ export const colors = {
   textPrimary: '#f8fafc',
   textSecondary: '#cbd5e1',
   textMuted: '#94a3b8',
-  textFaint: '#64748b',
+  // #64748b (ברירת המחדל הקודמת) נכשל ביחס ניגודיות WCAG AA (4.5:1) מול
+  // רקע card (#1e293b) - 3.07 בלבד, נבדק עם axe-core. #90a0b5 נבחר כי הוא
+  // עדיין מורגש "דהוי" יותר מ-textMuted אבל עובר 4.5:1 מול כל הרקעים
+  // (bg/surface/card) בשימוש באתר
+  textFaint: '#90a0b5',
 
   accent: '#2563eb',
   accentHover: '#1d4ed8',

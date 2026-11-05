@@ -52,6 +52,9 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="incident-details-title"
         style={{
           backgroundColor: '#0f172a',
           border: '1px solid #334155',
@@ -76,15 +79,16 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
           }}
         >
           <div>
-            <h3 style={{ margin: 0, fontSize: '16px', color: '#f8fafc', fontWeight: 600 }}>
+            <h2 id="incident-details-title" style={{ margin: 0, fontSize: '16px', color: '#f8fafc', fontWeight: 600 }}>
               {incident.hebrewDescription}
-            </h3>
+            </h2>
             <span style={{ fontSize: '12px', color: '#94a3b8' }}>
               תקלה #{incident.incidentId} · {incident.subsystem} · {incident.errorCode}
             </span>
           </div>
           <button
             onClick={onClose}
+            aria-label="סגור"
             style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '20px', cursor: 'pointer', padding: '4px 8px' }}
           >
             ✕
@@ -93,7 +97,7 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
 
         <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '18px' }}>
           <section>
-            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>הודעת שגיאה</div>
+            <div style={{ fontSize: '12px', color: '#90a0b5', fontWeight: 600, marginBottom: '6px' }}>הודעת שגיאה</div>
             <div style={{ background: '#131f37', padding: '12px', borderRadius: '8px', border: '1px solid #1e293b', color: '#e2e8f0', fontSize: '13px', fontFamily: 'monospace' }}>
               {incident.errorMessage}
             </div>
@@ -101,7 +105,7 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
 
           {incident.codeLocationFilePath && (
             <section>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>📍 מיקום בקוד</div>
+              <div style={{ fontSize: '12px', color: '#90a0b5', fontWeight: 600, marginBottom: '6px' }}>📍 מיקום בקוד</div>
               <a
                 href={`${GITHUB_REPO_URL}/blob/${incident.codeLocationRef}/${incident.codeLocationFilePath}#L${incident.codeLocationLine}`}
                 target="_blank"
@@ -124,7 +128,7 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
               </a>
               {incident.stackTrace && (
                 <details style={{ marginTop: '6px' }}>
-                  <summary style={{ color: '#64748b', fontSize: '11px', cursor: 'pointer' }}>הצג Stack Trace מלא</summary>
+                  <summary style={{ color: '#90a0b5', fontSize: '11px', cursor: 'pointer' }}>הצג Stack Trace מלא</summary>
                   <div
                     dir="ltr"
                     style={{
@@ -151,7 +155,7 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
 
           {incident.isResolved && incident.resolutionNotes && (
             <section>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>✅ איך זה נפתר</div>
+              <div style={{ fontSize: '12px', color: '#90a0b5', fontWeight: 600, marginBottom: '6px' }}>✅ איך זה נפתר</div>
               <div style={{ background: '#052e16', padding: '14px', borderRadius: '8px', border: '1px solid #166534', color: '#bbf7d0', fontSize: '13px', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
                 {incident.resolutionNotes}
               </div>
@@ -160,7 +164,7 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
 
           {incident.resolutionPlaybook && (
             <section>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>הנחיות לפתרון (Playbook)</div>
+              <div style={{ fontSize: '12px', color: '#90a0b5', fontWeight: 600, marginBottom: '6px' }}>הנחיות לפתרון (Playbook)</div>
               <div style={{ background: '#131f37', padding: '14px', borderRadius: '8px', border: '1px solid #1e293b', color: '#fde68a', fontSize: '13px', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
                 {incident.resolutionPlaybook}
               </div>
@@ -169,7 +173,7 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
 
           {attemptedEmail && (
             <section>
-              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>
+              <div style={{ fontSize: '12px', color: '#90a0b5', fontWeight: 600, marginBottom: '6px' }}>
                 אימייל שניסה להתחבר בזמן התקלה
               </div>
               <div style={{
@@ -183,18 +187,18 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
               }}>
                 {attemptedEmail}
               </div>
-              <div style={{ color: '#64748b', fontSize: '11px', marginTop: '4px' }}>
+              <div style={{ color: '#90a0b5', fontSize: '11px', marginTop: '4px' }}>
                 נלכד לפני שהיה למשתמש חשבון מחובר - זה מה שהוא הקליד, לא זהות מאומתת
               </div>
             </section>
           )}
 
           <section>
-            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>
+            <div style={{ fontSize: '12px', color: '#90a0b5', fontWeight: 600, marginBottom: '6px' }}>
               משתמשים שנתקלו בתקלה ({employeeReporters.length})
             </div>
             {employeeReporters.length === 0 ? (
-              <div style={{ color: '#64748b', fontSize: '13px' }}>
+              <div style={{ color: '#90a0b5', fontSize: '13px' }}>
                 {attemptedEmail ? 'אף חשבון מחובר לא נתקל בתקלה - ראו את האימייל שהוקלד למעלה' : 'לא זוהה משתמש מחובר עבור תקלה זו'}
               </div>
             ) : (

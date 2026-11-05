@@ -181,6 +181,7 @@ export const TenantScaleTestCard: React.FC = () => {
         <span style={{ fontSize: '12px', color: colors.textMuted }}>כמה משרדים לדמות:</span>
         <input
           type="number"
+          aria-label="כמה משרדים לדמות"
           min={1}
           max={MAX_COUNT}
           placeholder="למשל: 100"

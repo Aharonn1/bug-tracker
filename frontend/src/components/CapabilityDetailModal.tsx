@@ -31,6 +31,9 @@ export const CapabilityDetailModal: React.FC<Props> = ({ capability, onClose }) 
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="capability-detail-title"
         style={{
           backgroundColor: colors.surface,
           border: `1px solid ${colors.border}`,
@@ -57,9 +60,9 @@ export const CapabilityDetailModal: React.FC<Props> = ({ capability, onClose }) 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontSize: '26px' }}>{capability.icon}</span>
             <div>
-              <h3 style={{ margin: 0, fontSize: '16px', color: colors.textPrimary, fontWeight: 700 }}>
+              <h2 id="capability-detail-title" style={{ margin: 0, fontSize: '16px', color: colors.textPrimary, fontWeight: 700 }}>
                 {capability.title}
-              </h3>
+              </h2>
               {capability.errorCode && (
                 <span style={{ fontSize: '11px', color: colors.textFaint, fontFamily: 'monospace' }}>
                   {capability.errorCode}
@@ -69,6 +72,7 @@ export const CapabilityDetailModal: React.FC<Props> = ({ capability, onClose }) 
           </div>
           <button
             onClick={onClose}
+            aria-label="סגור"
             style={{ background: 'transparent', border: 'none', color: colors.textMuted, fontSize: '20px', cursor: 'pointer', padding: '4px 8px' }}
           >
             ✕

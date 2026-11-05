@@ -71,8 +71,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) =
       </div>
 
       <div>
-        <label style={{ fontSize: '13px', color: '#94a3b8' }}>שם מלא</label>
+        <label htmlFor="register-fullname" style={{ fontSize: '13px', color: '#94a3b8' }}>שם מלא</label>
         <input
+          id="register-fullname"
           type="text"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
@@ -83,8 +84,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) =
       </div>
 
       <div>
-        <label style={{ fontSize: '13px', color: '#94a3b8' }}>אימייל</label>
+        <label htmlFor="register-email" style={{ fontSize: '13px', color: '#94a3b8' }}>אימייל</label>
         <input
+          id="register-email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -95,8 +97,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) =
       </div>
 
       <div>
-        <label style={{ fontSize: '13px', color: '#94a3b8' }}>סיסמה</label>
+        <label htmlFor="register-password" style={{ fontSize: '13px', color: '#94a3b8' }}>סיסמה</label>
         <input
+          id="register-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}

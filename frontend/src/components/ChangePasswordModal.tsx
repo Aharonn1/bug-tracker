@@ -68,15 +68,19 @@ export const ChangePasswordModal: React.FC<Props> = ({ isOpen, onClose }) => {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)',
     }}>
-      <div style={{
-        backgroundColor: colors.surface,
-        border: `1px solid ${colors.border}`,
-        borderRadius: '16px',
-        width: '90%',
-        maxWidth: '420px',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
-        overflow: 'hidden',
-      }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="change-password-title"
+        style={{
+          backgroundColor: colors.surface,
+          border: `1px solid ${colors.border}`,
+          borderRadius: '16px',
+          width: '90%',
+          maxWidth: '420px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
+          overflow: 'hidden',
+        }}>
         <div style={{
           padding: '16px 24px',
           borderBottom: `1px solid ${colors.borderSubtle}`,
@@ -85,9 +89,10 @@ export const ChangePasswordModal: React.FC<Props> = ({ isOpen, onClose }) => {
           alignItems: 'center',
           background: colors.card,
         }}>
-          <h3 style={{ margin: 0, fontSize: '16px', color: colors.textPrimary, fontWeight: 600 }}>שינוי סיסמה</h3>
+          <h2 id="change-password-title" style={{ margin: 0, fontSize: '16px', color: colors.textPrimary, fontWeight: 600 }}>שינוי סיסמה</h2>
           <button
             onClick={handleClose}
+            aria-label="סגור"
             style={{ background: 'transparent', border: 'none', color: colors.textMuted, fontSize: '20px', cursor: 'pointer', padding: '4px 8px' }}
           >
             ✕

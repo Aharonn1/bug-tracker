@@ -82,6 +82,7 @@ export const LoginSecurityPage: React.FC = () => {
         <form onSubmit={handleManualBlock} style={{ display: 'flex', gap: spacing.sm, alignItems: 'center', marginBottom: spacing.md, flexWrap: 'wrap' }}>
           <input
             type="text"
+            aria-label="כתובת IP לחסימה ידנית"
             placeholder="כתובת IP לחסימה ידנית"
             value={manualIp}
             onChange={(e) => setManualIp(e.target.value)}
@@ -89,6 +90,7 @@ export const LoginSecurityPage: React.FC = () => {
           />
           <input
             type="number"
+            aria-label="מספר שעות לחסימה"
             min={1}
             max={720}
             value={manualHours}

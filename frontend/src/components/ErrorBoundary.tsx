@@ -104,7 +104,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
           </button>
 
           <details style={{ marginTop: '20px', textAlign: 'right' }}>
-            <summary style={{ color: '#64748b', fontSize: '12px', cursor: 'pointer' }}>
+            <summary style={{ color: '#90a0b5', fontSize: '12px', cursor: 'pointer' }}>
               פרטים טכניים
             </summary>
             <pre

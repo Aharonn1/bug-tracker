@@ -81,8 +81,9 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackTo
         </div>
       ) : (
         <div>
-          <label style={{ fontSize: '13px', color: '#94a3b8' }}>אימייל</label>
+          <label htmlFor="forgot-password-email" style={{ fontSize: '13px', color: '#94a3b8' }}>אימייל</label>
           <input
+            id="forgot-password-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}

@@ -49,7 +49,7 @@ export const BugList: React.FC = () => {
   };
 
   if (loading && bugs.length === 0) {
-    return <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>טוען רשימת באגים...</div>;
+    return <div style={{ textAlign: 'center', padding: '40px', color: '#90a0b5' }}>טוען רשימת באגים...</div>;
   }
 
   return (
@@ -140,7 +140,7 @@ export const BugList: React.FC = () => {
           <tbody>
             {visibleBugs.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '30px', color: '#90a0b5' }}>
                   {selectedUser ? 'אין באגים של משתמש זה' : 'אין באגים מדווחים במערכת'}
                 </td>
               </tr>
@@ -156,7 +156,7 @@ export const BugList: React.FC = () => {
                   <td style={{ padding: '12px', whiteSpace: 'nowrap', fontSize: '12px' }}>
                     {new Date(bug.createdAt).toLocaleDateString('he-IL')}
                   </td>
-                  <td style={{ padding: '12px', fontSize: '12px', color: bug.reportedByUserName ? '#e2e8f0' : '#64748b' }}>
+                  <td style={{ padding: '12px', fontSize: '12px', color: bug.reportedByUserName ? '#e2e8f0' : '#90a0b5' }}>
                     {bug.reportedByUserName || 'לא מזוהה'}
                   </td>
                   <td style={{ padding: '12px' }}>

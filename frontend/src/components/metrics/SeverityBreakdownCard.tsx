@@ -25,7 +25,7 @@ export const SeverityBreakdownCard: React.FC<Props> = ({ incidents, selectedSeve
       { label: 'קריטי', value: incidents.filter((i) => i.severity === IncidentSeverity.Critical).length, color: '#ef4444' },
       { label: 'גבוה', value: incidents.filter((i) => i.severity === IncidentSeverity.High).length, color: '#f59e0b' },
       { label: 'בינוני', value: incidents.filter((i) => i.severity === IncidentSeverity.Medium).length, color: '#3b82f6' },
-      { label: 'נמוך', value: incidents.filter((i) => i.severity === IncidentSeverity.Low).length, color: '#64748b' },
+      { label: 'נמוך', value: incidents.filter((i) => i.severity === IncidentSeverity.Low).length, color: '#90a0b5' },
     ],
     [incidents]
   );

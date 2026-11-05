@@ -67,8 +67,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onSwit
       </div>
 
       <div>
-        <label style={{ fontSize: '13px', color: '#94a3b8' }}>אימייל</label>
+        <label htmlFor="login-email" style={{ fontSize: '13px', color: '#94a3b8' }}>אימייל</label>
         <input
+          id="login-email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -79,8 +80,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onSwit
       </div>
 
       <div>
-        <label style={{ fontSize: '13px', color: '#94a3b8' }}>סיסמה</label>
+        <label htmlFor="login-password" style={{ fontSize: '13px', color: '#94a3b8' }}>סיסמה</label>
         <input
+          id="login-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}

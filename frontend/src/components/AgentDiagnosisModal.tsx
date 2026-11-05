@@ -67,18 +67,22 @@ export const AgentDiagnosisModal: React.FC<Props> = ({
       direction: 'rtl',
       backdropFilter: 'blur(4px)'
     }}>
-      <div style={{
-        backgroundColor: '#0f172a',
-        border: '1px solid #334155',
-        borderRadius: '16px',
-        width: '90%',
-        maxWidth: '680px',
-        maxHeight: '85vh',
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
-        overflow: 'hidden'
-      }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="agent-diagnosis-title"
+        style={{
+          backgroundColor: '#0f172a',
+          border: '1px solid #334155',
+          borderRadius: '16px',
+          width: '90%',
+          maxWidth: '680px',
+          maxHeight: '85vh',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)',
+          overflow: 'hidden'
+        }}>
         {/* Header */}
         <div style={{
           padding: '16px 24px',
@@ -91,9 +95,9 @@ export const AgentDiagnosisModal: React.FC<Props> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '20px' }}>🤖</span>
             <div>
-              <h3 style={{ margin: 0, fontSize: '16px', color: '#f8fafc', fontWeight: 600 }}>
+              <h2 id="agent-diagnosis-title" style={{ margin: 0, fontSize: '16px', color: '#f8fafc', fontWeight: 600 }}>
                 דו״ח חקירה אוטונומי (RCA Agent)
-              </h3>
+              </h2>
               <span style={{ fontSize: '12px', color: '#94a3b8' }}>
                 אירוע #{incidentId} {errorCode && `| קוד: ${errorCode}`} {caseNumber && `| תיק: ${caseNumber}`}
               </span>
@@ -101,6 +105,7 @@ export const AgentDiagnosisModal: React.FC<Props> = ({
           </div>
           <button
             onClick={onClose}
+            aria-label="סגור"
             style={{
               background: 'transparent',
               border: 'none',

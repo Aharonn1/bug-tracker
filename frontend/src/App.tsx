@@ -68,7 +68,7 @@ const AuthGate: React.FC = () => {
   }, [initialResetToken]);
 
   return (
-    <div style={{
+    <main style={{
       minHeight: '100vh',
       display: 'flex',
       alignItems: 'center',
@@ -133,7 +133,7 @@ const AuthGate: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 

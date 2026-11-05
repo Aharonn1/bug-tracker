@@ -104,8 +104,9 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ token, onD
       ) : (
         <>
           <div>
-            <label style={{ fontSize: '13px', color: '#94a3b8' }}>סיסמה חדשה (לפחות 12 תווים)</label>
+            <label htmlFor="reset-new-password" style={{ fontSize: '13px', color: '#94a3b8' }}>סיסמה חדשה (לפחות 12 תווים)</label>
             <input
+              id="reset-new-password"
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
@@ -117,8 +118,9 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ token, onD
           </div>
 
           <div>
-            <label style={{ fontSize: '13px', color: '#94a3b8' }}>אימות סיסמה חדשה</label>
+            <label htmlFor="reset-confirm-password" style={{ fontSize: '13px', color: '#94a3b8' }}>אימות סיסמה חדשה</label>
             <input
+              id="reset-confirm-password"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
