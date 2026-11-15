@@ -107,6 +107,10 @@ export interface SystemIncident {
   // IncidentService.ResolveCodeLocationRef בבקאנד) - מקור האמת היחיד
   // לבניית קישור GitHub, לא לבנות "main" בעצמנו כאן
   codeLocationRef: string;
+  // דוח AI שנוצר אוטומטית ברקע ע"י הבקאנד, רק עבור תקריות AZURE_PLATFORM_ISSUE
+  // חדשות (ראו IncidentService.CreateNewIncidentAsync) - null לכל שאר הסוגים,
+  // או אם הניתוח האוטומטי עדיין רץ/נכשל
+  autoRcaReport: string | null;
   reportedByUsers: IncidentReporter[];
 }
 

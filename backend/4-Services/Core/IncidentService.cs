@@ -7,6 +7,7 @@ using MyBackendApi.Models.DTOs.Common;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Responses;
 using MyBackendApi.Models.Entities;
+using MyBackendApi.Services.Agent;
 using MyBackendApi.Services.Deduplication;
 using MyBackendApi.Services.Interfaces;
 
@@ -17,6 +18,7 @@ public class IncidentService(
     ErrorDeduplicationService deduplicationService,
     IIncidentNotificationService notificationService,
     ErrorCatalogCacheService catalogCache,
+    IServiceScopeFactory scopeFactory,
     ILogger<IncidentService> logger) : IIncidentService
 {
     private const int MaxPageSize = 200;
@@ -327,7 +329,72 @@ public class IncidentService(
             logger.LogError(ex, "כשל בשליחת התראת תקרית חדשה {IncidentId} - התקרית עצמה נשמרה בהצלחה", incident.IncidentId);
         }
 
+        // אותו שיקול בדיוק: רק על fingerprint חדש לגמרי, לא על הישנות - כך
+        // שסוכן ה-AI לא רץ שוב על כל occurrence נוסף של אותה תקרית בדיוק.
+        // לא מוקטר (await) בכוונה - רץ ברקע, לא תופס slot של ה-ingestion
+        // worker לכל משך קריאת ה-AI (שניות עד עשרות שניות)
+        if (incident.ErrorCode == "AZURE_PLATFORM_ISSUE")
+        {
+            _ = RunAutoRcaInBackgroundAsync(incident.IncidentId);
+        }
+
         return incident.IncidentId;
+    }
+
+    // רץ מנותק מהבקשה/מה-scope הנוכחי בכוונה - ה-scope שה-Ingestion Worker פתח
+    // עבור הפריט הזה ייסגר ברגע ש-IngestIncidentAsync יחזיר (לפני שהקריאה הזו
+    // בכלל מתחילה), אז חובה scope עצמאי חדש לגמרי, בדיוק כמו ב-Dead-Letter
+    // writers הקיימים (IncidentChannelQueue/IncidentIngestionWorker). בולע כל
+    // כשל בשקט - זו תוספת-עזר, אף פעם לא אמורה להשפיע על קליטת התקרית עצמה
+    private async Task RunAutoRcaInBackgroundAsync(long incidentId)
+    {
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var sp = scope.ServiceProvider;
+
+            var db = sp.GetRequiredService<AppDbContext>();
+            var rcaAgent = sp.GetRequiredService<IRcaAgentService>();
+            var serviceHealthReader = sp.GetRequiredService<AzureServiceHealthReader>();
+            var deploymentHistory = sp.GetRequiredService<DeploymentHistoryService>();
+            var catalogCacheScoped = sp.GetRequiredService<ErrorCatalogCacheService>();
+
+            var incident = await db.SystemErrorIncidents
+                .IgnoreQueryFilters()
+                .Include(i => i.Details)
+                .FirstOrDefaultAsync(i => i.IncidentId == incidentId, CancellationToken.None);
+            if (incident is null) return;
+
+            var catalog = await catalogCacheScoped.GetByCodeAsync(incident.ErrorCode, CancellationToken.None);
+
+            var azureServiceHealthSummary = await AzureIncidentAiContext.GetActiveServiceHealthSummaryAsync(
+                serviceHealthReader, logger, incidentId, CancellationToken.None);
+            var deployContextSummary = await AzureIncidentAiContext.GetDeployContextSummaryAsync(
+                deploymentHistory, incident.Details?.ClientCodeLocationFilePath, incident.CreatedAt, incidentId, logger, CancellationToken.None);
+
+            var report = await rcaAgent.AnalyzeAndRemediateIncidentAsync(
+                incident.ErrorCode,
+                incident.ErrorMessage,
+                catalog?.Category ?? "General",
+                catalog?.Subsystem ?? "Unknown",
+                catalog?.HebrewDescription ?? incident.ErrorMessage,
+                incident.CaseNumber,
+                catalog?.ResolutionPlaybook,
+                incident.Details?.StackTrace,
+                incident.Details?.ClientCodeLocationFilePath,
+                incident.Details?.ClientCodeLocationLine,
+                "main",
+                azureServiceHealthSummary,
+                deployContextSummary,
+                CancellationToken.None);
+
+            incident.Details!.AutoRcaReport = report;
+            await db.SaveChangesAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "כשל בהרצה אוטומטית של סוכן ה-AI עבור תקרית {IncidentId} - התקרית עצמה תקינה, רק בלי דוח אוטומטי", incidentId);
+        }
     }
 
     public async Task MarkAsResolvedAsync(long id, int? restrictToUserId = null, string? resolutionNotes = null, CancellationToken ct = default)
@@ -394,6 +461,7 @@ public class IncidentService(
             codeFile,
             codeLine,
             codeLocationRef,
+            AutoRcaReport: i.Details?.AutoRcaReport,
             i.Reporters
                 .OrderByDescending(r => r.LastSeenAt)
                 .Select(r => new IncidentReporterDto(r.UserId, r.User.FullName, r.User.Role, r.OccurrenceCount, r.LastSeenAt))

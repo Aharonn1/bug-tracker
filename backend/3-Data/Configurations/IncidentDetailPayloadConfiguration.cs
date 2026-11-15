@@ -15,6 +15,7 @@ public class IncidentDetailPayloadConfiguration : IEntityTypeConfiguration<Incid
         // שדות ללא הגבלת אורך מוגדרים עבור StackTrace ו-JSON גולמי
         builder.Property(d => d.StackTrace);
         builder.Property(d => d.RawPayload);
+        builder.Property(d => d.AutoRcaReport);
         builder.Property(d => d.ClientCodeLocationFilePath).HasMaxLength(500);
     }
 }

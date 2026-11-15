@@ -339,6 +339,9 @@ namespace MyBackendApi.Migrations
                     b.Property<long>("IncidentId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("AutoRcaReport")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("ClientCodeLocationFilePath")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");

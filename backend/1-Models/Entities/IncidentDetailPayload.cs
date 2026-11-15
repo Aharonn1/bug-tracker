@@ -20,6 +20,11 @@ public class IncidentDetailPayload
 
     public int? ClientCodeLocationLine { get; set; }
 
+    // נכתב אוטומטית ברקע ע"י IncidentService.CreateNewIncidentAsync, רק עבור
+    // תקריות AZURE_PLATFORM_ISSUE חדשות (ראו RcaAgentService) - כך שהדוח כבר
+    // מוכן כשפותחים את התקרית, בלי להמתין ל"חקור עם AI" ידני
+    public string? AutoRcaReport { get; set; }
+
     [ForeignKey(nameof(IncidentId))]
     public virtual SystemErrorIncident Incident { get; set; } = null!;
 }

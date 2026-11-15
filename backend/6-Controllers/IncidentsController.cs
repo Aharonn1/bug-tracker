@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using MyBackendApi.Models.DTOs.Common;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Responses;
+using MyBackendApi.Services.Agent;
 using MyBackendApi.Services.Auth;
 using MyBackendApi.Services.Core;
 using MyBackendApi.Services.Diagnostics;
@@ -158,48 +159,14 @@ public class IncidentsController(
         var restrictToUserId = currentUserProvider.IsAdminOrAbove ? null : currentUserProvider.UserId;
         var incident = await incidentService.GetIncidentByIdAsync(id, restrictToUserId, ct);
 
-        // תוספת-עזר לניתוח, לא חלק מהליבה שלו - אם Service Health עצמו נופל
-        // (לא מוגדר, בעיית הרשאות), זה לא אמור למנוע את האבחון הרגיל של
-        // התקרית. נבלע את הכשל כאן, לא ב-reader עצמו (שם זה עדיין נזרק
-        // במפורש, כדי שהכרטיס בדשבורד כן יראה כשל אמיתי)
-        string? azureServiceHealthSummary = null;
-        try
-        {
-            var health = await serviceHealthReader.GetActiveEventsAsync(ct);
-            if (health is { ActiveEvents.Count: > 0 })
-            {
-                azureServiceHealthSummary = string.Join("; ", health.ActiveEvents.Select(e =>
-                    $"{e.Title} ({e.EventType}, שירותים מושפעים: {(e.ImpactedServices.Count > 0 ? string.Join(", ", e.ImpactedServices) : "לא צוין")})"));
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "לא ניתן היה לבדוק Azure Service Health עבור ניתוח תקרית {IncidentId} - ממשיכים בלעדיו", id);
-        }
+        // שתי העובדות-עזר הבאות (לא חלק מהליבה) עברו ל-AzureIncidentAiContext
+        // משותף, כי אותה לוגיקה בדיוק רצה עכשיו גם אוטומטית ברקע עבור תקריות
+        // AZURE_PLATFORM_ISSUE חדשות - ראו IncidentService.CreateNewIncidentAsync
+        var azureServiceHealthSummary = await AzureIncidentAiContext.GetActiveServiceHealthSummaryAsync(
+            serviceHealthReader, logger, id, ct);
 
-        // אותו שיקול בדיוק כמו Service Health למעלה - תוספת-עזר, לא הליבה.
-        // component נגזר מקידומת הנתיב, בדיוק כמו IncidentService.ResolveCodeLocationRef
-        string? deployContextSummary = null;
-        try
-        {
-            var codeFile = incident!.CodeLocationFilePath;
-            var component = codeFile?.StartsWith("backend/", StringComparison.Ordinal) == true ? "backend"
-                : codeFile?.StartsWith("frontend/", StringComparison.Ordinal) == true ? "frontend"
-                : null;
-
-            if (component is not null)
-            {
-                var lastDeploy = await deploymentHistory.GetLastDeployBeforeAsync(component, incident.CreatedAt, ct);
-                deployContextSummary = lastDeploy is null
-                    ? $"אין דיפלוי מתועד של {component} לפני תקרית זו"
-                    : $"הדיפלוי האחרון של {component} (commit {lastDeploy.CommitSha[..Math.Min(8, lastDeploy.CommitSha.Length)]}) " +
-                      $"היה ב-{(incident.CreatedAt - lastDeploy.DeployedAt).TotalMinutes:F0} דקות לפני שהתקרית נראתה לראשונה";
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "לא ניתן היה לקבל הקשר דיפלוי עבור ניתוח תקרית {IncidentId} - ממשיכים בלעדיו", id);
-        }
+        var deployContextSummary = await AzureIncidentAiContext.GetDeployContextSummaryAsync(
+            deploymentHistory, incident!.CodeLocationFilePath, incident.CreatedAt, id, logger, ct);
 
         var report = await rcaAgentService.AnalyzeAndRemediateIncidentAsync(
             incident!.ErrorCode,

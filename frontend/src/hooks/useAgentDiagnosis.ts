@@ -12,6 +12,9 @@ import type { SystemIncident } from '../types/bug.types';
 export function useAgentDiagnosis() {
   const [modalOpen, setModalOpen] = useState(false);
   const [activeIncident, setActiveIncident] = useState<SystemIncident | null>(null);
+  // דוח שכבר נוצר אוטומטית ברקע (incident.autoRcaReport) - כשהוא קיים, אין
+  // צורך לקרוא שוב לסוכן ה-AI; המודאל פשוט מציג אותו מיידית, בלי מסך טעינה
+  const [precomputedReport, setPrecomputedReport] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: (incidentId: number) => incidentService.diagnoseWithAgent(incidentId),
@@ -20,6 +23,13 @@ export function useAgentDiagnosis() {
   const runAgent = (incident: SystemIncident) => {
     setActiveIncident(incident);
     setModalOpen(true);
+
+    if (incident.autoRcaReport) {
+      setPrecomputedReport(incident.autoRcaReport);
+      return;
+    }
+
+    setPrecomputedReport(null);
     mutation.mutate(incident.incidentId);
   };
 
@@ -29,10 +39,10 @@ export function useAgentDiagnosis() {
     incidentId: activeIncident?.incidentId ?? null,
     caseNumber: activeIncident?.caseNumber ?? null,
     errorCode: activeIncident?.errorCode ?? null,
-    report: mutation.isError
+    report: precomputedReport ?? (mutation.isError
       ? `שגיאה בהפעלת הסוכן: ${mutation.error.message}`
-      : (mutation.data?.agentReport ?? null),
-    isLoading: mutation.isPending,
+      : (mutation.data?.agentReport ?? null)),
+    isLoading: precomputedReport === null && mutation.isPending,
   };
 
   return { runAgent, modalProps };

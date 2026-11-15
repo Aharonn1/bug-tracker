@@ -35,6 +35,10 @@ public record IncidentResponseDto(
     // זה מקור האמת היחיד לבניית קישור GitHub - גם ה-UI וגם ה-RCA agent
     // משתמשים בזה, במקום לבנות "main" בעצמם בנפרד
     string CodeLocationRef,
+    // דוח AI שנוצר אוטומטית ברקע עבור תקריות AZURE_PLATFORM_ISSUE חדשות
+    // (ראו IncidentService.CreateNewIncidentAsync) - null אם התקרית אינה
+    // מסוג כזה, או אם הניתוח האוטומטי עדיין רץ/נכשל
+    string? AutoRcaReport,
     IReadOnlyList<IncidentReporterDto> ReportedByUsers
 );
 
