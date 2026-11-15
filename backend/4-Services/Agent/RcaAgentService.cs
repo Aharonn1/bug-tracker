@@ -51,6 +51,14 @@ public class RcaAgentService : IRcaAgentService
             ? $"https://github.com/Aharonn1/bug-tracker/blob/{codeLocationRef}/{codeLocationFilePath}#L{codeLocationLine}"
             : null;
 
+        // קטע קוד אמיתי מהריפו (לא רק קישור) - נדרש כדי שהסוכן יוכל להציע
+        // תיקון קונקרטי, לא רק לנתח טקסטואלית. נשלף באותו תנאי בדיוק כמו
+        // githubLink (יש מיקום קוד מאומת); נכשל בשקט (null) בכל תקלה - שליפת
+        // ההקשר היא תוספת-עזר, לא הליבה, בדיוק כמו Service Health/הקשר דיפלוי
+        var codeSnippet = githubLink != null
+            ? await FetchCodeSnippetAsync(codeLocationFilePath!, codeLocationLine!.Value, codeLocationRef, ct)
+            : null;
+
         var apiKey = _configuration["AzureOpenAI:ApiKey"];
         var endpoint = _configuration["AzureOpenAI:Endpoint"]?.TrimEnd('/');
         var deployment = _configuration["AzureOpenAI:DeploymentName"];
@@ -128,7 +136,18 @@ public class RcaAgentService : IRcaAgentService
                     "אם סופק לך 'הקשר דיפלוי' - זו עובדה מאומתת (לא ניחוש) על מתי הדיפלוי האחרון של " +
                     "הקומפוננטה הרלוונטית (backend/frontend) קרה ביחס לתחילת התקרית. אם הדיפלוי קרה זמן " +
                     "קצר (עד כמה שעות) לפני שהתקרית נראתה לראשונה, זה סימן חזק לרגרסיה - ציין זאת במפורש " +
-                    "כחשד מרכזי. אם הדיפלוי היה הרבה לפני (ימים+) או שאין מידע, אל תמציא קשר שאין לו בסיס."
+                    "כחשד מרכזי. אם הדיפלוי היה הרבה לפני (ימים+) או שאין מידע, אל תמציא קשר שאין לו בסיס. " +
+                    "אם סופק לך גם 'קטע קוד מהמקור' (לא רק קישור) - יש לך גישה לתוכן האמיתי של הקובץ " +
+                    "סביב שורת השגיאה המדויקת (השורה המסומנת ב-'>>>'). במקרה כזה, הוסף בסוף הדו\"ח סעיף " +
+                    "נפרד בכותרת '### הצעות תיקון (לא מאומתות)'. חובה לפתוח את הסעיף הזה במשפט מפורש " +
+                    "שאלו הצעות שלא נבדקו, שהמשתמש צריך לקרוא ולהחליט בעצמו איזו (אם בכלל) ליישם - לעולם " +
+                    "אל תציג אף אחת מהן כפתרון ודאי או כעובדה. בתוך הסעיף, הצע *שתי* גישות תיקון שונות " +
+                    "וסבירות לאותה תקלה (לא שתי וריאציות כמעט-זהות), כל אחת תחת כותרת-משנה 'אפשרות 1:' / " +
+                    "'אפשרות 2:', ולכל אחת: בלוק קוד קונקרטי וממוקד, ואז שורת 'יתרון:' ושורת 'חיסרון:' " +
+                    "שמשווות בין שתי הגישות (לדוגמה: תיקון מהיר ומקומי מול תיקון שגם מטפל בשורש הבעיה אך " +
+                    "נוגע ביותר קוד). אם אין שתי גישות שונות באמת שעולות על הדעת, מותר להציע אפשרות אחת " +
+                    "בלבד ולציין זאת. אם לא סופק 'קטע קוד מהמקור' (גם אם סופק קישור בלבד, או שלא סופק כלום) - " +
+                    "אל תנסה להציע תיקון קוד בכלל, ואל תוסיף את הסעיף הזה."
             },
             new JsonObject
             {
@@ -145,6 +164,7 @@ public class RcaAgentService : IRcaAgentService
                     $"הודעה: {errorMessage}\n" +
                     $"Playbook: {playbook ?? "ללא"}\n" +
                     $"קישור מדויק לקוד: {githubLink ?? "לא נמצא מיקום קוד מאומת עבור תקרית זו"}\n" +
+                    $"קטע קוד מהמקור (סביב שורת השגיאה): {(codeSnippet != null ? "\n" + codeSnippet : "לא זמין (לא נמצא מיקום מאומת, או שהשליפה מהריפו נכשלה)")}\n" +
                     $"תקלת Azure Service Health פעילה: {activeAzureServiceHealthSummary ?? "אין תקלה מוכרזת כרגע (או שהבדיקה לא זמינה)"}\n" +
                     $"הקשר דיפלוי: {deployContextSummary ?? "אין מידע על דיפלויים עבור הקומפוננטה הרלוונטית"}" +
                     (string.IsNullOrEmpty(stackTrace) ? "" :
@@ -206,6 +226,49 @@ public class RcaAgentService : IRcaAgentService
         }
 
         return choice?["content"]?.GetValue<string>() ?? "לא התקבלה תשובה מהמודל.";
+    }
+
+    private static readonly TimeSpan CodeFetchTimeout = TimeSpan.FromSeconds(8);
+
+    // שולף את תוכן הקובץ האמיתי מ-GitHub (הריפו ציבורי - אין צורך בטוקן אימות)
+    // סביב שורת השגיאה, כדי לתת לסוכן הקשר אמיתי להצעת תיקון - לא רק קישור.
+    // אותו owner/repo/ref כמו ש-githubLink כבר בונה; נכשל בשקט (null) בכל
+    // תקלה - זו תוספת-עזר, לא הליבה, ולעולם לא אמורה לחסום את האבחון הרגיל
+    private async Task<string?> FetchCodeSnippetAsync(string filePath, int line, string codeLocationRef, CancellationToken ct)
+    {
+        try
+        {
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(CodeFetchTimeout);
+
+            var rawUrl = $"https://raw.githubusercontent.com/Aharonn1/bug-tracker/{codeLocationRef}/{filePath}";
+            using var res = await _httpClient.GetAsync(rawUrl, timeoutCts.Token);
+            if (!res.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var content = await res.Content.ReadAsStringAsync(timeoutCts.Token);
+            var lines = content.Split('\n');
+
+            // חלון של 10 שורות לכל צד - מספיק הקשר לפונקציה בודדת, בלי להציף
+            // את הפרומפט בתוכן קובץ שלם
+            var startIndex = Math.Max(0, line - 1 - 10);
+            var endIndex = Math.Min(lines.Length, line - 1 + 10 + 1);
+
+            var sb = new StringBuilder();
+            for (var i = startIndex; i < endIndex; i++)
+            {
+                var marker = i + 1 == line ? ">>> " : "    ";
+                sb.AppendLine($"{marker}{i + 1}: {lines[i].TrimEnd('\r')}");
+            }
+
+            return sb.ToString();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(25);

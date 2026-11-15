@@ -29,6 +29,25 @@ const markdownComponents = {
   code: (props: React.ComponentProps<'code'>) => (
     <code style={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '4px', padding: '1px 5px', fontSize: '12px', color: '#fbbf24' }} {...props} />
   ),
+  // בלוקים מרובי-שורות (כמו הצעת תיקון קוד) - כיוון LTR קבוע כי קוד תמיד
+  // נקרא משמאל לימין, גם בתוך דף שכולו RTL
+  pre: (props: React.ComponentProps<'pre'>) => (
+    <pre
+      style={{
+        backgroundColor: '#0f172a',
+        border: '1px solid #1e293b',
+        borderRadius: '6px',
+        padding: '12px',
+        margin: '0 0 10px',
+        overflowX: 'auto',
+        direction: 'ltr',
+        textAlign: 'left',
+        fontSize: '12px',
+        lineHeight: 1.6,
+      }}
+      {...props}
+    />
+  ),
 };
 
 interface Props {
