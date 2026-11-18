@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { colors, radius, spacing } from '../styles/theme';
 import { Card } from '../components/ui/Card';
 import { SectionHeader } from '../components/ui/SectionHeader';
-import { measureDownloadSpeedMbps } from '../utils/measureDownloadSpeed';
+import { measureDownloadReliability, estimateDownloadTimeMs, formatDuration, type DownloadReliabilityResult } from '../utils/measureDownloadSpeed';
 import { telemetryService } from '../api/telemetryService';
 import type { GatewayDiagnosticResult } from '../types/telemetry.types';
 
@@ -11,6 +11,16 @@ type AsyncState<T> =
   | { status: 'loading' }
   | { status: 'done'; data: T }
   | { status: 'error'; message: string };
+
+// משרדים גדולים יכולים לקבל קבצים עד כ-3GB (לרוב קטן משמעותית מזה, אבל
+// זו התקרה שצריך לדעת עליה) - מציגים טווח שלם במקום רק את קובץ הבדיקה
+// (5MB) עצמו, כדי לענות ישירות על "כמה זמן זה באמת ייקח לי"
+const FILE_SIZE_PRESETS = [
+  { label: 'מסמך בודד', bytes: 5 * 1024 * 1024 },
+  { label: 'תיק בינוני', bytes: 500 * 1024 * 1024 },
+  { label: 'תיק גדול', bytes: 1024 * 1024 * 1024 },
+  { label: 'תיק ענק (עד כ-3GB)', bytes: 3 * 1024 * 1024 * 1024 },
+];
 
 // פירוש מעשי של המהירות הנמדדת, ביחס לתרחיש האמיתי שמטריד את המשתמשים -
 // הורדת קבצים כבדים ממערכות ממשלתיות כמו נט המשפט/ההוצאה לפועל. הספים
@@ -23,6 +33,19 @@ function describeDownloadSpeed(mbps: number): { text: string; color: string } {
     return { text: 'מהירות בינונית - קבצים גדולים או הרבה קבצים ביחד עשויים לקחת זמן ניכר להורדה.', color: colors.warningSoft };
   }
   return { text: 'מהירות נמוכה - צפויה המתנה ארוכה בהורדת קבצים כבדים. זו כנראה הסיבה האמיתית לתחושת האיטיות, לא תקלה אצלנו.', color: colors.dangerSoft };
+}
+
+// X מתוך 5 ניסיונות נכשלו - חשוב בדיוק כמו המהירות עצמה: הורדה של קובץ
+// ענק נמשכת שעות, ואם כבר עכשיו, בבדיקה של כמה שניות, יש ניתוקים - הסיכוי
+// לניתוק גם באמצע הורדה ארוכה אמיתי, לא רק תיאורטי
+function describeReliability(result: DownloadReliabilityResult): { text: string; color: string } | null {
+  const failures = result.totalAttempts - result.successCount;
+  if (failures === 0) return null;
+
+  return {
+    text: `זוהו ניתוקים בבדיקה עצמה (${failures} מתוך ${result.totalAttempts} ניסיונות נכשלו) - יש סיכוי ממשי לניתוק גם באמצע הורדה ארוכה של קובץ גדול.`,
+    color: colors.warningSoft,
+  };
 }
 
 // Healthy/Degraded/Down/Unknown - ראו GatewayDiagnosticResult בבקאנד
@@ -60,14 +83,18 @@ const ActionButton: React.FC<{ onClick: () => void; disabled?: boolean; children
 );
 
 const NetworkDiagnosticsPage: React.FC = () => {
-  const [speedTest, setSpeedTest] = useState<AsyncState<{ mbps: number }>>({ status: 'idle' });
+  const [speedTest, setSpeedTest] = useState<AsyncState<DownloadReliabilityResult>>({ status: 'idle' });
   const [gatewayCheck, setGatewayCheck] = useState<AsyncState<GatewayDiagnosticResult>>({ status: 'idle' });
 
   const runSpeedTest = async () => {
     setSpeedTest({ status: 'loading' });
     try {
-      const { mbps } = await measureDownloadSpeedMbps();
-      setSpeedTest({ status: 'done', data: { mbps } });
+      const result = await measureDownloadReliability();
+      if (result.avgMbps === null) {
+        setSpeedTest({ status: 'error', message: 'כל ניסיונות הבדיקה נכשלו - ייתכן שהחיבור מנותק כרגע.' });
+        return;
+      }
+      setSpeedTest({ status: 'done', data: result });
     } catch (err: any) {
       setSpeedTest({ status: 'error', message: err?.message || 'בדיקת המהירות נכשלה' });
     }
@@ -91,18 +118,18 @@ const NetworkDiagnosticsPage: React.FC = () => {
       />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: spacing.lg }}>
-        <Card title="מהירות הורדה בפועל">
+        <Card title="מהירות וחוזק החיבור להורדת קבצים">
           <p style={{ margin: '0 0 14px', fontSize: '13px', color: colors.textSecondary, lineHeight: 1.6 }}>
-            מורידה קובץ בדיקה (5MB) מהאתר הזה ומודדת כמה זמן זה באמת לוקח - לא רק זמן תגובה (ping), אלא מהירות הורדה אמיתית.
+            מורידה קובץ בדיקה (5MB) כמה פעמים ברצף, כדי למדוד גם מהירות וגם יציבות - בדיוק מה שמשפיע על הורדת תיקים גדולים וארוכות-זמן.
           </p>
 
           <ActionButton onClick={runSpeedTest} disabled={speedTest.status === 'loading'}>
-            {speedTest.status === 'loading' ? 'בודק...' : 'בדוק מהירות הורדה'}
+            {speedTest.status === 'loading' ? 'בודק...' : 'בדוק מהירות וחוזק חיבור'}
           </ActionButton>
 
           {speedTest.status === 'loading' && (
             <p style={{ marginTop: '12px', fontSize: '12.5px', color: colors.textMuted }}>
-              מוריד קובץ בדיקה (5MB)...
+              מוריד קובץ בדיקה כמה פעמים ברצף...
             </p>
           )}
           {speedTest.status === 'error' && (
@@ -118,11 +145,36 @@ const NetworkDiagnosticsPage: React.FC = () => {
                 borderRadius: radius.sm,
               }}
             >
-              <div style={{ fontSize: '16px', fontWeight: 700, color: colors.textPrimary, marginBottom: '4px' }}>
-                {speedTest.data.mbps.toFixed(1)} Mbps
+              <div style={{ fontSize: '16px', fontWeight: 700, color: colors.textPrimary, marginBottom: '2px' }}>
+                {speedTest.data.avgMbps!.toFixed(1)} Mbps (ממוצע)
               </div>
-              <div style={{ fontSize: '12.5px', lineHeight: 1.6, color: describeDownloadSpeed(speedTest.data.mbps).color }}>
-                {describeDownloadSpeed(speedTest.data.mbps).text}
+              <div style={{ fontSize: '11.5px', color: colors.textMuted, marginBottom: '8px' }}>
+                {speedTest.data.successCount} מתוך {speedTest.data.totalAttempts} ניסיונות הצליחו
+              </div>
+              <div style={{ fontSize: '12.5px', lineHeight: 1.6, color: describeDownloadSpeed(speedTest.data.avgMbps!).color, marginBottom: '10px' }}>
+                {describeDownloadSpeed(speedTest.data.avgMbps!).text}
+              </div>
+
+              {describeReliability(speedTest.data) && (
+                <div style={{ fontSize: '12.5px', lineHeight: 1.6, color: describeReliability(speedTest.data)!.color, marginBottom: '12px' }}>
+                  ⚠️ {describeReliability(speedTest.data)!.text}
+                </div>
+              )}
+
+              <div style={{ borderTop: `1px solid ${colors.borderSubtle}`, paddingTop: '10px' }}>
+                <div style={{ fontSize: '11.5px', color: colors.textMuted, marginBottom: '6px' }}>
+                  זמן הורדה משוער, לפי המהירות שנמדדה:
+                </div>
+                <div style={{ display: 'grid', gap: '4px' }}>
+                  {FILE_SIZE_PRESETS.map((preset) => (
+                    <div key={preset.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px' }}>
+                      <span style={{ color: colors.textSecondary }}>{preset.label}</span>
+                      <span style={{ color: colors.textPrimary, fontWeight: 600 }}>
+                        {formatDuration(estimateDownloadTimeMs(preset.bytes, speedTest.data.avgMbps!))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
