@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTelemetryProbe } from '../hooks/useTelemetryProbe';
 import type { TelemetryStatusColor } from '../types/telemetry.types';
+import { measureDownloadSpeedMbps } from '../utils/measureDownloadSpeed';
 
 const STATUS_STYLES: Record<TelemetryStatusColor, { bg: string; border: string; text: string; dot: string }> = {
   Red: { bg: '#450a0a', border: '#991b1b', text: '#fca5a5', dot: '#ef4444' },
@@ -85,8 +86,38 @@ function buildComparisonNote(
   return null;
 }
 
+// פירוש מעשי של המהירות הנמדדת, ביחס לתרחיש האמיתי שמטריד את המשתמשים -
+// הורדת קבצים כבדים ממערכות ממשלתיות כמו נט המשפט/ההוצאה לפועל. הספים
+// נבחרו לפי תחושת המתנה סבירה לקובץ בגודל כמה MB, לא נתון רשמי
+function describeDownloadSpeed(mbps: number): string {
+  if (mbps >= 10) {
+    return 'מהיר מספיק להורדת קבצים כבדים (כמו סריקות מנט המשפט או ההוצאה לפועל) בלי המתנה משמעותית.';
+  }
+  if (mbps >= 3) {
+    return 'מהירות בינונית - קבצים גדולים או הרבה קבצים ביחד עשויים לקחת זמן ניכר להורדה.';
+  }
+  return 'מהירות נמוכה - צפויה המתנה ארוכה בהורדת קבצים כבדים. זו כנראה הסיבה האמיתית לתחושת האיטיות, לא תקלה אצלנו.';
+}
+
 export const ConnectionDiagnosticBanner: React.FC = () => {
   const { report, metrics, externalConnectivity, loading, error, runProbe } = useTelemetryProbe();
+
+  // בדיקת מהירות הורדה אמיתית (throughput) - נפרדת לגמרי מה-ping האוטומטי
+  // למעלה: זו הורדת 5MB בפועל, אז היא רצה רק בלחיצה מפורשת, לא אוטומטית
+  // בטעינת הדף (בניגוד ל-runProbe, שהיא קלה ומתבצעת אוטומטית)
+  const [speedTest, setSpeedTest] = useState<
+    { status: 'idle' } | { status: 'loading' } | { status: 'done'; mbps: number } | { status: 'error'; message: string }
+  >({ status: 'idle' });
+
+  const runSpeedTest = async () => {
+    setSpeedTest({ status: 'loading' });
+    try {
+      const { mbps } = await measureDownloadSpeedMbps();
+      setSpeedTest({ status: 'done', mbps });
+    } catch (err: any) {
+      setSpeedTest({ status: 'error', message: err?.message || 'בדיקת המהירות נכשלה' });
+    }
+  };
 
   // מגן מפני הרצה כפולה ב-StrictMode (dev בלבד - React מדמה mount→unmount→
   // mount כדי לתפוס תלויות ניקוי חסרות). ה-ref שורד את הדימוי הזה, אז בפועל
@@ -154,6 +185,48 @@ export const ConnectionDiagnosticBanner: React.FC = () => {
               🔍 {comparisonNote}
             </div>
           )}
+
+          <div style={{ marginTop: '10px' }}>
+            {speedTest.status === 'idle' && (
+              <button
+                onClick={runSpeedTest}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: `1px solid ${style.border}`,
+                  color: style.text,
+                  borderRadius: '6px',
+                  padding: '6px 10px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                }}
+              >
+                בדוק מהירות הורדה בפועל (כמו הורדת קובץ כבד)
+              </button>
+            )}
+            {speedTest.status === 'loading' && (
+              <div style={{ color: style.text, fontSize: '12.5px' }}>מוריד קובץ בדיקה (5MB) כדי למדוד מהירות אמיתית...</div>
+            )}
+            {speedTest.status === 'error' && (
+              <div style={{ color: style.text, fontSize: '12.5px' }}>{speedTest.message}</div>
+            )}
+            {speedTest.status === 'done' && (
+              <div
+                style={{
+                  fontSize: '12.5px',
+                  lineHeight: 1.6,
+                  padding: '8px 10px',
+                  backgroundColor: 'rgba(0,0,0,0.2)',
+                  border: `1px solid ${style.border}`,
+                  borderRadius: '6px',
+                }}
+              >
+                <div style={{ color: style.text, fontWeight: 600, marginBottom: '2px' }}>
+                  מהירות הורדה נמדדת: {speedTest.mbps.toFixed(1)} Mbps
+                </div>
+                <div style={{ color: '#cbd5e1' }}>{describeDownloadSpeed(speedTest.mbps)}</div>
+              </div>
+            )}
+          </div>
         </div>
         <button
           onClick={runProbe}
