@@ -1,10 +1,24 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { colors, radius, spacing } from '../styles/theme';
 import { Card } from '../components/ui/Card';
 import { SectionHeader } from '../components/ui/SectionHeader';
-import { measureDownloadReliability, estimateDownloadTimeMs, formatDuration, type DownloadReliabilityResult } from '../utils/measureDownloadSpeed';
+import { measureDownloadReliability, estimateDownloadTimeMs, formatDuration, monitorPingOnce, type DownloadReliabilityResult } from '../utils/measureDownloadSpeed';
 import { telemetryService } from '../api/telemetryService';
 import type { GatewayDiagnosticResult } from '../types/telemetry.types';
+
+interface LiveLogEntry {
+  time: string;
+  mbps: number | null;
+  netMishpatStatus: string | null;
+}
+
+// כל כמה שניות המוניטור החי דוגם מחדש - לא מהיר מדי (עלות דאטה מצטברת
+// לאורך זמן ארוך), ולא איטי מדי (אחרת ניתוק קצר באמצע עלול "ליפול בין
+// הכיסאות" ולא להירשם בכלל)
+const MONITOR_INTERVAL_MS = 10_000;
+// עצירה אוטומטית אחרי כ-30 דקות - רשת ביטחון למקרה שמישהו שוכח שהמעקב
+// עדיין רץ ברקע ומשאיר אותו פתוח שעות
+const MAX_MONITOR_TICKS = 180;
 
 type AsyncState<T> =
   | { status: 'idle' }
@@ -110,6 +124,50 @@ const NetworkDiagnosticsPage: React.FC = () => {
     }
   };
 
+  // מעקב חי - רץ כל MONITOR_INTERVAL_MS, מתועד כ-useEffect (לא לולאה ידנית)
+  // כדי שה-cleanup (עצירה) יקרה אוטומטית גם אם המשתמש פשוט עוזב את הדף,
+  // לא רק בלחיצה מפורשת על "עצור"
+  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [liveLog, setLiveLog] = useState<LiveLogEntry[]>([]);
+
+  useEffect(() => {
+    if (!isMonitoring) return;
+
+    let cancelled = false;
+    let tickCount = 0;
+
+    const tick = async () => {
+      const [downloadResult, gatewayResult] = await Promise.allSettled([
+        monitorPingOnce(),
+        telemetryService.getNetMishpatStatus(),
+      ]);
+      if (cancelled) return;
+
+      const mbps = downloadResult.status === 'fulfilled' && downloadResult.value.success ? downloadResult.value.mbps : null;
+      const netMishpatStatus = gatewayResult.status === 'fulfilled' ? gatewayResult.value.status : null;
+
+      setLiveLog((prev) => [...prev, { time: new Date().toLocaleTimeString('he-IL'), mbps, netMishpatStatus }]);
+
+      tickCount += 1;
+      if (tickCount >= MAX_MONITOR_TICKS) {
+        setIsMonitoring(false);
+      }
+    };
+
+    tick();
+    const intervalId = setInterval(tick, MONITOR_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [isMonitoring]);
+
+  const toggleMonitoring = () => {
+    if (!isMonitoring) setLiveLog([]);
+    setIsMonitoring((prev) => !prev);
+  };
+
   return (
     <section>
       <SectionHeader
@@ -211,6 +269,64 @@ const NetworkDiagnosticsPage: React.FC = () => {
               <div style={{ fontSize: '12.5px', color: colors.textMuted }}>
                 זמן תגובה: {gatewayCheck.data.latencyMs}ms · קוד HTTP: {gatewayCheck.data.httpCode}
               </div>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <div style={{ marginTop: spacing.lg }}>
+        <Card title="מעקב חי לאורך זמן">
+          <p style={{ margin: '0 0 14px', fontSize: '13px', color: colors.textSecondary, lineHeight: 1.6 }}>
+            הפעילו את זה בלשונית נפרדת, במקביל להורדה אמיתית מנט המשפט. כל 10 שניות נבדוק גם את מהירות החיבור וגם את זמינות נט המשפט -
+            כדי לראות בדיוק <strong>מתי</strong> משהו השתנה, אם בכלל, במקום רק לדעת שמשהו "נתקע" בסוף.
+          </p>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+            <ActionButton onClick={toggleMonitoring}>
+              {isMonitoring ? 'עצור מעקב' : 'התחל מעקב חי'}
+            </ActionButton>
+            {isMonitoring && (
+              <span style={{ fontSize: '12.5px', color: colors.warningSoft }}>
+                ● עוקב... (עצירה אוטומטית אחרי 30 דקות)
+              </span>
+            )}
+          </div>
+
+          {liveLog.length > 0 && (
+            <div
+              style={{
+                maxHeight: '260px',
+                overflowY: 'auto',
+                border: `1px solid ${colors.borderSubtle}`,
+                borderRadius: radius.sm,
+              }}
+            >
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: colors.surface, position: 'sticky', top: 0 }}>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', color: colors.textMuted, fontWeight: 600 }}>שעה</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', color: colors.textMuted, fontWeight: 600 }}>מהירות חיבור</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', color: colors.textMuted, fontWeight: 600 }}>נט המשפט</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {liveLog.map((entry, i) => {
+                    const connectionOk = entry.mbps !== null;
+                    const gatewayOk = entry.netMishpatStatus === 'Healthy';
+                    return (
+                      <tr key={i} style={{ borderTop: `1px solid ${colors.borderSubtle}` }}>
+                        <td style={{ padding: '6px 10px', color: colors.textMuted }}>{entry.time}</td>
+                        <td style={{ padding: '6px 10px', color: connectionOk ? colors.successSoft : colors.dangerSoft, fontWeight: 600 }}>
+                          {connectionOk ? `${entry.mbps!.toFixed(1)} Mbps` : 'אין תגובה'}
+                        </td>
+                        <td style={{ padding: '6px 10px', color: gatewayOk ? colors.successSoft : entry.netMishpatStatus ? colors.warningSoft : colors.textMuted, fontWeight: 600 }}>
+                          {entry.netMishpatStatus ? describeGatewayStatus(entry.netMishpatStatus).label : 'לא ידוע'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </Card>

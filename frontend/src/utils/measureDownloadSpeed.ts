@@ -13,9 +13,37 @@ const TEST_FILE_BYTES = 5 * 1024 * 1024;
 const RELIABILITY_ATTEMPTS = 5;
 const ATTEMPT_TIMEOUT_MS = 15000;
 
-interface DownloadAttemptResult {
+// קובץ קטן ונפרד (200KB, לא 5MB) למוניטור החי - שנרוץ כל כמה שניות, לאורך
+// זמן ארוך (עד 30 דקות), לצד הורדה אמיתית בלשונית אחרת. קובץ של 5MB בקצב
+// הזה היה צורך מאות MB סתם בשביל הבדיקה עצמה - 200KB עדיין נותן אינדיקציה
+// סבירה למהירות, בעלות נמוכה בהרבה
+const MONITOR_FILE_PATH = '/speedtest-200kb.bin';
+const MONITOR_FILE_BYTES = 200 * 1024;
+
+export interface DownloadAttemptResult {
   success: boolean;
   mbps: number | null;
+}
+
+export async function monitorPingOnce(): Promise<DownloadAttemptResult> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS);
+  const url = `${MONITOR_FILE_PATH}?cb=${Date.now()}-${Math.random()}`;
+  const start = performance.now();
+
+  try {
+    const res = await fetch(url, { cache: 'no-store', signal: controller.signal });
+    if (!res.ok) return { success: false, mbps: null };
+
+    await res.arrayBuffer();
+    const durationMs = performance.now() - start;
+    const mbps = (MONITOR_FILE_BYTES * 8) / (durationMs / 1000) / 1_000_000;
+    return { success: true, mbps };
+  } catch {
+    return { success: false, mbps: null };
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 export interface DownloadReliabilityResult {
