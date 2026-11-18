@@ -23,6 +23,15 @@ export interface ExternalConnectivityResult {
   pingFailures: number;
 }
 
+// תוצאת בדיקת שער ממשלתי - תואם ל-GatewayDiagnosticResult בבקאנד
+// (DiagnosticPlugins.cs). Status הוא "Healthy" / "Degraded" / "Down" / "Unknown"
+export interface GatewayDiagnosticResult {
+  status: string;
+  latencyMs: number;
+  httpCode: number;
+  packetLoss: string;
+}
+
 export type TelemetryStatusColor = 'Red' | 'Yellow' | 'Green';
 
 export interface TelemetryDiagnosticReport {

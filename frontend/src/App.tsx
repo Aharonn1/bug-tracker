@@ -29,6 +29,7 @@ const AboutMonitoringPage = lazy(() => import('./pages/AboutMonitoringPage'));
 const AzureInfrastructureHealthPage = lazy(() => import('./pages/AzureInfrastructureHealthPage'));
 const BugsPage = lazy(() => import('./pages/BugsPage'));
 const NewBugPage = lazy(() => import('./pages/NewBugPage'));
+const NetworkDiagnosticsPage = lazy(() => import('./pages/NetworkDiagnosticsPage'));
 const SecurityTrustPage = lazy(() => import('./pages/SecurityTrustPage'));
 const OfficesOverviewPage = lazy(() => import('./pages/OfficesOverviewPage'));
 const FailedIncidentsPage = lazy(() => import('./pages/FailedIncidentsPage'));
@@ -239,6 +240,8 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
           {currentView === 'new-bug' && (
             <NewBugPage onBugCreated={() => setCurrentView('bugs')} />
           )}
+
+          {currentView === 'network-diagnostics' && <NetworkDiagnosticsPage />}
         </Suspense>
       </main>
     </div>

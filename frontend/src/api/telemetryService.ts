@@ -1,4 +1,4 @@
-import type { AppServiceHealthMetricsDto, AzureHealthMonthlyDto, AzureServiceHealthDto, ClientTelemetryProbeDto, OpsSummaryDto, SqlHealthMetricsDto, TelemetryDiagnosticReport } from '../types/telemetry.types';
+import type { AppServiceHealthMetricsDto, AzureHealthMonthlyDto, AzureServiceHealthDto, ClientTelemetryProbeDto, GatewayDiagnosticResult, OpsSummaryDto, SqlHealthMetricsDto, TelemetryDiagnosticReport } from '../types/telemetry.types';
 import { API_BASE_URL, tenantHeaders } from '../config';
 import { throwIfSessionExpired } from './sessionGuard';
 
@@ -66,6 +66,15 @@ export const telemetryService = {
 
     if (res.status === 403) return null;
     if (!res.ok) { throwIfSessionExpired(res); throw new Error(`כשל בטעינת מגמת בריאות Azure חודשית (${res.status})`); }
+    return res.json();
+  },
+
+  async getNetMishpatStatus(): Promise<GatewayDiagnosticResult> {
+    const res = await fetch(`${BASE_URL}/net-mishpat-status`, {
+      headers: tenantHeaders({ Accept: 'application/json' }),
+    });
+
+    if (!res.ok) { throwIfSessionExpired(res); throw new Error(`כשל בבדיקת סטטוס נט המשפט (${res.status})`); }
     return res.json();
   },
 };

@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
+using MyBackendApi.Models.Common;
 using MyBackendApi.Models.DTOs.Ingestion;
 using MyBackendApi.Models.DTOs.Telemetry;
 using MyBackendApi.Services.Auth;
 using MyBackendApi.Services.Core;
+using MyBackendApi.Services.Plugins;
 using MyBackendApi.Services.Queues;
 using MyBackendApi.Services.Tenancy;
 
@@ -18,10 +20,24 @@ public class TelemetryController(
     AzureAppServiceMetricsService appServiceMetricsService,
     AzureServiceHealthReader serviceHealthReader,
     AzureAlertOccurrenceService alertOccurrenceService,
+    DiagnosticPlugins diagnosticPlugins,
     ICurrentTenantProvider tenantProvider,
     ICurrentUserProvider currentUserProvider,
     ILogger<TelemetryController> logger) : ControllerBase
 {
+    // פתוח לכל משתמש מחובר (בלי בדיקת IsAdminOrAbove) - בשונה ממדדי ה-Azure
+    // התשתיתיים למטה: זו שאלה שרלוונטית לכל עורך דין שמחכה להוריד קובץ
+    // מנט המשפט, לא רק למנהל מערכת. אותו כלי בדיוק שה-RCA agent כבר מפעיל
+    // (DiagnosticPlugins) - ראו RcaAgentService - רק נגיש כאן גם ישירות,
+    // בלי לעבור דרך ניתוח תקרית שלמה
+    [HttpGet("net-mishpat-status")]
+    [ProducesResponseType(typeof(GatewayDiagnosticResult), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetNetMishpatStatus()
+    {
+        var result = await diagnosticPlugins.CheckGovernmentGatewayLatencyAsync(TargetGateway.NetMishpat);
+        return Ok(result);
+    }
+
     [HttpPost("probe")]
     [ProducesResponseType(typeof(TelemetryDiagnosticReport), StatusCodes.Status200OK)]
     public async Task<OkObjectResult> ProcessProbe(

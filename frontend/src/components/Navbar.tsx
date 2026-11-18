@@ -4,7 +4,7 @@ import { UserRole, isAdminOrAbove } from '../types/auth.types';
 import { colors } from '../styles/theme';
 import { ChangePasswordModal } from './ChangePasswordModal';
 
-export type DashboardView = 'incidents' | 'bugs' | 'new-bug' | 'about' | 'azure-health' | 'security' | 'offices' | 'failed-incidents' | 'login-security';
+export type DashboardView = 'incidents' | 'bugs' | 'new-bug' | 'network-diagnostics' | 'about' | 'azure-health' | 'security' | 'offices' | 'failed-incidents' | 'login-security';
 
 interface NavbarProps {
   currentView: DashboardView;
@@ -123,9 +123,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
           <span>+ דיווח תקלה חדשה</span>
         </button>
 
-        {/* ניטור תקלות ודיווח תקלה חדשה - היחידים שגלויים למנהלי משרד ולעובדים
-            רגילים. כל השאר (מידע כללי, אבטחה, תשתית, סקירה חוצת-לקוחות) זמינים
-            רק ל-SiteAdmin - החלטה מפורשת, לא רק "אין להם צורך" */}
+        <button
+          onClick={() => onViewChange('network-diagnostics')}
+          style={getNavBtnStyle('network-diagnostics')}
+        >
+          <span>בדיקת רשת</span>
+        </button>
+
+        {/* ניטור תקלות, דיווח תקלה חדשה ובדיקת רשת - היחידים שגלויים למנהלי
+            משרד ולעובדים רגילים. כל השאר (מידע כללי, אבטחה, תשתית, סקירה
+            חוצת-לקוחות) זמינים רק ל-SiteAdmin - החלטה מפורשת, לא רק "אין להם צורך" */}
         {user.role === UserRole.SiteAdmin && (
           <>
             <button
