@@ -85,6 +85,11 @@ function buildComparisonNote(
   return null;
 }
 
+// דיליי התחלתי לפני הבדיקה האוטומטית, באותו עיקרון בדיוק כמו ב-useVersionCheck -
+// 8 בקשות הפינג (5 לשרת שלנו + 3 ל-Google) לא קריטיות באותה שנייה, ותחרות
+// איתן ברשת מאטה דווקא את הבקשה שבאמת חשובה: טעינת רשימת התקריות עצמה
+const INITIAL_PROBE_DELAY_MS = 5000;
+
 export const ConnectionDiagnosticBanner: React.FC = () => {
   const { report, metrics, externalConnectivity, loading, error, runProbe } = useTelemetryProbe();
 
@@ -96,7 +101,9 @@ export const ConnectionDiagnosticBanner: React.FC = () => {
   useEffect(() => {
     if (hasRunRef.current) return;
     hasRunRef.current = true;
-    runProbe();
+
+    const timeoutId = setTimeout(runProbe, INITIAL_PROBE_DELAY_MS);
+    return () => clearTimeout(timeoutId);
   }, [runProbe]);
 
   if (error || (!report && !loading)) return null;
