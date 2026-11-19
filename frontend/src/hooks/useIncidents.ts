@@ -44,6 +44,11 @@ export const useIncidents = () => {
   const resolveMutation = useMutation({
     mutationFn: ({ id, resolutionNotes }: { id: number; resolutionNotes?: string }) =>
       incidentService.resolve(id, resolutionNotes),
+    // מוטציות לא מקבלות retry כברירת מחדל (0) - בצדק, כי רובן לא אידמפוטנטיות
+    // (יצירת רשומה פעמיים = כפילות). "לפתור תקרית" כן אידמפוטנטית - קריאה
+    // חוזרת לאותה תקרית נותנת בדיוק אותה תוצאה - אז בטוח לנסות שוב על ניתוק
+    // רגעי, בלי שהמשתמש יצטרך ללחוץ "פתור" שוב בעצמו
+    retry: 2,
     onSuccess: (_, { id, resolutionNotes }) => {
       queryClient.setQueryData(queryKey, (old?: PagedResult<SystemIncident>) =>
         old
