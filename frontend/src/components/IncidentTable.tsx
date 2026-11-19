@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
-import { AgentDiagnosisModal } from './AgentDiagnosisModal';
+import React, { Suspense, lazy, useState } from 'react';
 import { IncidentDetailsModal } from './IncidentDetailsModal';
 import { IncidentSeverity, type SystemIncident } from '../types/bug.types';
 import { UserRole } from '../types/auth.types';
 import { isSiteAdminEmail } from '../constants/siteAdmin';
 import { useAgentDiagnosis } from '../hooks/useAgentDiagnosis';
+
+// lazy, לא import רגיל - זה גורר את react-markdown (ספרייה לא-זעירה), אבל
+// רלוונטי רק למי שבאמת לוחץ "חקור עם AI" - פעולה נדירה. בלי זה, כל משתמש
+// היה מוריד את זה בטעינת הדף הראשונה, גם אם הוא אף פעם לא לוחץ על הכפתור
+const AgentDiagnosisModal = lazy(() =>
+  import('./AgentDiagnosisModal').then((m) => ({ default: m.AgentDiagnosisModal }))
+);
 
 interface Props {
   incidents: SystemIncident[];
@@ -36,6 +42,11 @@ function isSuspectedStaleBundle(rawPayload: string | null): boolean {
 export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
   const [detailsIncident, setDetailsIncident] = useState<SystemIncident | null>(null);
   const { runAgent, modalProps } = useAgentDiagnosis();
+  // שער חד-פעמי: ה-chunk של AgentDiagnosisModal (ו-react-markdown בתוכו)
+  // יורד רק אחרי לחיצה ראשונה על "חקור" - לא מספיק לעטוף ב-lazy() לבד,
+  // כי אלמנט שמרונדר תמיד (גם כש-isOpen=false) עדיין גורם לדפדפן להוריד
+  // את ה-chunk מיד עם טעינת הטבלה
+  const [hasOpenedAgentModal, setHasOpenedAgentModal] = useState(false);
 
   const getSeverityBadge = (level: number) => {
     switch (level) {
@@ -81,6 +92,9 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                 // SiteAdmin (מנהל-על חוצה-לקוחות) לא נחשב "עובד שדיווח" מבחינת
                 // עמודת "דווח על ידי" - אותו שיקול כמו בפילוח לפי משתמש למעלה
                 const employeeReporters = i.reportedByUsers.filter((r) => r.role !== UserRole.SiteAdmin);
+                // מחושב פעם אחת לשורה (לא פעמיים) - extractAttemptedEmail עושה
+                // JSON.parse על rawPayload, ורק נחוץ בכלל כש-employeeReporters ריק
+                const attemptedEmail = employeeReporters.length === 0 ? extractAttemptedEmail(i.rawPayload) : null;
                 return (
                   <tr key={i.incidentId} style={{ borderBottom: '1px solid #1e293b', background: resolved ? 'rgba(15, 23, 42, 0.4)' : '#131f37' }}>
                     <td style={{ padding: '12px', fontFamily: 'monospace' }}>#{i.incidentId}</td>
@@ -162,9 +176,9 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                     </td>
                     <td style={{ padding: '12px', fontSize: '12px' }}>
                       {employeeReporters.length === 0 ? (
-                        extractAttemptedEmail(i.rawPayload) ? (
+                        attemptedEmail ? (
                           <span style={{ color: '#fca5a5' }} title="אימייל שהוקלד בניסיון התחברות, לפני שהייתה זהות מאומתת">
-                            {extractAttemptedEmail(i.rawPayload)}
+                            {attemptedEmail}
                           </span>
                         ) : (
                           <span style={{ color: '#90a0b5' }}>לא מזוהה</span>
@@ -206,7 +220,10 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         {/* כפתור חקירת הסוכן */}
                         <button
-                          onClick={() => runAgent(i)}
+                          onClick={() => {
+                            setHasOpenedAgentModal(true);
+                            runAgent(i);
+                          }}
                           title="הפעל סוכן AI לניתוח שורש התקלה"
                           style={{
                             padding: '6px 12px',
@@ -262,7 +279,11 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
       </div>
 
       {/* מודאל התובנות */}
-      <AgentDiagnosisModal {...modalProps} />
+      {hasOpenedAgentModal && (
+        <Suspense fallback={null}>
+          <AgentDiagnosisModal {...modalProps} />
+        </Suspense>
+      )}
 
       <IncidentDetailsModal
         incident={detailsIncident}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { IncidentSeverity, type SystemIncident } from '../../types/bug.types';
 import { colors } from '../../styles/theme';
 import { StatCard } from '../ui/StatCard';
@@ -9,10 +9,18 @@ interface Props {
 
 // שורת מדדי המפתח העליונה - ארבעה מספרים גדולים, בלי חישוב גרפים
 export const KeyMetricsRow: React.FC<Props> = ({ incidents }) => {
-  const totalOpen = incidents.filter((i) => !i.isResolved).length;
-  const criticalCount = incidents.filter((i) => i.severity === IncidentSeverity.Critical && !i.isResolved).length;
-  const netMishpatCount = incidents.filter((i) => i.subsystem === 'NetHaMishpat').length;
-  const ecaCount = incidents.filter((i) => i.subsystem === 'EcaGov').length;
+  // useMemo כי IncidentsPage מרנדר מחדש את זה בכל לחיצת פילטר (חומרה/יום/
+  // משתמש) גם כש-incidents עצמו לא השתנה - בלי זה, 4 מעברי filter רצים
+  // מחדש בכל לחיצה כזו, לא רק כשהנתונים באמת מתעדכנים
+  const { totalOpen, criticalCount, netMishpatCount, ecaCount } = useMemo(
+    () => ({
+      totalOpen: incidents.filter((i) => !i.isResolved).length,
+      criticalCount: incidents.filter((i) => i.severity === IncidentSeverity.Critical && !i.isResolved).length,
+      netMishpatCount: incidents.filter((i) => i.subsystem === 'NetHaMishpat').length,
+      ecaCount: incidents.filter((i) => i.subsystem === 'EcaGov').length,
+    }),
+    [incidents]
+  );
 
   return (
     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
