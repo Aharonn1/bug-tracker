@@ -4,6 +4,7 @@ import type { DashboardView } from './components/Navbar';
 import { useIncidents } from './hooks/useIncidents';
 import { useAuth } from './hooks/useAuth';
 import { useNewIncidentsCount } from './hooks/useNewIncidentsCount';
+import { useIncidentPushUpdates } from './hooks/useIncidentPushUpdates';
 import { useSiteAdminBadgeCounts } from './hooks/useSiteAdminBadgeCounts';
 import { userService } from './api/userService';
 import type { AuthUser } from './types/auth.types';
@@ -165,6 +166,8 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
 
   const { newCount, resetToZero } = useNewIncidentsCount();
   const { officesOpenCount, failedIncidentsCount, blockedIpsCount } = useSiteAdminBadgeCounts(user.role === UserRole.SiteAdmin);
+  // תוספת לצד הפולינג הקיים (לא תחליף) - ראו הערה בתוך ה-hook עצמו
+  useIncidentPushUpdates();
 
   // מסמן "נצפה" פעם אחת בלבד לכל "ביקור" בתוך מסך התקריות - לא בכל קליק
   // על עימוד/סינון כל עוד עדיין שם (loading מתחלף גם בהם, לא רק בכניסה

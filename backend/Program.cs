@@ -18,6 +18,7 @@ using MyBackendApi.Services.Interfaces;
 using MyBackendApi.Services.Notifications;
 using MyBackendApi.Services.Plugins;
 using MyBackendApi.Services.Queues;
+using MyBackendApi.Services.Realtime;
 using MyBackendApi.Services.Tenancy;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -291,8 +292,35 @@ if (!string.IsNullOrEmpty(jwtSecretKey))
                 ValidAudience = builder.Configuration["Jwt:Audience"] ?? "BugReportsClient",
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey))
             };
+
+            // חיבור WebSocket מהדפדפן לא יכול לשאת Authorization header בזמן
+            // ה-handshake - זו הסיבה שה-SignalR client שולח את הטוקן כ-query
+            // string במקום (accessTokenFactory). רק עבור נתיב ה-hub עצמו -
+            // שאר ה-API ממשיך לדרוש Authorization header רגיל כרגיל
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    if (!string.IsNullOrEmpty(accessToken) &&
+                        context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                    {
+                        context.Token = accessToken;
+                    }
+                    return Task.CompletedTask;
+                }
+            };
         });
 }
+
+// ==========================================
+// 4.6. עדכוני זמן-אמת (push) - תוספת לצד הפולינג הקיים, לא תחליף מלא.
+// שלב ראשון מתארח ישירות על ה-App Service הקיים (בלי Azure SignalR Service
+// חיצוני) - מספיק כל עוד זה instance בודד. אם בעתיד יידרש scale-out לכמה
+// instances, זה המקום היחיד שצריך להוסיף AddAzureSignalR(connectionString) -
+// שינוי קונפיגורציה, לא שינוי ב-Hub/בפרונט
+builder.Services.AddSignalR();
+builder.Services.AddScoped<IncidentPushNotifier>();
 
 // ==========================================
 // 5. תשתית High-Throughput Ingestion & Deduplication
@@ -453,5 +481,6 @@ app.MapMethods("/", ["GET", "HEAD"], () => Results.Ok(new { service = "BugReport
 
 app.MapHealthChecks("/health");
 app.MapControllers();
+app.MapHub<IncidentHub>("/hubs/incidents");
 
 app.Run();

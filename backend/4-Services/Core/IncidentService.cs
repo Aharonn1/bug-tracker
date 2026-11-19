@@ -10,6 +10,7 @@ using MyBackendApi.Models.Entities;
 using MyBackendApi.Services.Agent;
 using MyBackendApi.Services.Deduplication;
 using MyBackendApi.Services.Interfaces;
+using MyBackendApi.Services.Realtime;
 
 namespace MyBackendApi.Services.Core;
 
@@ -18,6 +19,7 @@ public class IncidentService(
     ErrorDeduplicationService deduplicationService,
     IIncidentNotificationService notificationService,
     ErrorCatalogCacheService catalogCache,
+    IncidentPushNotifier pushNotifier,
     IServiceScopeFactory scopeFactory,
     ILogger<IncidentService> logger) : IIncidentService
 {
@@ -327,6 +329,18 @@ public class IncidentService(
         catch (Exception ex)
         {
             logger.LogError(ex, "כשל בשליחת התראת תקרית חדשה {IncidentId} - התקרית עצמה נשמרה בהצלחה", incident.IncidentId);
+        }
+
+        // אותו שיקול בדיוק כמו האימייל למעלה - best-effort, לעולם לא מפיל את
+        // קליטת התקרית. אם אין אף client מחובר לקבוצת ה-tenant הזו כרגע (או
+        // שה-WebSocket חסום ברשת ארגונית), הפולינג האיטי יותר עדיין יביא עדכון
+        try
+        {
+            await pushNotifier.NotifyNewIncidentAsync(incident.TenantId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "כשל בדחיפת עדכון בזמן-אמת עבור תקרית {IncidentId} - הלקוחות עדיין יקבלו עדכון בפולינג", incident.IncidentId);
         }
 
         // אותו שיקול בדיוק: רק על fingerprint חדש לגמרי, לא על הישנות - כך
