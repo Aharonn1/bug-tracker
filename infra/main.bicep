@@ -132,6 +132,11 @@ resource appService 'Microsoft.Web/sites@2022-09-01' = {
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
+    // ברירת המחדל של Azure (true) מוסיפה עוגיית ARRAffinity לכל תגובה, כדי
+    // לנתב בקשות חוזרות לאותו instance - מיותר לגמרי כאן, כי האימות הוא
+    // JWT Bearer ולא session מבוסס cookie. מכבים כדי לחסוך את ה-header הזה
+    // מכל בקשה בודדת, בלי שום השפעה תפקודית (אין state לשמור באף instance)
+    clientAffinityEnabled: false
     siteConfig: {
       linuxFxVersion: 'DOTNETCORE|8.0'
       healthCheckPath: '/health'
