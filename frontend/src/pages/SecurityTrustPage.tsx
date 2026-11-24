@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { colors, radius, shadow } from '../styles/theme';
 import { SectionHeader } from '../components/ui/SectionHeader';
+import { InfoButton } from '../components/ui/InfoButton';
+import { MetricInfoModal, type MetricExplain } from '../components/ui/MetricInfoModal';
 
 // כתובות ה-production האמיתיות - קבועות כאן (לא נגזרות מ-API_BASE_URL בזמן ריצה)
 // כי קישורי SSL Labs צריכים דומיין נקי, בלי protocol/path
@@ -54,6 +56,7 @@ interface SecurityMeasure {
   icon: string;
   title: string;
   description: string;
+  explain: MetricExplain;
 }
 
 const SECURITY_MEASURES: SecurityMeasure[] = [
@@ -61,45 +64,102 @@ const SECURITY_MEASURES: SecurityMeasure[] = [
     icon: '🏢',
     title: 'בידוד מלא בין לקוחות',
     description: 'כל נתון מסונן אוטומטית לפי הלקוח המחובר ברמת מסד הנתונים עצמו, לא רק בממשק - משרד אחד לא יכול לראות או לשנות נתונים של משרד אחר, גם לא דרך קריאה ישירה ל-API.',
+    explain: {
+      source: 'backend',
+      body: [
+        'מיושם כ-Global Query Filter במקום אחד ב-DbContext, על כל Entity עסקי (תקריות, משתמשים) - מסנן לפי TenantId אוטומטית בכל שאילתה, מכל שירות.',
+        'מפתח שכותב שירות חדש לא יכול "לשכוח" את הסינון - הוא לא תלוי בכתיבה נכונה בכל מקום בנפרד, הוא נאכף מרכזית.',
+      ],
+    },
   },
   {
     icon: '🔑',
     title: 'בקרת גישה ברמת הרשומה',
     description: 'משתמש רגיל יכול לערוך או למחוק רק מידע שהוא עצמו דיווח. פעולות מנהל (Admin) דורשות הרשאה מפורשת שנבדקת בשרת בכל בקשה, לא רק מוסתרות בממשק.',
+    explain: {
+      source: 'backend',
+      body: [
+        'הבדיקה קורית בקוד השרת (Controller), בכל בקשה בנפרד - לדוגמה בדיקת IsSiteAdmin לפני גישה לפעולות ניהול חוצות-לקוחות.',
+        'הסתרת כפתור בממשק היא נוחות בלבד למשתמש - גם אם מישהו יעקוף את הממשק ויפנה ישירות ל-API, הבדיקה בשרת עדיין חוסמת אותו.',
+      ],
+    },
   },
   {
     icon: '🚫',
     title: 'הגנה מפני ניחוש סיסמאות',
     description: 'שתי שכבות עצמאיות: הגבלת קצב לפי כתובת רשת, ונעילת חשבון זמנית אחרי כמה ניסיונות כושלים רצופים - בלי קשר מאיפה הניסיונות מגיעים.',
+    explain: {
+      source: 'backend',
+      body: [
+        'בפועל יש שלוש שכבות, לא רק שתיים: הגבלת קצב ייעודית לנתיב ההתחברות, נעילת חשבון אחרי 5 ניסיונות כושלים ל-15 דקות, ועוד שכבה שלא מוזכרת כאן - חסימת כתובת IP שלמה אם היא גרמה לנעילה של כמה חשבונות שונים בתוך 24 שעות.',
+        'שלוש השכבות רצות בקוד השרת (AuthService), לא תלויות בממשק.',
+      ],
+    },
   },
   {
     icon: '🔒',
     title: 'הצפנת תעבורה מלאה',
     description: 'כל תקשורת מוצפנת ב-HTTPS בלבד, עם מדיניות אבטחה נוספת (Security Headers, HSTS, CSP) שמונעת וקטורי תקיפה נפוצים כמו הטמעת האתר בחלון זר.',
+    explain: {
+      source: 'cloud',
+      body: [
+        'ה-HTTPS עצמו נאכף ברמת התשתית (httpsOnly מוגדר על משאב ה-App Service בענן) - לא בקוד האפליקציה.',
+        'ה-Security Headers מוגדרים בשני מקומות נפרדים: בצד הלקוח (קובץ הגדרות סטטי של האתר) ובצד השרת (קוד ה-API) - כל אחד מגן על התעבורה שלו בנפרד.',
+      ],
+    },
   },
   {
     icon: '🧩',
     title: 'מניעת דליפת מידע משגיאות',
     description: 'שגיאת שרת בלתי צפויה לעולם לא חושפת פרטים פנימיים (מבנה מסד נתונים, נתיבי קבצים) ללקוח - רק לצוות הפיתוח, דרך יומן מאובטח.',
+    explain: {
+      source: 'backend',
+      body: [
+        'מקום מרכזי יחיד (Exception Handler מובנה) תופס כל חריגה מכל שכבה בקוד. חריגה "לא צפויה" מקבלת תמיד הודעה גנרית וקבועה ללקוח - הפרטים האמיתיים נשמרים רק בלוג הפנימי של השרת.',
+      ],
+    },
   },
   {
     icon: '🔄',
     title: 'סריקת תלויות אוטומטית',
     description: 'כל ספריות הקוד (צד שרת וצד לקוח) נסרקות באופן שוטף מול מאגרי פגיעויות ידועים, עם עדכון אוטומטי כשמתגלה חולשה חדשה.',
+    explain: {
+      source: 'cloud',
+      body: [
+        'הסריקה עצמה אמיתית - מוגדרת בהגדרות ה-repo (Dependabot), בודקת שבועית גם את ספריות השרת וגם את ספריות הלקוח.',
+        'דיוק קטן לתיאור: "עדכון אוטומטי" הוא לא מדויק לגמרי - הכלי פותח בקשת-שינוי (Pull Request) לבדיקה, לא ממזג אותה לבד. זה עדיין דורש אישור אדם לפני שהעדכון באמת נכנס.',
+      ],
+    },
   },
   {
     icon: '🧪',
     title: 'בדיקות אבטחה אוטומטיות',
     description: 'חבילת בדיקות ייעודית רצה אחרי כל שינוי שנוגע בהרשאות או באימות - מוודאת שהגנות קיימות לא נשברות בשינויים עתידיים.',
+    explain: {
+      source: 'gap',
+      body: [
+        'בבדיקה מול הקוד בפועל: כרגע אין חבילת בדיקות ייעודית לאימות/הרשאות. קיימות 3 בדיקות אוטומטיות בפרויקט, אך הן מכסות נושאים אחרים (זיהוי כפילויות תקריות, תור הודעות פנימי, ניתוח טלמטריה) - לא את תחום האבטחה.',
+        'זה פער אמיתי בין התיאור למצב הנוכחי, לא רק ניסוח-יתר - שווה להחליט אם לסגור אותו (להוסיף בדיקות) או לעדכן את התיאור בעמוד בהתאם.',
+      ],
+    },
   },
   {
     icon: '📋',
     title: 'יומן ביקורת למסד הנתונים',
     description: 'כל פעולה מול מסד הנתונים - קריאה, כתיבה, שינוי מבנה - נרשמת אוטומטית ביומן ביקורת (Audit Log) נפרד ובלתי תלוי באפליקציה עצמה, לצורך חקירת תקריות ועמידה בדרישות רגולטוריות.',
+    explain: {
+      source: 'gap',
+      body: [
+        'בבדיקה מול הקוד בפועל: קיים כרגע יומן חלקי בלבד, המתעד ניסיונות התחברות בלבד (הצלחה/כישלון/נעילה) - לא כל פעולת DB (קריאה/כתיבה/שינוי מבנה) כפי שהתיאור מרמז.',
+        'בנוסף, היומן הזה רץ בתוך קוד האפליקציה עצמה, לא כיומן ביקורת נפרד ובלתי-תלוי ברמת מסד הנתונים (כמו Azure SQL Auditing, שלא מוגדר כרגע בתשתית).',
+      ],
+    },
   },
 ];
 
 export const SecurityTrustPage: React.FC = () => {
+  const [openMeasure, setOpenMeasure] = useState<string | null>(null);
+
   return (
     <section>
       <SectionHeader
@@ -119,6 +179,7 @@ export const SecurityTrustPage: React.FC = () => {
           <div
             key={measure.title}
             style={{
+              position: 'relative',
               display: 'flex',
               flexDirection: 'column',
               gap: '10px',
@@ -129,6 +190,9 @@ export const SecurityTrustPage: React.FC = () => {
               boxShadow: shadow.card,
             }}
           >
+            <div style={{ position: 'absolute', top: '14px', left: '14px' }}>
+              <InfoButton onClick={() => setOpenMeasure(measure.title)} />
+            </div>
             <span style={{ fontSize: '28px' }}>{measure.icon}</span>
             <div style={{ fontSize: '14px', fontWeight: 700, color: colors.textPrimary }}>
               {measure.title}
@@ -136,6 +200,14 @@ export const SecurityTrustPage: React.FC = () => {
             <div style={{ fontSize: '12px', color: colors.textMuted, lineHeight: 1.6 }}>
               {measure.description}
             </div>
+            {openMeasure === measure.title && (
+              <MetricInfoModal
+                title={measure.title}
+                source={measure.explain.source}
+                body={measure.explain.body}
+                onClose={() => setOpenMeasure(null)}
+              />
+            )}
           </div>
         ))}
       </div>

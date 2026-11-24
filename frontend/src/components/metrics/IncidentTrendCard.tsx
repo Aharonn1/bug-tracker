@@ -1,7 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { SystemIncident } from '../../types/bug.types';
 import { Card } from '../ui/Card';
 import { TrendAreaChart } from '../charts/TrendAreaChart';
+import { InfoButton } from '../ui/InfoButton';
+import { MetricInfoModal } from '../ui/MetricInfoModal';
+import { METRIC_EXPLANATIONS } from '../../content/metricExplanations';
 
 interface Props {
   incidents: SystemIncident[];
@@ -47,6 +50,8 @@ function buildTrendData(incidents: SystemIncident[]) {
 // כרטיס מגמת תקריות בלבד - עצמאי, בונה את נתוני ציר הזמן בעצמו. לחיצה על
 // נקודה בוחרת את היום (ה-state עצמו מנוהל ב-IncidentsPage)
 export const IncidentTrendCard: React.FC<Props> = ({ incidents, selectedDay, onSelectDay }) => {
+  const [infoOpen, setInfoOpen] = useState(false);
+
   const trendData = useMemo(() => buildTrendData(incidents), [incidents]);
 
   const selectedLabel = useMemo(
@@ -61,8 +66,16 @@ export const IncidentTrendCard: React.FC<Props> = ({ incidents, selectedDay, onS
   };
 
   return (
-    <Card title={`מגמת תקריות - ${TREND_DAYS} ימים אחרונים`}>
+    <Card title={`מגמת תקריות - ${TREND_DAYS} ימים אחרונים`} action={<InfoButton onClick={() => setInfoOpen(true)} />}>
       <TrendAreaChart data={trendData} selectedLabel={selectedLabel} onPointClick={handlePointClick} />
+      {infoOpen && (
+        <MetricInfoModal
+          title={`מגמת תקריות - ${TREND_DAYS} ימים אחרונים`}
+          source={METRIC_EXPLANATIONS.trend.source}
+          body={METRIC_EXPLANATIONS.trend.body}
+          onClose={() => setInfoOpen(false)}
+        />
+      )}
     </Card>
   );
 };

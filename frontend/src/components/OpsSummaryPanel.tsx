@@ -2,6 +2,7 @@ import React from 'react';
 import { useOpsSummary } from '../hooks/useOpsSummary';
 import { colors } from '../styles/theme';
 import { StatCard } from './ui/StatCard';
+import { METRIC_EXPLANATIONS } from '../content/metricExplanations';
 
 export const OpsSummaryPanel: React.FC = () => {
   const { summary, loading, error, reload } = useOpsSummary(60);
@@ -33,8 +34,10 @@ export const OpsSummaryPanel: React.FC = () => {
         </button>
       </div>
 
+      {/* סדר מימין לשמאל לפי מה שהכי חשוב לבדוק קודם: האם יש כשלים כרגע
+          (הכי דחוף/מדאיג) → ביצועים (זמן תגובה) → נפח-בקשות (הקשר, הכי פחות
+          מדאיג כשלעצמו) */}
       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-        <StatCard label='סה"כ בקשות' value={summary?.totalRequests ?? '—'} />
         <StatCard
           label="בקשות שנכשלו"
           value={
@@ -48,6 +51,7 @@ export const OpsSummaryPanel: React.FC = () => {
             </>
           }
           valueColor={(summary?.failedRequests ?? 0) > 0 ? colors.dangerSoft : colors.successSoft}
+          explain={METRIC_EXPLANATIONS.opsFailedRequests}
         />
         <StatCard
           label="זמן תגובה חציוני"
@@ -58,6 +62,12 @@ export const OpsSummaryPanel: React.FC = () => {
             </>
           }
           valueColor={colors.accentSoft}
+          explain={METRIC_EXPLANATIONS.opsMedianResponse}
+        />
+        <StatCard
+          label='סה"כ בקשות'
+          value={summary?.totalRequests ?? '—'}
+          explain={METRIC_EXPLANATIONS.opsTotalRequests}
         />
       </div>
     </div>

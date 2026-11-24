@@ -132,14 +132,17 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
 
         {/* ניטור תקלות, דיווח תקלה חדשה ובדיקת רשת - היחידים שגלויים למנהלי
             משרד ולעובדים רגילים. כל השאר (מידע כללי, אבטחה, תשתית, סקירה
-            חוצת-לקוחות) זמינים רק ל-SiteAdmin - החלטה מפורשת, לא רק "אין להם צורך" */}
+            חוצת-לקוחות) זמינים רק ל-SiteAdmin - החלטה מפורשת, לא רק "אין להם צורך".
+            הסדר ביניהם לפי חשיבות למנכ"ל: תמונת-על עסקית (משרדים) ונקודות-מכירה
+            (אבטחה, יכולות המערכת) קודם; הכי טכני/פנימי (תקריות שנכשלו) אחרון */}
         {user.role === UserRole.SiteAdmin && (
           <>
             <button
-              onClick={() => onViewChange('about')}
-              style={getNavBtnStyle('about')}
+              onClick={() => onViewChange('offices')}
+              style={getNavBtnStyle('offices')}
             >
-              <span>מה המערכת מזהה?</span>
+              <span>סקירת משרדים</span>
+              <NavCountBadge count={officesOpenCount} />
             </button>
 
             <button
@@ -150,26 +153,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
             </button>
 
             <button
-              onClick={() => onViewChange('azure-health')}
-              style={getNavBtnStyle('azure-health')}
+              onClick={() => onViewChange('about')}
+              style={getNavBtnStyle('about')}
             >
-              <span>בריאות תשתית Azure</span>
-            </button>
-
-            <button
-              onClick={() => onViewChange('offices')}
-              style={getNavBtnStyle('offices')}
-            >
-              <span>סקירת משרדים</span>
-              <NavCountBadge count={officesOpenCount} />
-            </button>
-
-            <button
-              onClick={() => onViewChange('failed-incidents')}
-              style={getNavBtnStyle('failed-incidents')}
-            >
-              <span>תקריות שנכשלו</span>
-              <NavCountBadge count={failedIncidentsCount} />
+              <span>מה המערכת מזהה?</span>
             </button>
 
             <button
@@ -178,6 +165,21 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
             >
               <span>אבטחת כניסה</span>
               <NavCountBadge count={blockedIpsCount} />
+            </button>
+
+            <button
+              onClick={() => onViewChange('azure-health')}
+              style={getNavBtnStyle('azure-health')}
+            >
+              <span>בריאות תשתית Azure</span>
+            </button>
+
+            <button
+              onClick={() => onViewChange('failed-incidents')}
+              style={getNavBtnStyle('failed-incidents')}
+            >
+              <span>תקריות שנכשלו</span>
+              <NavCountBadge count={failedIncidentsCount} />
             </button>
           </>
         )}

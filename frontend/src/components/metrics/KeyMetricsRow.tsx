@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { IncidentSeverity, type SystemIncident } from '../../types/bug.types';
 import { colors } from '../../styles/theme';
 import { StatCard } from '../ui/StatCard';
+import { METRIC_EXPLANATIONS } from '../../content/metricExplanations';
 
 interface Props {
   incidents: SystemIncident[];
@@ -24,10 +25,30 @@ export const KeyMetricsRow: React.FC<Props> = ({ incidents }) => {
 
   return (
     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-      <StatCard label="אירועים פתוחים לטיפול" value={totalOpen} valueColor={totalOpen > 0 ? colors.danger : colors.successSoft} />
-      <StatCard label="אירועים קריטיים (Level 4)" value={criticalCount} valueColor={criticalCount > 0 ? colors.danger : colors.textMuted} />
-      <StatCard label="נט המשפט (שערי תהיל״ה)" value={netMishpatCount} valueColor={colors.accentSoft} />
-      <StatCard label="הוצאה לפועל (ECA)" value={ecaCount} valueColor={colors.warningSoft} />
+      <StatCard
+        label="אירועים פתוחים לטיפול"
+        value={totalOpen}
+        valueColor={totalOpen > 0 ? colors.danger : colors.successSoft}
+        explain={METRIC_EXPLANATIONS.totalOpen}
+      />
+      <StatCard
+        label="אירועים קריטיים (Level 4)"
+        value={criticalCount}
+        valueColor={criticalCount > 0 ? colors.danger : colors.textMuted}
+        explain={METRIC_EXPLANATIONS.criticalCount}
+      />
+      <StatCard
+        label="נט המשפט (שערי תהיל״ה)"
+        value={netMishpatCount}
+        valueColor={colors.accentSoft}
+        explain={METRIC_EXPLANATIONS.netMishpatCount}
+      />
+      <StatCard
+        label="הוצאה לפועל (ECA)"
+        value={ecaCount}
+        valueColor={colors.warningSoft}
+        explain={METRIC_EXPLANATIONS.ecaCount}
+      />
     </div>
   );
 };

@@ -1,8 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { IncidentSeverity, type SystemIncident } from '../../types/bug.types';
 import { colors } from '../../styles/theme';
 import { Card } from '../ui/Card';
 import { DonutChart } from '../charts/DonutChart';
+import { InfoButton } from '../ui/InfoButton';
+import { MetricInfoModal } from '../ui/MetricInfoModal';
+import { METRIC_EXPLANATIONS } from '../../content/metricExplanations';
 
 interface Props {
   incidents: SystemIncident[];
@@ -20,6 +23,8 @@ const LABEL_TO_SEVERITY: Record<string, IncidentSeverity> = {
 // כרטיס פילוח חומרה בלבד - דונאט עצמאי. לחיצה על פלח בוחרת את רמת
 // החומרה (ה-state עצמו מנוהל ב-IncidentsPage, כמו אצל פילוח המשתמשים)
 export const SeverityBreakdownCard: React.FC<Props> = ({ incidents, selectedSeverity, onSelectSeverity }) => {
+  const [infoOpen, setInfoOpen] = useState(false);
+
   const severityData = useMemo(
     () => [
       { label: 'קריטי', value: incidents.filter((i) => i.severity === IncidentSeverity.Critical).length, color: '#ef4444' },
@@ -41,11 +46,19 @@ export const SeverityBreakdownCard: React.FC<Props> = ({ incidents, selectedSeve
   };
 
   return (
-    <Card title="פילוח לפי חומרה">
+    <Card title="פילוח לפי חומרה" action={<InfoButton onClick={() => setInfoOpen(true)} />}>
       <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: colors.textFaint }}>
         לחיצה על רמת חומרה מסננת את טבלת התקלות למטה
       </p>
       <DonutChart data={severityData} selectedLabel={selectedLabel} onSegmentClick={handleSegmentClick} />
+      {infoOpen && (
+        <MetricInfoModal
+          title="פילוח לפי חומרה"
+          source={METRIC_EXPLANATIONS.severityBreakdown.source}
+          body={METRIC_EXPLANATIONS.severityBreakdown.body}
+          onClose={() => setInfoOpen(false)}
+        />
+      )}
     </Card>
   );
 };

@@ -1,9 +1,12 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { isAdminOrAbove } from '../types/auth.types';
 import { colors } from '../styles/theme';
 import { Card } from './ui/Card';
 import { HorizontalBarChart } from './charts/HorizontalBarChart';
+import { InfoButton } from './ui/InfoButton';
+import { MetricInfoModal } from './ui/MetricInfoModal';
+import { METRIC_EXPLANATIONS } from '../content/metricExplanations';
 
 interface Props {
   title: string;
@@ -17,6 +20,7 @@ interface Props {
 // הטבלה למטה להציג רק את התקלות שלו (ה-state עצמו מנוהל ב-IncidentsPage)
 export const UserActivitySummary: React.FC<Props> = ({ title, counts: countsMap, selectedUser, onSelectUser }) => {
   const { user } = useAuth();
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const data = useMemo(
     () =>
@@ -36,28 +40,39 @@ export const UserActivitySummary: React.FC<Props> = ({ title, counts: countsMap,
     <Card
       title={title}
       action={
-        selectedUser && (
-          <button
-            onClick={() => onSelectUser(null)}
-            style={{
-              padding: '4px 10px',
-              background: 'transparent',
-              border: `1px solid ${colors.border}`,
-              borderRadius: '999px',
-              color: colors.textMuted,
-              fontSize: '11px',
-              cursor: 'pointer',
-            }}
-          >
-            נקה סינון ×
-          </button>
-        )
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {selectedUser && (
+            <button
+              onClick={() => onSelectUser(null)}
+              style={{
+                padding: '4px 10px',
+                background: 'transparent',
+                border: `1px solid ${colors.border}`,
+                borderRadius: '999px',
+                color: colors.textMuted,
+                fontSize: '11px',
+                cursor: 'pointer',
+              }}
+            >
+              נקה סינון ×
+            </button>
+          )}
+          <InfoButton onClick={() => setInfoOpen(true)} />
+        </div>
       }
     >
       <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: colors.textFaint }}>
         לחיצה על משתמש מסננת את טבלת התקלות למטה להציג רק את שלו
       </p>
       <HorizontalBarChart data={data} selectedLabel={selectedUser} onBarClick={handleBarClick} />
+      {infoOpen && (
+        <MetricInfoModal
+          title={title}
+          source={METRIC_EXPLANATIONS.userActivity.source}
+          body={METRIC_EXPLANATIONS.userActivity.body}
+          onClose={() => setInfoOpen(false)}
+        />
+      )}
     </Card>
   );
 };
