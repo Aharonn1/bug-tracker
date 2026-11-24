@@ -6,6 +6,23 @@ import { UserRole } from '../types/auth.types';
 import type { SystemIncident } from '../types/bug.types';
 import { colors, radius, severityPalette, shadow, spacing } from '../styles/theme';
 import { SectionHeader } from '../components/ui/SectionHeader';
+import { InfoButton } from '../components/ui/InfoButton';
+import { MetricInfoModal } from '../components/ui/MetricInfoModal';
+
+// הסבר "מה קורה מאחורי הקלעים" - זהה לכל כרטיס משרד, כי זה אותו מנגנון
+// בדיוק שרץ עבור כולם, רק עם נתונים שונים
+const OFFICES_OVERVIEW_EXPLAIN = {
+  source: 'frontend' as const,
+  body: [
+    'אין endpoint ייעודי ל"סקירת משרדים" בשרת - העמוד שולף את כל המשתמשים ואת התקריות (עד 200 הראשונות) דרך שני endpoints כלליים שכבר קיימים, ומקבץ אותם למשרדים ישירות בדפדפן (JavaScript), לפי TenantId.',
+    'המשמעות: אם יש יותר מ-200 תקריות בסך הכול במערכת, התצוגה כאן לא בהכרח משקפת את כולן - זו מגבלה אמיתית, לא רק ניסוח-יתר.',
+  ],
+  qa: [
+    { q: 'יש כאן קוד שרת ייעודי שמחשב את הסיכום הזה?', a: 'לא - זה בנוי כולו בדפדפן, מתוך שני endpoints כלליים שכבר קיימים (משתמשים ותקריות), לא endpoint מיוחד ל"משרדים".' },
+    { q: 'זה מציג תמונה מלאה של כל התקריות בכל המשרדים?', a: 'לא לגמרי - הנתונים מוגבלים ל-200 התקריות הראשונות שמגיעות מה-API. אם יש יותר מזה בסך הכול, התצוגה הזו לא תשקף הכל.' },
+    { q: 'למה בכלל לבנות את זה ככה, בלי endpoint ייעודי?', a: 'כי זה מסך פנימי ל-SiteAdmin בלבד, בשימוש נדיר יחסית - לא הצדיק עדיין להשקיע ב-endpoint מיוחד. אם ההיקף יגדל, זה המקום הראשון שכדאי לשדרג.' },
+  ],
+};
 
 // שמות תצוגה בעברית לכל Tenant - קוסמטי בלבד, אין להם שום ייצוג ב-DB
 // (ה-TenantId עצמו הוא ה-slug הטכני, למשל "cohen-gold-law")
@@ -111,10 +128,12 @@ const Chevron: React.FC<{ open: boolean }> = ({ open }) => (
 
 const OfficeCard: React.FC<{ office: OfficeGroup; open: boolean; onToggle: () => void }> = ({ office, open, onToggle }) => {
   const [hovered, setHovered] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   return (
     <div
       style={{
+        position: 'relative',
         background: colors.card,
         border: `1px solid ${open ? colors.accent : colors.border}`,
         borderRadius: radius.lg,
@@ -123,6 +142,12 @@ const OfficeCard: React.FC<{ office: OfficeGroup; open: boolean; onToggle: () =>
         transition: 'border-color 0.15s ease',
       }}
     >
+      {/* מחוץ ל-<button> של ה-toggle בכוונה - button לא יכול להיות מקונן
+          בתוך button אחר (HTML לא חוקי). ממוקם מעליו ויזואלית (z-index),
+          כך לחיצה עליו לא מפעילה גם את ה-toggle מתחתיו */}
+      <div style={{ position: 'absolute', top: '14px', left: '14px', zIndex: 2 }}>
+        <InfoButton onClick={() => setInfoOpen(true)} />
+      </div>
       <button
         onClick={onToggle}
         onMouseEnter={() => setHovered(true)}
@@ -269,6 +294,16 @@ const OfficeCard: React.FC<{ office: OfficeGroup; open: boolean; onToggle: () =>
             </div>
           )}
         </div>
+      )}
+
+      {infoOpen && (
+        <MetricInfoModal
+          title={`${office.displayName} - איך הסקירה הזו עובדת`}
+          source={OFFICES_OVERVIEW_EXPLAIN.source}
+          body={OFFICES_OVERVIEW_EXPLAIN.body}
+          qa={OFFICES_OVERVIEW_EXPLAIN.qa}
+          onClose={() => setInfoOpen(false)}
+        />
       )}
     </div>
   );
