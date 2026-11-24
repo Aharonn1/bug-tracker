@@ -6,6 +6,9 @@ export type MetricSource = 'cloud' | 'code' | 'backend' | 'frontend' | 'gap';
 export interface MetricExplain {
   source: MetricSource;
   body: string[];
+  // שאלות שהמנכ"ל עשוי לשאול על הכרטיס הזה בהצגה, עם תשובה קצרה מוכנה -
+  // אופציונלי, לשימוש בעיקר בעמוד אבטחה ואמון
+  qa?: { q: string; a: string }[];
 }
 
 interface Props extends MetricExplain {
@@ -25,7 +28,7 @@ const SOURCE_BADGE: Record<MetricSource, { text: string; color: string }> = {
 
 // מודאל הסבר גנרי - "מה קורה מאחורי הקלעים" לכל מדד בדשבורד. נבנה פעם
 // אחת, מוזן בתוכן שונה לכל כרטיס/גרף דרך metricExplanations.ts
-export const MetricInfoModal: React.FC<Props> = ({ title, source, body, onClose }) => {
+export const MetricInfoModal: React.FC<Props> = ({ title, source, body, qa, onClose }) => {
   const badge = SOURCE_BADGE[source];
 
   return (
@@ -102,6 +105,26 @@ export const MetricInfoModal: React.FC<Props> = ({ title, source, body, onClose 
             {paragraph}
           </p>
         ))}
+
+        {qa && qa.length > 0 && (
+          <div style={{ marginTop: '18px', paddingTop: '14px', borderTop: `1px solid ${colors.border}` }}>
+            <div style={{ fontSize: '11.5px', fontWeight: 700, color: colors.textFaint, marginBottom: '10px' }}>
+              שאלות שהמנכ"ל עשוי לשאול על זה
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {qa.map((item, i) => (
+                <div key={i}>
+                  <div style={{ fontSize: '12.5px', fontWeight: 700, color: colors.textPrimary, marginBottom: '3px' }}>
+                    ש: {item.q}
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: colors.textMuted, lineHeight: 1.6 }}>
+                    ת: {item.a}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
