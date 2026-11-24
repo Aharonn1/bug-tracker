@@ -3,6 +3,34 @@ import { useLoginSecurity } from '../hooks/useLoginSecurity';
 import type { LoginAttemptOutcome } from '../types/loginSecurity.types';
 import { colors, radius, spacing } from '../styles/theme';
 import { SectionHeader } from '../components/ui/SectionHeader';
+import { InfoButton } from '../components/ui/InfoButton';
+import { MetricInfoModal, type MetricExplain } from '../components/ui/MetricInfoModal';
+
+const BLOCKED_IPS_EXPLAIN: MetricExplain = {
+  source: 'backend',
+  body: [
+    'חסימה אוטומטית מופעלת כשכתובת IP אחת גורמת לנעילה של 3 חשבונות שונים ומעלה תוך 24 שעות - זו השכבה השלישית מתוך שלוש הגנות עצמאיות נגד ניחוש סיסמאות (הגבלת קצב + נעילת חשבון + חסימת IP).',
+    'חסימה ידנית (הטופס למעלה) עוקפת את הספירה האוטומטית - מאפשרת לחסום מיידית כתובת חשודה גם לפני שהיא הגיעה לסף האוטומטי.',
+  ],
+  qa: [
+    { q: 'מה מבדיל חסימה אוטומטית מידנית?', a: 'אוטומטית מופעלת רק אחרי שה-IP כבר גרם לנעילת 3 חשבונות שונים תוך 24 שעות. ידנית - אפשר לחסום כל כתובת מיידית, גם בלי שהיא הגיעה לסף הזה.' },
+    { q: 'חסימה נשארת לתמיד?', a: 'לא - לכל חסימה (אוטומטית וגם ידנית) יש זמן תפוגה (שעות), בברירת מחדל 24 - אפשר גם לבטל ידנית לפני הזמן.' },
+    { q: 'זה אותו מנגנון שדיברנו עליו בעמוד אבטחה ואמון?', a: 'כן - זו בדיוק השכבה השלישית מתוך שלוש ההגנות שראינו שם (הגבלת קצב, נעילת חשבון, חסימת IP).' },
+  ],
+};
+
+const LOGIN_ATTEMPTS_EXPLAIN: MetricExplain = {
+  source: 'backend',
+  body: [
+    'כל ניסיון התחברות (גם כושל) נרשם אוטומטית בטבלה ייעודית בשרת - כולל ניסיונות עם אימייל לא קיים, לא רק הצלחות.',
+    'זה בדיוק היומן ה"חלקי" שהוזכר בעמוד אבטחה ואמון - מתעד רק ניסיונות התחברות, לא כל פעולת DB אחרת.',
+  ],
+  qa: [
+    { q: 'זה מתעד גם ניסיונות כושלים, לא רק הצלחות?', a: 'כן - כל תוצאה אפשרית (הצלחה, סיסמה שגויה, אימייל לא קיים, נעילה, חסימת IP) נרשמת, לא רק התחברויות מוצלחות.' },
+    { q: 'כמה אחורה זה מראה?', a: 'זו רשימת הניסיונות האחרונים - לא ארכיון מלא בלתי-מוגבל, רק החלון הרלוונטי לבדיקה שוטפת.' },
+    { q: 'זה אותו יומן שצוין כ"חלקי" בעמוד אבטחה ואמון?', a: 'בדיוק - זה כל מה שקיים כרגע מבחינת יומן ביקורת: ניסיונות התחברות בלבד, לא כל פעולה מול ה-DB.' },
+  ],
+};
 
 const OUTCOME_LABELS: Record<LoginAttemptOutcome, { label: string; color: string; bg: string }> = {
   Success: { label: 'התחברות הצליחה', color: colors.successSoft, bg: colors.successBg },
@@ -30,6 +58,7 @@ export const LoginSecurityPage: React.FC = () => {
 
   const [manualIp, setManualIp] = useState('');
   const [manualHours, setManualHours] = useState('24');
+  const [infoOpen, setInfoOpen] = useState<'blocked' | 'attempts' | null>(null);
 
   const handleUnblock = (ip: string) => unblock(ip);
 
@@ -77,7 +106,10 @@ export const LoginSecurityPage: React.FC = () => {
       />
 
       <div style={{ marginBottom: spacing.lg }}>
-        <h3 style={{ fontSize: '14px', color: colors.textPrimary, marginBottom: spacing.sm }}>כתובות IP חסומות</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+          <h3 style={{ fontSize: '14px', color: colors.textPrimary, margin: 0 }}>כתובות IP חסומות</h3>
+          <InfoButton onClick={() => setInfoOpen('blocked')} />
+        </div>
 
         <form onSubmit={handleManualBlock} style={{ display: 'flex', gap: spacing.sm, alignItems: 'center', marginBottom: spacing.md, flexWrap: 'wrap' }}>
           <input
@@ -163,7 +195,10 @@ export const LoginSecurityPage: React.FC = () => {
       </div>
 
       <div>
-        <h3 style={{ fontSize: '14px', color: colors.textPrimary, marginBottom: spacing.sm }}>ניסיונות התחברות אחרונים</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+          <h3 style={{ fontSize: '14px', color: colors.textPrimary, margin: 0 }}>ניסיונות התחברות אחרונים</h3>
+          <InfoButton onClick={() => setInfoOpen('attempts')} />
+        </div>
 
         {attempts.length === 0 ? (
           <p style={{ color: colors.textFaint, fontSize: '13px' }}>אין ניסיונות התחברות מתועדים עדיין</p>
@@ -208,6 +243,25 @@ export const LoginSecurityPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {infoOpen === 'blocked' && (
+        <MetricInfoModal
+          title="כתובות IP חסומות"
+          source={BLOCKED_IPS_EXPLAIN.source}
+          body={BLOCKED_IPS_EXPLAIN.body}
+          qa={BLOCKED_IPS_EXPLAIN.qa}
+          onClose={() => setInfoOpen(null)}
+        />
+      )}
+      {infoOpen === 'attempts' && (
+        <MetricInfoModal
+          title="ניסיונות התחברות אחרונים"
+          source={LOGIN_ATTEMPTS_EXPLAIN.source}
+          body={LOGIN_ATTEMPTS_EXPLAIN.body}
+          qa={LOGIN_ATTEMPTS_EXPLAIN.qa}
+          onClose={() => setInfoOpen(null)}
+        />
+      )}
     </section>
   );
 };
