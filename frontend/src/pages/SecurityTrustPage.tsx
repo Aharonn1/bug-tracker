@@ -245,6 +245,7 @@ export const SecurityTrustPage: React.FC = () => {
                 title={measure.title}
                 source={measure.explain.source}
                 body={measure.explain.body}
+                qa={measure.explain.qa}
                 onClose={() => setOpenMeasure(null)}
               />
             )}
