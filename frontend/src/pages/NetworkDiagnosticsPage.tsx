@@ -5,6 +5,47 @@ import { SectionHeader } from '../components/ui/SectionHeader';
 import { measureDownloadReliability, estimateDownloadTimeMs, formatDuration, monitorPingOnce, type DownloadReliabilityResult } from '../utils/measureDownloadSpeed';
 import { telemetryService } from '../api/telemetryService';
 import type { GatewayDiagnosticResult } from '../types/telemetry.types';
+import { InfoButton } from '../components/ui/InfoButton';
+import { MetricInfoModal, type MetricExplain } from '../components/ui/MetricInfoModal';
+
+const SPEED_TEST_EXPLAIN: MetricExplain = {
+  source: 'frontend',
+  body: [
+    'זו בדיקה שרצה כולה בדפדפן - לא פונה לשום endpoint בשרת שלנו. היא מורידה קובץ בדיקה (5MB) שיושב על אותו אתר (Same-Origin), 5 פעמים ברצף, ומודדת זמן בפועל.',
+    'המטרה: להבחין בין בעיה ברשת של הלקוח לבין בעיה אצלנו או במערכת חיצונית - אם ההורדה מהאתר שלנו עצמו איטית, זה מצביע על הרשת המקומית, לא על נט המשפט.',
+  ],
+  qa: [
+    { q: 'זה בודק את המהירות מול השרת שלנו, או מול נט המשפט?', a: 'מול השרת שלנו בלבד - קובץ בדיקה שיושב אצלנו. זה בכוונה, כדי לבודד אם האיטיות היא ברשת של הלקוח עצמה.' },
+    { q: 'זה שולח מידע לשרת כשהוא בודק?', a: 'לא - הבדיקה כולה מתבצעת בדפדפן של המשתמש, אין קריאת API לשרת שלנו בחלק הזה בכלל.' },
+    { q: 'למה 5 ניסיונות ולא בדיקה אחת?', a: 'כדי לתפוס גם יציבות, לא רק מהירות רגעית - ניתוק חוזר בכמה ניסיונות קצרים מנבא התנהגות דומה גם בהורדה ארוכה אמיתית.' },
+  ],
+};
+
+const GATEWAY_CHECK_EXPLAIN: MetricExplain = {
+  source: 'backend',
+  body: [
+    'זו קריאה אמיתית לשרת שלנו (endpoint ייעודי), שבתורו פונה בפועל אל נט המשפט ומודד זמן תגובה - אותו קוד בדיוק שסוכן ה-AI משתמש בו לאבחון תקריות.',
+    'אין כאן שום הדמיה - זו בדיקת HTTP אמיתית מול המערכת הממשלתית, לא נתון מדומה.',
+  ],
+  qa: [
+    { q: 'זו בדיקה אמיתית מול נט המשפט, או סימולציה?', a: 'אמיתית - קריאת HTTP בפועל מהשרת שלנו אל court.gov.il, לא נתון מדומה.' },
+    { q: 'זה אותו מנגנון שסוכן ה-AI משתמש בו?', a: 'כן, בדיוק אותה פונקציה בקוד השרת - כאן היא מופעלת ישירות על ידי המשתמש, לא דרך הסוכן.' },
+    { q: 'אם נט המשפט למטה, זה אומר שהבעיה אצלנו?', a: 'ההפך - זה בדיוק מה שהבדיקה הזו נועדה להראות: שהבעיה במערכת הממשלתית החיצונית, לא אצלנו.' },
+  ],
+};
+
+const LIVE_MONITOR_EXPLAIN: MetricExplain = {
+  source: 'frontend',
+  body: [
+    'זה לא שירות ניטור שרץ בשרת - זה לופ בדפדפן של המשתמש עצמו, שחוזר כל 10 שניות על שני הדברים למעלה (מהירות + נט המשפט) כל עוד הטאב פתוח.',
+    'התוצאות נשמרות רק בזיכרון הדפדפן של אותו משתמש, לא נשלחות או נשמרות אצלנו - אם הטאב נסגר, המעקב וההיסטוריה נעלמים.',
+  ],
+  qa: [
+    { q: 'זה רץ בשרת ברקע גם אם המשתמש סוגר את הטאב?', a: 'לא - זה תלוי לגמרי בטאב פתוח בדפדפן. אם הטאב נסגר, המעקב נעצר והנתונים נעלמים.' },
+    { q: 'התוצאות נשמרות אצלנו לניתוח מאוחר יותר?', a: 'לא - זה נשאר רק בזיכרון הדפדפן של אותו משתמש, לא נשלח לשרת ולא נשמר ב-DB.' },
+    { q: 'למה זה נעצר אוטומטית אחרי 30 דקות?', a: 'רשת ביטחון - כדי שמישהו לא ישאיר את זה רץ שעות בלי לב לב, תוך צריכת רוחב-פס מתמשכת.' },
+  ],
+};
 
 interface LiveLogEntry {
   time: string;
@@ -99,6 +140,7 @@ const ActionButton: React.FC<{ onClick: () => void; disabled?: boolean; children
 const NetworkDiagnosticsPage: React.FC = () => {
   const [speedTest, setSpeedTest] = useState<AsyncState<DownloadReliabilityResult>>({ status: 'idle' });
   const [gatewayCheck, setGatewayCheck] = useState<AsyncState<GatewayDiagnosticResult>>({ status: 'idle' });
+  const [infoOpen, setInfoOpen] = useState<'speed' | 'gateway' | 'monitor' | null>(null);
 
   const runSpeedTest = async () => {
     setSpeedTest({ status: 'loading' });
@@ -176,7 +218,7 @@ const NetworkDiagnosticsPage: React.FC = () => {
       />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: spacing.lg }}>
-        <Card title="מהירות וחוזק החיבור להורדת קבצים">
+        <Card title="מהירות וחוזק החיבור להורדת קבצים" action={<InfoButton onClick={() => setInfoOpen('speed')} />}>
           <p style={{ margin: '0 0 14px', fontSize: '13px', color: colors.textSecondary, lineHeight: 1.6 }}>
             מורידה קובץ בדיקה (5MB) כמה פעמים ברצף, כדי למדוד גם מהירות וגם יציבות - בדיוק מה שמשפיע על הורדת תיקים גדולים וארוכות-זמן.
           </p>
@@ -238,7 +280,7 @@ const NetworkDiagnosticsPage: React.FC = () => {
           )}
         </Card>
 
-        <Card title="סטטוס נט המשפט">
+        <Card title="סטטוס נט המשפט" action={<InfoButton onClick={() => setInfoOpen('gateway')} />}>
           <p style={{ margin: '0 0 14px', fontSize: '13px', color: colors.textSecondary, lineHeight: 1.6 }}>
             בודקת אם מערכת נט המשפט (court.gov.il) מגיבה כרגע, כדי להבדיל בין "האינטרנט שלי איטי" לבין "המערכת הממשלתית עצמה איטית/לא זמינה".
           </p>
@@ -275,7 +317,7 @@ const NetworkDiagnosticsPage: React.FC = () => {
       </div>
 
       <div style={{ marginTop: spacing.lg }}>
-        <Card title="מעקב חי לאורך זמן">
+        <Card title="מעקב חי לאורך זמן" action={<InfoButton onClick={() => setInfoOpen('monitor')} />}>
           <p style={{ margin: '0 0 14px', fontSize: '13px', color: colors.textSecondary, lineHeight: 1.6 }}>
             הפעילו את זה בלשונית נפרדת, במקביל להורדה אמיתית מנט המשפט. כל 10 שניות נבדוק גם את מהירות החיבור וגם את זמינות נט המשפט -
             כדי לראות בדיוק <strong>מתי</strong> משהו השתנה, אם בכלל, במקום רק לדעת שמשהו "נתקע" בסוף.
@@ -331,6 +373,34 @@ const NetworkDiagnosticsPage: React.FC = () => {
           )}
         </Card>
       </div>
+
+      {infoOpen === 'speed' && (
+        <MetricInfoModal
+          title="מהירות וחוזק החיבור להורדת קבצים"
+          source={SPEED_TEST_EXPLAIN.source}
+          body={SPEED_TEST_EXPLAIN.body}
+          qa={SPEED_TEST_EXPLAIN.qa}
+          onClose={() => setInfoOpen(null)}
+        />
+      )}
+      {infoOpen === 'gateway' && (
+        <MetricInfoModal
+          title="סטטוס נט המשפט"
+          source={GATEWAY_CHECK_EXPLAIN.source}
+          body={GATEWAY_CHECK_EXPLAIN.body}
+          qa={GATEWAY_CHECK_EXPLAIN.qa}
+          onClose={() => setInfoOpen(null)}
+        />
+      )}
+      {infoOpen === 'monitor' && (
+        <MetricInfoModal
+          title="מעקב חי לאורך זמן"
+          source={LIVE_MONITOR_EXPLAIN.source}
+          body={LIVE_MONITOR_EXPLAIN.body}
+          qa={LIVE_MONITOR_EXPLAIN.qa}
+          onClose={() => setInfoOpen(null)}
+        />
+      )}
     </section>
   );
 };
