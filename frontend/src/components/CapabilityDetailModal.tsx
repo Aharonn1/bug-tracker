@@ -103,6 +103,26 @@ export const CapabilityDetailModal: React.FC<Props> = ({ capability, onClose }) 
               {capability.whereToSeeIt}
             </div>
           </section>
+
+          {capability.qa && capability.qa.length > 0 && (
+            <section style={{ paddingTop: '4px', borderTop: `1px solid ${colors.borderSubtle}` }}>
+              <div style={{ fontSize: '11.5px', fontWeight: 700, color: colors.textFaint, margin: '14px 0 10px 0' }}>
+                שאלות שהמנכ"ל עשוי לשאול על זה
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {capability.qa.map((item, i) => (
+                  <div key={i}>
+                    <div style={{ fontSize: '12.5px', fontWeight: 700, color: colors.textPrimary, marginBottom: '3px' }}>
+                      ש: {item.q}
+                    </div>
+                    <div style={{ fontSize: '12.5px', color: colors.textMuted, lineHeight: 1.6 }}>
+                      ת: {item.a}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
         <div style={{ padding: '12px 24px', borderTop: `1px solid ${colors.borderSubtle}`, display: 'flex', justifyContent: 'flex-end', background: colors.bg }}>
