@@ -47,16 +47,30 @@ async function pingOnce(): Promise<number | null> {
   }
 }
 
-// כמה ניסיונות תקשורת רצופים (כמו ping -c) - כדי להבחין בין "איטי אבל יציב"
-// (latency גבוה) לבין "ניתוקים בפועל" (חלק מהניסיונות נכשלים לגמרי)
+// כמה ניסיונות תקשורת רצופים (כמו ping -c) - ולכן באמת ברצף (await בתוך
+// הלולאה, לא Promise.all) ולא במקביל: הניסיון הראשון לפעמים כולל עלות
+// חד-פעמית של פתיחת חיבור (TCP/TLS קר) שלא משקפת latency יציב, ובריצה
+// במקביל העלות הזו הייתה עלולה "להידבק" לכמה ניסיונות בו-זמנית במקום
+// להתבודד באחד. מוציאים את התוצאה הראשונה מהממוצע (לא מספירת הכשלים
+// עצמה) כדי שחיבור-קר בודד לא יטה את הממוצע כלפי מעלה
 async function measureConnectivity(): Promise<{ latencyMs: number; pingAttempts: number; pingFailures: number }> {
-  const results = await Promise.all(Array.from({ length: PING_ATTEMPTS }, () => pingOnce()));
+  const results: (number | null)[] = [];
+  for (let i = 0; i < PING_ATTEMPTS; i++) {
+    results.push(await pingOnce());
+  }
+
   const successful = results.filter((r): r is number => r !== null);
   const pingFailures = PING_ATTEMPTS - successful.length;
-  const latencyMs =
-    successful.length > 0 ? successful.reduce((sum, v) => sum + v, 0) / successful.length : PING_TIMEOUT_MS;
 
-  return { latencyMs, pingAttempts: PING_ATTEMPTS, pingFailures };
+  const [, ...restResults] = results;
+  const warmSuccessful = restResults.filter((r): r is number => r !== null);
+  const samplesForAverage = warmSuccessful.length > 0 ? warmSuccessful : successful;
+  const latencyMs =
+    samplesForAverage.length > 0
+      ? samplesForAverage.reduce((sum, v) => sum + v, 0) / samplesForAverage.length
+      : null;
+
+  return { latencyMs: latencyMs ?? PING_TIMEOUT_MS, pingAttempts: PING_ATTEMPTS, pingFailures };
 }
 
 // כמו pingOnce, אבל mode: 'no-cors' - gstatic.com לא שולח

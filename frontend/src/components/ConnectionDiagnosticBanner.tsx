@@ -1,6 +1,21 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTelemetryProbe } from '../hooks/useTelemetryProbe';
 import type { TelemetryStatusColor } from '../types/telemetry.types';
+import { InfoButton } from './ui/InfoButton';
+import { MetricInfoModal, type MetricExplain } from './ui/MetricInfoModal';
+
+const LATENCY_EXPLAIN: MetricExplain = {
+  source: 'frontend',
+  body: [
+    'המדידה רצה בדפדפן: 5 בדיקות fetch רצופות (ברצף, לא במקביל) מול health endpoint קל שלנו, כדי למדוד זמן תגובה אמיתי בלי להעמיס על ה-DB. הבדיקה הראשונה מוצאת מהממוצע בכוונה - היא לפעמים כוללת עלות חד-פעמית של פתיחת חיבור, לא latency יציב.',
+    'הממוצע נשלח לשרת, ושם (לא בדפדפן) נקבע אם זה "מעל הסף" - הסף (100ms) והניסוח של ההודעה חיים בקוד השרת, לא בקוד הלקוח.',
+  ],
+  qa: [
+    { q: 'למה דווקא 5 בדיקות, ולמה הראשונה לא נספרת בממוצע?', a: '5 נותן תמונה יציבה בלי להעמיס יותר מדי. הראשונה מוצאת כי לפעמים היא כוללת זמן פתיחת-חיבור חד-פעמי שלא חוזר בבדיקות הבאות - בלעדיה, חיבור-קר בודד היה מעוות את הממוצע כלפי מעלה.' },
+    { q: '100ms זה סף קבוע, או שהוא מתאים את עצמו?', a: 'קבוע כרגע, מוגדר בקוד השרת - לא נלמד או מתעדכן אוטומטית לפי היסטוריה.' },
+    { q: 'אם כל 5 הבדיקות נכשלות לגמרי (לא רק איטיות), מה קורה?', a: 'זה מזוהה כ"ניתוקים", לא "איטיות" - הודעה שונה לגמרי ללקוח, לא רק מספר-מילישניות גבוה.' },
+  ],
+};
 
 const STATUS_STYLES: Record<TelemetryStatusColor, { bg: string; border: string; text: string; dot: string }> = {
   Red: { bg: '#450a0a', border: '#991b1b', text: '#fca5a5', dot: '#ef4444' },
@@ -97,6 +112,7 @@ export const ConnectionDiagnosticBanner: React.FC = () => {
   // mount כדי לתפוס תלויות ניקוי חסרות). ה-ref שורד את הדימוי הזה, אז בפועל
   // הבדיקה רצה פעם אחת אמיתית - בלי זה כל login/מעבר דף היה שולח 2 פינגים
   const hasRunRef = useRef(false);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   useEffect(() => {
     if (hasRunRef.current) return;
@@ -162,24 +178,36 @@ export const ConnectionDiagnosticBanner: React.FC = () => {
             </div>
           )}
         </div>
-        <button
-          onClick={runProbe}
-          disabled={loading}
-          style={{
-            backgroundColor: 'transparent',
-            border: `1px solid ${style.border}`,
-            color: style.text,
-            borderRadius: '6px',
-            padding: '6px 10px',
-            fontSize: '12px',
-            cursor: loading ? 'default' : 'pointer',
-            flexShrink: 0,
-            opacity: loading ? 0.6 : 1,
-          }}
-        >
-          {loading ? 'בודק...' : 'בדוק שוב'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          <InfoButton onClick={() => setInfoOpen(true)} />
+          <button
+            onClick={runProbe}
+            disabled={loading}
+            style={{
+              backgroundColor: 'transparent',
+              border: `1px solid ${style.border}`,
+              color: style.text,
+              borderRadius: '6px',
+              padding: '6px 10px',
+              fontSize: '12px',
+              cursor: loading ? 'default' : 'pointer',
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            {loading ? 'בודק...' : 'בדוק שוב'}
+          </button>
+        </div>
       </div>
+
+      {infoOpen && (
+        <MetricInfoModal
+          title="זמן תגובה - איך זה נמדד"
+          source={LATENCY_EXPLAIN.source}
+          body={LATENCY_EXPLAIN.body}
+          qa={LATENCY_EXPLAIN.qa}
+          onClose={() => setInfoOpen(false)}
+        />
+      )}
 
       {showUptimeHelp && (
         <details style={{ marginTop: '12px', marginRight: '22px' }}>
@@ -224,7 +252,12 @@ export const ConnectionDiagnosticBanner: React.FC = () => {
             }}
           >
             {[
-              ['זמן תגובה לשרת שלנו (ממוצע)', formatMetric(metrics.latencyMs, 'ms')],
+              [
+                'זמן תגובה לשרת שלנו (ממוצע)',
+                // כש-כל הניסיונות נכשלו, metrics.latencyMs הוא רק ה-timeout
+                // המקסימלי (לא מדידה אמיתית) - מציגים את זה ככשל, לא כמספר
+                metrics.pingFailures === metrics.pingAttempts ? 'אין תגובה בכלל' : formatMetric(metrics.latencyMs, 'ms'),
+              ],
               ['ניתוקים בבדיקה (לשרת שלנו)', `${metrics.pingFailures} מתוך ${metrics.pingAttempts} ניסיונות`],
               ...(externalConnectivity
                 ? ([
