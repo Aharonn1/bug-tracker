@@ -25,7 +25,7 @@ const CSP_EVALUATOR_URL = 'https://csp-evaluator.withgoogle.com/';
 // FRONTEND_CSP: frontend/public/staticwebapp.config.json -> globalHeaders
 // BACKEND_CSP:  backend/Program.cs, ליד "X-Frame-Options" (אותו בלוק)
 const FRONTEND_CSP =
-  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://bugtracker-api-aharon-fuaucng8a3ckhqck.israelcentral-01.azurewebsites.net https://www.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self' https://bugtracker-api-aharon-fuaucng8a3ckhqck.israelcentral-01.azurewebsites.net wss://bugtracker-api-aharon-fuaucng8a3ckhqck.israelcentral-01.azurewebsites.net https://www.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 const BACKEND_CSP = "default-src 'none'; frame-ancestors 'none'";
 
 interface VerificationTool {
