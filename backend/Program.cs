@@ -152,9 +152,17 @@ builder.Services.AddCors(options =>
     {
         if (allowedOrigins.Length > 0)
         {
+            // AllowCredentials נדרש כאן בפועל - לקוח SignalR שולח את בקשת
+            // ה-negotiate עם credentials: 'include' כברירת מחדל (גם בלי
+            // cookies בפועל, רק JWT ב-accessTokenFactory). בלי זה הדפדפן
+            // חוסם את ה-preflight: "Access-Control-Allow-Credentials... must
+            // be 'true'" - ולכן SignalR נכשל תמיד ב-production, גם כש-origin
+            // עצמו כן ברשימה המותרת. מותר להוסיף AllowCredentials רק כש-יש
+            // origins מפורשים (לא AllowAnyOrigin) - השילוב ההפוך אסור ב-CORS
             policy.WithOrigins(allowedOrigins)
                   .AllowAnyMethod()
-                  .AllowAnyHeader();
+                  .AllowAnyHeader()
+                  .AllowCredentials();
         }
         else
         {

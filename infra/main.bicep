@@ -189,6 +189,15 @@ resource appService 'Microsoft.Web/sites@2022-09-01' = {
           name: 'Frontend__BaseUrl'
           value: 'https://${staticWebApp.properties.defaultHostname}'
         }
+        {
+          // אותו hostname בדיוק כמו Frontend__BaseUrl, רק עבור רשימת ה-CORS
+          // (Program.cs קורא Cors:AllowedOrigins). עד עכשיו ה-App Setting הזה
+          // לא היה מוגדר כאן בכלל - מישהו הגדיר אותו ידנית בפורטל, בלי תיעוד
+          // ב-IaC, מה שסיכן שתהיה אי-התאמה שקטה בפריסה חדשה (ה-domain אמנם
+          // יציב כרגע, אבל לא מובטח). עכשיו זה נגזר אוטומטית מאותו משאב
+          name: 'Cors__AllowedOrigins__0'
+          value: 'https://${staticWebApp.properties.defaultHostname}'
+        }
       ]
     }
   }
