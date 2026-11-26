@@ -126,30 +126,36 @@ export const IncidentDetailsModal: React.FC<Props> = ({ incident, onClose }) => 
               >
                 {incident.codeLocationFilePath}:{incident.codeLocationLine}
               </a>
-              {incident.stackTrace && (
-                <details style={{ marginTop: '6px' }}>
-                  <summary style={{ color: '#90a0b5', fontSize: '11px', cursor: 'pointer' }}>הצג Stack Trace מלא</summary>
-                  <div
-                    dir="ltr"
-                    style={{
-                      marginTop: '6px',
-                      background: '#131f37',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid #1e293b',
-                      color: '#94a3b8',
-                      fontSize: '11.5px',
-                      fontFamily: 'monospace',
-                      whiteSpace: 'pre-wrap',
-                      textAlign: 'left',
-                      maxHeight: '240px',
-                      overflowY: 'auto',
-                    }}
-                  >
-                    {incident.stackTrace}
-                  </div>
-                </details>
-              )}
+            </section>
+          )}
+
+          {/* עצמאי מ"מיקום בקוד" בכוונה - תקרית עם Stack Trace אבל בלי מיקום-קוד
+              שהצליח להיפתר (למשל שגיאת רשת גנרית, או תקרית שמוזגה מכמה
+              מקורות) לא אמורה להסתיר הוכחה טקסטואלית קיימת רק בגלל זה */}
+          {incident.stackTrace && (
+            <section>
+              <details>
+                <summary style={{ color: '#90a0b5', fontSize: '11px', cursor: 'pointer' }}>הצג Stack Trace מלא</summary>
+                <div
+                  dir="ltr"
+                  style={{
+                    marginTop: '6px',
+                    background: '#131f37',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid #1e293b',
+                    color: '#94a3b8',
+                    fontSize: '11.5px',
+                    fontFamily: 'monospace',
+                    whiteSpace: 'pre-wrap',
+                    textAlign: 'left',
+                    maxHeight: '240px',
+                    overflowY: 'auto',
+                  }}
+                >
+                  {incident.stackTrace}
+                </div>
+              </details>
             </section>
           )}
 
