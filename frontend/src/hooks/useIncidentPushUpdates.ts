@@ -23,6 +23,10 @@ export function useIncidentPushUpdates() {
         accessTokenFactory: () => localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ?? '',
       })
       .withAutomaticReconnect()
+      // ברירת המחדל של הספרייה (Information) מדפיסה "WebSocket connected to..."
+      // לקונסול בכל חיבור/חיבור-מחדש מוצלח - רעש שגרתי, לא תקלה. Warning
+      // ומעלה עדיין יופיעו אם משהו באמת משתבש
+      .configureLogging(signalR.LogLevel.Warning)
       .build();
 
     // מרעננים גם את התג (newIncidentsCount) וגם את הרשימה עצמה (incidents) -
