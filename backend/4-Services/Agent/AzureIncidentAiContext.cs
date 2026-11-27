@@ -38,17 +38,25 @@ public static class AzureIncidentAiContext
     {
         try
         {
-            var component = codeLocationFilePath?.StartsWith("backend/", StringComparison.Ordinal) == true ? "backend"
-                : codeLocationFilePath?.StartsWith("frontend/", StringComparison.Ordinal) == true ? "frontend"
-                : null;
-
+            var component = ResolveComponent(codeLocationFilePath);
             if (component is null) return null;
 
-            var lastDeploy = await deploymentHistory.GetLastDeployBeforeAsync(component, incidentCreatedAt, ct);
-            return lastDeploy is null
+            var lastDeployBefore = await deploymentHistory.GetLastDeployBeforeAsync(component, incidentCreatedAt, ct);
+            var beforeSummary = lastDeployBefore is null
                 ? $"אין דיפלוי מתועד של {component} לפני תקרית זו"
-                : $"הדיפלוי האחרון של {component} (commit {lastDeploy.CommitSha[..Math.Min(8, lastDeploy.CommitSha.Length)]}) " +
-                  $"היה ב-{(incidentCreatedAt - lastDeploy.DeployedAt).TotalMinutes:F0} דקות לפני שהתקרית נראתה לראשונה";
+                : $"הדיפלוי האחרון של {component} (commit {lastDeployBefore.CommitSha[..Math.Min(8, lastDeployBefore.CommitSha.Length)]}) " +
+                  $"היה ב-{(incidentCreatedAt - lastDeployBefore.DeployedAt).TotalMinutes:F0} דקות לפני שהתקרית נראתה לראשונה";
+
+            // דיפלויים *אחרי* יצירת התקרית - רמז (לא הוכחה) שהבעיה אולי כבר
+            // טופלה: אם קוד ה-component הזה פורס מחדש מאז, קטע הקוד שנשלף
+            // מ-GitHub לניתוח הזה עשוי כבר לא לשקף את מה שהיה שבור בפועל
+            var deploysSince = await deploymentHistory.GetDeploysSinceAsync(component, incidentCreatedAt, ct);
+            var afterSummary = deploysSince.Count == 0
+                ? $"לא בוצע דיפלוי נוסף ל-{component} מאז שהתקרית נוצרה"
+                : $"בוצעו {deploysSince.Count} דיפלויים נוספים ל-{component} מאז (האחרון לפני " +
+                  $"{(DateTime.UtcNow - deploysSince[^1].DeployedAt).TotalHours:F1} שעות) - ייתכן שהקוד השתנה מאז וטופל";
+
+            return $"{beforeSummary}. {afterSummary}";
         }
         catch (Exception ex)
         {
@@ -56,4 +64,22 @@ public static class AzureIncidentAiContext
             return null;
         }
     }
+
+    // לשימוש נקודתי (RunAutoRcaInBackgroundAsync - תקרית בודדת ברקע) - המקבילה
+    // ל-IncidentService.ResolveCodeLocationRef, רק בלי לדרוש טעינה מראש של כל
+    // טבלת הדיפלויים (שם זה מוצדק כי זה רץ על רשימה שלמה של תקריות, לא אחת)
+    public static async Task<string> ResolveCodeLocationRefAsync(
+        DeploymentHistoryService deploymentHistory, string? codeLocationFilePath, DateTime incidentCreatedAt, CancellationToken ct)
+    {
+        var component = ResolveComponent(codeLocationFilePath);
+        if (component is null) return "main";
+
+        var lastDeploy = await deploymentHistory.GetLastDeployBeforeAsync(component, incidentCreatedAt, ct);
+        return lastDeploy?.CommitSha ?? "main";
+    }
+
+    private static string? ResolveComponent(string? codeLocationFilePath) =>
+        codeLocationFilePath?.StartsWith("backend/", StringComparison.Ordinal) == true ? "backend"
+        : codeLocationFilePath?.StartsWith("frontend/", StringComparison.Ordinal) == true ? "frontend"
+        : null;
 }

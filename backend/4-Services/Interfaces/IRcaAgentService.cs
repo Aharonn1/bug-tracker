@@ -16,5 +16,9 @@ public interface IRcaAgentService
         string codeLocationRef,
         string? activeAzureServiceHealthSummary,
         string? deployContextSummary,
+        bool isResolved,
+        string? resolutionNotes,
+        int occurrencesCount,
+        DateTime lastSeenAt,
         CancellationToken ct = default);
 }

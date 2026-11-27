@@ -385,6 +385,12 @@ public class IncidentService(
                 serviceHealthReader, logger, incidentId, CancellationToken.None);
             var deployContextSummary = await AzureIncidentAiContext.GetDeployContextSummaryAsync(
                 deploymentHistory, incident.Details?.ClientCodeLocationFilePath, incident.CreatedAt, incidentId, logger, CancellationToken.None);
+            // היה "main" קשיח כאן - תמיד קוד *נוכחי*, בלי קשר למה שבאמת היה
+            // פרוס כשהתקרית נוצרה. עכשיו אותה לוגיקה בדיוק כמו ברשימת התקריות
+            // (MapToResponseDto/ResolveCodeLocationRef), רק בגרסה אסינכרונית
+            // לתקרית בודדת אחת - לא טוענת את כל טבלת הדיפלויים סתם
+            var codeLocationRef = await AzureIncidentAiContext.ResolveCodeLocationRefAsync(
+                deploymentHistory, incident.Details?.ClientCodeLocationFilePath, incident.CreatedAt, CancellationToken.None);
 
             var report = await rcaAgent.AnalyzeAndRemediateIncidentAsync(
                 incident.ErrorCode,
@@ -397,9 +403,13 @@ public class IncidentService(
                 incident.Details?.StackTrace,
                 incident.Details?.ClientCodeLocationFilePath,
                 incident.Details?.ClientCodeLocationLine,
-                "main",
+                codeLocationRef,
                 azureServiceHealthSummary,
                 deployContextSummary,
+                incident.IsResolved,
+                incident.ResolutionNotes,
+                incident.OccurrencesCount,
+                incident.LastSeenAt,
                 CancellationToken.None);
 
             incident.Details!.AutoRcaReport = report;

@@ -30,4 +30,14 @@ public class DeploymentHistoryService(AppDbContext db)
             .Where(d => d.Component == component && d.DeployedAt <= before)
             .OrderByDescending(d => d.DeployedAt)
             .FirstOrDefaultAsync(ct);
+
+    // ההפך מ-GetLastDeployBeforeAsync - דיפלויים *אחרי* זמן נתון. משמש כדי
+    // לרמוז לסוכן ה-AI "ייתכן שהקוד כבר השתנה מאז התקרית, אולי הבעיה כבר
+    // טופלה" - בלי זה אין שום דרך לדעת את זה, לא מה-DB ולא מה-AI עצמו
+    public Task<List<DeploymentRecord>> GetDeploysSinceAsync(string component, DateTime since, CancellationToken ct = default) =>
+        db.DeploymentRecords
+            .AsNoTracking()
+            .Where(d => d.Component == component && d.DeployedAt > since)
+            .OrderBy(d => d.DeployedAt)
+            .ToListAsync(ct);
 }

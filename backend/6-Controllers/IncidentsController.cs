@@ -182,6 +182,10 @@ public class IncidentsController(
             incident.CodeLocationRef,
             azureServiceHealthSummary,
             deployContextSummary,
+            incident.IsResolved,
+            incident.ResolutionNotes,
+            incident.OccurrencesCount,
+            incident.LastSeenAt,
             ct);
 
         return Ok(new
