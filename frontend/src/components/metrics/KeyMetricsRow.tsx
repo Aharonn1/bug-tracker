@@ -8,17 +8,17 @@ interface Props {
   incidents: SystemIncident[];
 }
 
-// שורת מדדי המפתח העליונה - ארבעה מספרים גדולים, בלי חישוב גרפים
+// שורת מדדי המפתח העליונה - שני מספרים גדולים, בלי חישוב גרפים. כרטיסי
+// נט המשפט/ECA הוסרו - הלקוח הנוכחי לא עובד מול המערכות הממשלתיות האלה,
+// אז הכרטיסים תמיד הציגו 0 ולא היו רלוונטיים לתצוגה
 export const KeyMetricsRow: React.FC<Props> = ({ incidents }) => {
   // useMemo כי IncidentsPage מרנדר מחדש את זה בכל לחיצת פילטר (חומרה/יום/
-  // משתמש) גם כש-incidents עצמו לא השתנה - בלי זה, 4 מעברי filter רצים
+  // משתמש) גם כש-incidents עצמו לא השתנה - בלי זה, מעברי filter רצים
   // מחדש בכל לחיצה כזו, לא רק כשהנתונים באמת מתעדכנים
-  const { totalOpen, criticalCount, netMishpatCount, ecaCount } = useMemo(
+  const { totalOpen, criticalCount } = useMemo(
     () => ({
       totalOpen: incidents.filter((i) => !i.isResolved).length,
       criticalCount: incidents.filter((i) => i.severity === IncidentSeverity.Critical && !i.isResolved).length,
-      netMishpatCount: incidents.filter((i) => i.subsystem === 'NetHaMishpat').length,
-      ecaCount: incidents.filter((i) => i.subsystem === 'EcaGov').length,
     }),
     [incidents]
   );
@@ -36,18 +36,6 @@ export const KeyMetricsRow: React.FC<Props> = ({ incidents }) => {
         value={criticalCount}
         valueColor={criticalCount > 0 ? colors.danger : colors.textMuted}
         explain={METRIC_EXPLANATIONS.criticalCount}
-      />
-      <StatCard
-        label="נט המשפט (שערי תהיל״ה)"
-        value={netMishpatCount}
-        valueColor={colors.accentSoft}
-        explain={METRIC_EXPLANATIONS.netMishpatCount}
-      />
-      <StatCard
-        label="הוצאה לפועל (ECA)"
-        value={ecaCount}
-        valueColor={colors.warningSoft}
-        explain={METRIC_EXPLANATIONS.ecaCount}
       />
     </div>
   );
