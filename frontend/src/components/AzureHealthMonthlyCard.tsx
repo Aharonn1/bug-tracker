@@ -4,6 +4,40 @@ import { toMetricChartData } from '../utils/metricChartData';
 import { colors } from '../styles/theme';
 import { Card } from './ui/Card';
 import { TrendAreaChart } from './charts/TrendAreaChart';
+import { InfoButton } from './ui/InfoButton';
+import { MetricInfoModal, type MetricExplain } from './ui/MetricInfoModal';
+
+const DAILY_ALERTS_EXPLAIN: MetricExplain = {
+  source: 'cloud',
+  body: [
+    'סופר כל פעם שחוק-התרעה של Azure Monitor באמת ירה (DTU גבוה, CPU גבוה וכו\') - לא מדידה רציפה, אירוע נקודתי. נשמר אצלנו ב-DB (טבלה ייעודית) ברגע שהוא קורה, בלי מגבלת שמירה - בניגוד למדדים הגולמיים למטה.',
+  ],
+  qa: [
+    { q: 'זה אותו דבר כמו המדדים הגולמיים למטה?', a: 'לא - זו ספירת אירועי-התרעה בפועל (מתי Azure באמת החליט שמשהו חריג), לא המדידה הרציפה עצמה.' },
+    { q: 'למה זה לא נעלם אחרי זמן, בניגוד למדדים?', a: 'כי ברגע שהתרעה יורה, אנחנו שומרים אותה אצלנו ב-DB - לא שואלים את Azure מחדש כל פעם. Azure עצמו כן מוחק היסטוריה ישנה, אבל אנחנו כבר תיעדנו אותה.' },
+    { q: 'מה היתרון בלראות את זה לפי חודש, לא רק 24 שעות אחרונות?', a: 'מאפשר לזהות דפוס (למשל "כל סוף חודש יש עומס") שלא נראה בחלון זמן קצר.' },
+  ],
+};
+
+function rawMetricExplain(metricName: string, retentionSource: 'Azure Monitor (93 יום)' | 'Log Analytics (30 יום)'): MetricExplain {
+  return {
+    source: 'cloud',
+    body: [
+      `ממוצע יומי של ${metricName}, נשלף ישירות מ-Azure עצמו - לא נמדד או מחושב אצלנו.`,
+      `שמור ב-${retentionSource} בלבד - חודשים ישנים יותר מציגים "אין נתונים לחודש זה", וזו מגבלת שמירה של Azure עצמו, לא תקלה באתר.`,
+    ],
+    qa: [
+      { q: 'איך זה שונה מספירת ההתרעות למעלה?', a: 'ההתרעות הן אירועים נקודתיים שנשמרים אצלנו לתמיד. זה כאן מדידה רציפה שנשלפת מ-Azure בכל פעם מחדש - ולכן כפופה למגבלת השמירה שלו.' },
+      { q: 'אם בוחרים חודש ישן ורואים "אין נתונים" - זה אומר שהמערכת הייתה כבויה?', a: 'לא בהכרח - זה בדרך כלל אומר רק שהמדידה הגולמית כבר נמחקה אצל Azure (עבר זמן השמירה), לא שהיה אירוע כלשהו.' },
+      { q: 'אפשר להאריך את זמן השמירה הזה?', a: 'זו הגדרה ברמת Azure Monitor/Log Analytics עצמם, לא קוד שלנו - אפשרי בעקרון, אבל כרוך בעלות נוספת.' },
+    ],
+  };
+}
+
+const CPU_EXPLAIN = rawMetricExplain('ניצול מעבד (CPU) בשרת', 'Azure Monitor (93 יום)');
+const MEMORY_EXPLAIN = rawMetricExplain('ניצול זיכרון (Memory) בשרת', 'Azure Monitor (93 יום)');
+const RESPONSE_TIME_EXPLAIN = rawMetricExplain('זמן תגובת השרת', 'Azure Monitor (93 יום)');
+const DTU_EXPLAIN = rawMetricExplain('עומס מסד הנתונים (DTU)', 'Log Analytics (30 יום)');
 
 const MONTH_NAMES = [
   'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני',
@@ -21,6 +55,7 @@ function startOfCurrentMonth(): { year: number; month: number } {
 // גולמיים (כפופים למגבלות השמירה של Azure - 93/30 יום)
 export const AzureHealthMonthlyCard: React.FC = () => {
   const [{ year, month }, setPeriod] = useState(startOfCurrentMonth());
+  const [openMetric, setOpenMetric] = useState<'alerts' | 'cpu' | 'memory' | 'response' | 'dtu' | null>(null);
   const { data, loading, error, reload } = useAzureHealthMonthly(year, month);
 
   const { year: curYear, month: curMonth } = startOfCurrentMonth();
@@ -124,7 +159,10 @@ export const AzureHealthMonthlyCard: React.FC = () => {
           </div>
 
           <div style={{ marginBottom: '8px' }}>
-            <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>התרעות לפי יום בחודש</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '12px', color: colors.textMuted }}>התרעות לפי יום בחודש</span>
+              <InfoButton onClick={() => setOpenMetric('alerts')} />
+            </div>
             <TrendAreaChart data={dailyOccurrencesData} color={colors.dangerSoft} />
           </div>
 
@@ -133,7 +171,10 @@ export const AzureHealthMonthlyCard: React.FC = () => {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
             <div>
-              <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>CPU % (App Service Plan)</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '12px', color: colors.textMuted }}>CPU % (App Service Plan)</span>
+                <InfoButton onClick={() => setOpenMetric('cpu')} />
+              </div>
               {data.appServiceMetrics ? (
                 <TrendAreaChart data={cpuPercentData} color={colors.accentSoft} />
               ) : (
@@ -141,7 +182,10 @@ export const AzureHealthMonthlyCard: React.FC = () => {
               )}
             </div>
             <div>
-              <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>Memory % (App Service Plan)</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '12px', color: colors.textMuted }}>Memory % (App Service Plan)</span>
+                <InfoButton onClick={() => setOpenMetric('memory')} />
+              </div>
               {data.appServiceMetrics ? (
                 <TrendAreaChart data={memoryPercentData} color={colors.violet} />
               ) : (
@@ -149,7 +193,10 @@ export const AzureHealthMonthlyCard: React.FC = () => {
               )}
             </div>
             <div>
-              <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>זמן תגובה ממוצע (שניות)</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '12px', color: colors.textMuted }}>זמן תגובה ממוצע (שניות)</span>
+                <InfoButton onClick={() => setOpenMetric('response')} />
+              </div>
               {data.appServiceMetrics ? (
                 <TrendAreaChart data={responseTimeData} color={colors.warningSoft} />
               ) : (
@@ -157,7 +204,10 @@ export const AzureHealthMonthlyCard: React.FC = () => {
               )}
             </div>
             <div>
-              <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '8px' }}>SQL DTU percentage</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '12px', color: colors.textMuted }}>SQL DTU percentage</span>
+                <InfoButton onClick={() => setOpenMetric('dtu')} />
+              </div>
               {data.sqlMetrics ? (
                 <TrendAreaChart data={dtuData} color="#f472b6" />
               ) : (
@@ -171,6 +221,22 @@ export const AzureHealthMonthlyCard: React.FC = () => {
       <div style={{ fontSize: '11px', color: colors.textFaint, marginTop: '14px', lineHeight: 1.6 }}>
         ספירת ההתרעות לעולם לא נמחקת ולא כפופה למגבלת שמירה. מדדי הביצועים הגולמיים כן - Azure Monitor שומר מדדים 93 יום, ו-Log Analytics (אבחוני SQL) 30 יום בלבד, זו מגבלה של Azure עצמו, לא תקלה אצלנו.
       </div>
+
+      {openMetric === 'alerts' && (
+        <MetricInfoModal title="התרעות לפי יום בחודש" source={DAILY_ALERTS_EXPLAIN.source} body={DAILY_ALERTS_EXPLAIN.body} qa={DAILY_ALERTS_EXPLAIN.qa} onClose={() => setOpenMetric(null)} />
+      )}
+      {openMetric === 'cpu' && (
+        <MetricInfoModal title="CPU % (App Service Plan)" source={CPU_EXPLAIN.source} body={CPU_EXPLAIN.body} qa={CPU_EXPLAIN.qa} onClose={() => setOpenMetric(null)} />
+      )}
+      {openMetric === 'memory' && (
+        <MetricInfoModal title="Memory % (App Service Plan)" source={MEMORY_EXPLAIN.source} body={MEMORY_EXPLAIN.body} qa={MEMORY_EXPLAIN.qa} onClose={() => setOpenMetric(null)} />
+      )}
+      {openMetric === 'response' && (
+        <MetricInfoModal title="זמן תגובה ממוצע (שניות)" source={RESPONSE_TIME_EXPLAIN.source} body={RESPONSE_TIME_EXPLAIN.body} qa={RESPONSE_TIME_EXPLAIN.qa} onClose={() => setOpenMetric(null)} />
+      )}
+      {openMetric === 'dtu' && (
+        <MetricInfoModal title="SQL DTU percentage" source={DTU_EXPLAIN.source} body={DTU_EXPLAIN.body} qa={DTU_EXPLAIN.qa} onClose={() => setOpenMetric(null)} />
+      )}
     </Card>
   );
 };
