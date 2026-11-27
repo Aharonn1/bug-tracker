@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useLoginSecurity } from '../hooks/useLoginSecurity';
-import type { LoginAttemptOutcome } from '../types/loginSecurity.types';
+import type { LoginAttemptSummary, LoginAttemptOutcome } from '../types/loginSecurity.types';
 import { colors, radius, spacing } from '../styles/theme';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { InfoButton } from '../components/ui/InfoButton';
 import { MetricInfoModal, type MetricExplain } from '../components/ui/MetricInfoModal';
+import { StatCard } from '../components/ui/StatCard';
 
 const BLOCKED_IPS_EXPLAIN: MetricExplain = {
   source: 'backend',
@@ -32,6 +33,19 @@ const LOGIN_ATTEMPTS_EXPLAIN: MetricExplain = {
   ],
 };
 
+const FAILED_LOGIN_SUMMARY_EXPLAIN: MetricExplain = {
+  source: 'code',
+  body: [
+    'כל הנתונים כאן מחושבים בדפדפן מתוך אותה רשימת "ניסיונות התחברות אחרונים" שכבר נטענה - לא שאילתה נוספת לשרת.',
+    'ה"חשוד" מחושב לפי כלל פשוט: כתובת IP אחת שניסתה (בהצלחה או בכישלון) מול 2 כתובות אימייל שונות או יותר, בתוך אותו חלון הנתונים הנטען - לא ניתוח AI, רק ספירה.',
+  ],
+  qa: [
+    { q: 'זה כולל את כל ההיסטוריה, או רק מה שמוצג?', a: 'רק את החלון שכבר נטען בטבלה למטה - אותה מגבלה שהוסברה על "ניסיונות התחברות אחרונים" עצמם.' },
+    { q: 'איך "חשוד" מזוהה בדיוק?', a: 'לא בינה מלאכותית - חוק פשוט: כתובת IP אחת שהופיעה מול יותר מאימייל אחד. זה דפוס קלאסי של ניחוש-סיסמאות נגד כמה חשבונות מאותו מקור.' },
+    { q: 'זה אותו דבר כמו חסימת ה-IP האוטומטית?', a: 'לא זהה - החסימה האוטומטית דורשת 3 נעילות-חשבון בפועל. הסימון כאן רחב יותר בכוונה (כבר 2 כתובות שונות, גם בלי נעילה) כדי להראות דפוסים מוקדם יותר.' },
+  ],
+};
+
 const OUTCOME_LABELS: Record<LoginAttemptOutcome, { label: string; color: string; bg: string }> = {
   Success: { label: 'התחברות הצליחה', color: colors.successSoft, bg: colors.successBg },
   InvalidCredentials: { label: 'סיסמה שגויה', color: colors.warningSoft, bg: colors.warningBg },
@@ -42,6 +56,52 @@ const OUTCOME_LABELS: Record<LoginAttemptOutcome, { label: string; color: string
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDay(iso: string): string {
+  return new Date(iso).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
+}
+
+const FAILED_OUTCOMES: ReadonlySet<LoginAttemptOutcome> = new Set(['InvalidCredentials', 'UnknownEmail', 'AccountLocked', 'IpBlocked']);
+
+interface FailedLoginSummary {
+  failedCount: number;
+  mostFailedUser: { email: string; count: number } | null;
+  busiestDay: { day: string; count: number } | null;
+  suspiciousIps: ReadonlySet<string>;
+}
+
+// הכל מחושב בדפדפן מתוך הרשימה שכבר נטענה - בלי שאילתה נוספת לשרת, בדיוק
+// כמו שאר הכרטיסים בדשבורד. "חשוד" הוא כלל ספירה פשוט (לא AI) - ראו
+// FAILED_LOGIN_SUMMARY_EXPLAIN למה דווקא 2 אימיילים שונים ולא סף אחר
+function summarizeFailedLogins(attempts: LoginAttemptSummary[]): FailedLoginSummary {
+  const failed = attempts.filter((a) => FAILED_OUTCOMES.has(a.outcome));
+
+  const perUser = new Map<string, number>();
+  const perDay = new Map<string, number>();
+  const emailsPerIp = new Map<string, Set<string>>();
+
+  for (const a of failed) {
+    const email = a.email || 'לא ידוע';
+    perUser.set(email, (perUser.get(email) ?? 0) + 1);
+
+    const day = formatDay(a.attemptedAt);
+    perDay.set(day, (perDay.get(day) ?? 0) + 1);
+
+    if (!emailsPerIp.has(a.ipAddress)) emailsPerIp.set(a.ipAddress, new Set());
+    emailsPerIp.get(a.ipAddress)!.add(email);
+  }
+
+  const mostFailedUser = [...perUser.entries()].sort((a, b) => b[1] - a[1])[0];
+  const busiestDay = [...perDay.entries()].sort((a, b) => b[1] - a[1])[0];
+  const suspiciousIps = new Set([...emailsPerIp.entries()].filter(([, emails]) => emails.size >= 2).map(([ip]) => ip));
+
+  return {
+    failedCount: failed.length,
+    mostFailedUser: mostFailedUser ? { email: mostFailedUser[0], count: mostFailedUser[1] } : null,
+    busiestDay: busiestDay ? { day: busiestDay[0], count: busiestDay[1] } : null,
+    suspiciousIps,
+  };
 }
 
 const inputStyle: React.CSSProperties = {
@@ -59,6 +119,8 @@ export const LoginSecurityPage: React.FC = () => {
   const [manualIp, setManualIp] = useState('');
   const [manualHours, setManualHours] = useState('24');
   const [infoOpen, setInfoOpen] = useState<'blocked' | 'attempts' | null>(null);
+
+  const failedLoginSummary = useMemo(() => summarizeFailedLogins(attempts ?? []), [attempts]);
 
   const handleUnblock = (ip: string) => unblock(ip);
 
@@ -200,6 +262,35 @@ export const LoginSecurityPage: React.FC = () => {
           <InfoButton onClick={() => setInfoOpen('attempts')} />
         </div>
 
+        {attempts.length > 0 && (
+          <div style={{ display: 'flex', gap: spacing.md, flexWrap: 'wrap', marginBottom: spacing.md }}>
+            <StatCard
+              label="ניסיונות כושלים"
+              value={failedLoginSummary.failedCount}
+              valueColor={failedLoginSummary.failedCount > 0 ? colors.dangerSoft : colors.successSoft}
+              explain={FAILED_LOGIN_SUMMARY_EXPLAIN}
+            />
+            <StatCard
+              label="המשתמש עם הכי הרבה כשלונות"
+              value={failedLoginSummary.mostFailedUser ? `${failedLoginSummary.mostFailedUser.email} (${failedLoginSummary.mostFailedUser.count})` : 'אין'}
+              valueColor={colors.warningSoft}
+              explain={FAILED_LOGIN_SUMMARY_EXPLAIN}
+            />
+            <StatCard
+              label="היום עם הכי הרבה כשלונות"
+              value={failedLoginSummary.busiestDay ? `${failedLoginSummary.busiestDay.day} (${failedLoginSummary.busiestDay.count})` : 'אין'}
+              valueColor={colors.accentSoft}
+              explain={FAILED_LOGIN_SUMMARY_EXPLAIN}
+            />
+            <StatCard
+              label="כתובות IP חשודות (נגד 2+ חשבונות)"
+              value={failedLoginSummary.suspiciousIps.size}
+              valueColor={failedLoginSummary.suspiciousIps.size > 0 ? colors.dangerSoft : colors.successSoft}
+              explain={FAILED_LOGIN_SUMMARY_EXPLAIN}
+            />
+          </div>
+        )}
+
         {attempts.length === 0 ? (
           <p style={{ color: colors.textFaint, fontSize: '13px' }}>אין ניסיונות התחברות מתועדים עדיין</p>
         ) : (
@@ -207,6 +298,7 @@ export const LoginSecurityPage: React.FC = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', color: colors.textSecondary, fontSize: '12.5px' }}>
               <thead>
                 <tr style={{ background: colors.card, borderBottom: `1px solid ${colors.border}` }}>
+                  <th style={{ padding: '10px 12px' }}></th>
                   <th style={{ padding: '10px 12px' }}>אימייל</th>
                   <th style={{ padding: '10px 12px' }}>כתובת IP</th>
                   <th style={{ padding: '10px 12px' }}>לקוח</th>
@@ -217,8 +309,18 @@ export const LoginSecurityPage: React.FC = () => {
               <tbody>
                 {attempts.map((a, idx) => {
                   const outcome = OUTCOME_LABELS[a.outcome];
+                  const isSuspicious = failedLoginSummary.suspiciousIps.has(a.ipAddress);
                   return (
-                    <tr key={a.id} style={{ borderBottom: `1px solid ${colors.borderSubtle}`, backgroundColor: idx % 2 === 1 ? colors.surfaceRaised : 'transparent' }}>
+                    <tr
+                      key={a.id}
+                      style={{
+                        borderBottom: `1px solid ${colors.borderSubtle}`,
+                        backgroundColor: isSuspicious ? colors.dangerBg : idx % 2 === 1 ? colors.surfaceRaised : 'transparent',
+                      }}
+                    >
+                      <td style={{ padding: '10px 12px', textAlign: 'center' }} title={isSuspicious ? 'כתובת זו ניסתה מול יותר מחשבון אחד' : undefined}>
+                        {isSuspicious && '🚨'}
+                      </td>
                       <td style={{ padding: '10px 12px', color: colors.textPrimary }}>{a.email || '—'}</td>
                       <td style={{ padding: '10px 12px', fontVariantNumeric: 'tabular-nums' }}>{a.ipAddress}</td>
                       <td style={{ padding: '10px 12px', color: colors.accentSoft }}>{a.tenantId ?? '—'}</td>
