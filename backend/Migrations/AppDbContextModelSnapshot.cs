@@ -629,7 +629,7 @@ namespace MyBackendApi.Migrations
                             IsActive = true,
                             PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
                             Role = (byte)2,
-                            TenantId = "default-tenant"
+                            TenantId = "halevy-mizrahi-law"
                         },
                         new
                         {
@@ -641,7 +641,7 @@ namespace MyBackendApi.Migrations
                             IsActive = true,
                             PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
                             Role = (byte)1,
-                            TenantId = "default-tenant"
+                            TenantId = "halevy-mizrahi-law"
                         },
                         new
                         {
@@ -653,7 +653,7 @@ namespace MyBackendApi.Migrations
                             IsActive = true,
                             PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
                             Role = (byte)1,
-                            TenantId = "default-tenant"
+                            TenantId = "halevy-mizrahi-law"
                         },
                         new
                         {

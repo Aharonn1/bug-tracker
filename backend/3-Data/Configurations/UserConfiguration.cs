@@ -33,9 +33,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 Id = 1,
                 FullName = "אהרון הלוי",
                 Email = "aharon.halevy@lawfirm.co.il",
+                // הועלה מ-Admin ל-SiteAdmin - מקבל התראות על תקריות מכל הלקוחות, לא
+                // רק מ-default-tenant. default-tenant נשאר מאז החשבון האישי/הטכני
+                // בלבד של אהרון (SiteAdmin) - נועה/איתי/שירה הועברו למשרד נפרד
+                // משלהם (halevy-mizrahi-law) כדי שלא ישבו תחת אותו tenant כמוהו
                 PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
-                // הועלה מ-Admin ל-SiteAdmin - מקבל התראות על תקריות מכל הלקוחות,
-                // לא רק מ-default-tenant. default-tenant קיבל מנהל-משרד חדש משלו (Id 2)
                 Role = UserRole.SiteAdmin,
                 IsActive = true,
                 TenantId = "default-tenant",
@@ -47,10 +49,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 FullName = "נועה כהן",
                 Email = "noa.cohen@lawfirm.co.il",
                 PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
-                // הועלתה מ-User ל-Admin - מנהלת-המשרד של default-tenant אחרי שאהרון עבר ל-SiteAdmin
+                // מנהלת-המשרד של halevy-mizrahi-law (הועברה מ-default-tenant - ראו הערה ב-Id 1)
                 Role = UserRole.Admin,
                 IsActive = true,
-                TenantId = "default-tenant",
+                TenantId = "halevy-mizrahi-law",
                 CreatedAt = new DateTime(2026, 9, 28, 0, 0, 0, DateTimeKind.Utc)
             },
             new User
@@ -61,7 +63,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
                 Role = UserRole.User,
                 IsActive = true,
-                TenantId = "default-tenant",
+                TenantId = "halevy-mizrahi-law",
                 CreatedAt = new DateTime(2026, 9, 28, 0, 0, 0, DateTimeKind.Utc)
             },
             new User
@@ -72,7 +74,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                 PasswordHash = "AQAAAAIAAYagAAAAEC1Wb2k1xvIBk3h4pb0eY5gJy8M01dZhT4WIsY+Wl1WfPZBZi+jUD6S7nz0/Ml9YVg==",
                 Role = UserRole.User,
                 IsActive = true,
-                TenantId = "default-tenant",
+                TenantId = "halevy-mizrahi-law",
                 CreatedAt = new DateTime(2026, 9, 28, 0, 0, 0, DateTimeKind.Utc)
             },
 

@@ -2,6 +2,7 @@
 // (ה-TenantId עצמו הוא ה-slug הטכני, למשל "cohen-gold-law")
 export const TENANT_DISPLAY_NAMES: Record<string, string> = {
   'default-tenant': 'המשרד הראשי',
+  'halevy-mizrahi-law': 'הלוי-מזרחי, משרד עורכי דין',
   'cohen-gold-law': "כהן-גולד ושות', עורכי דין",
   'mizrahi-partners': 'מזרחי ושותפים, משרד עורכי דין',
   'ben-ami-legal': 'בן-עמי משפטי',

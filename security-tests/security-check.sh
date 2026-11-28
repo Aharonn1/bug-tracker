@@ -20,10 +20,12 @@
 set -uo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:5288}"
-TENANT_ID="${TENANT_ID:-default-tenant}"
-ADMIN_EMAIL="${ADMIN_EMAIL:-aharon.halevy@lawfirm.co.il}"
+# הועבר מ-default-tenant ל-halevy-mizrahi-law אחרי שנועה/איתי/שירה קיבלו
+# משרד נפרד משלהם, נפרד מהחשבון האישי/הטכני של אהרון (SiteAdmin, default-tenant)
+TENANT_ID="${TENANT_ID:-halevy-mizrahi-law}"
+ADMIN_EMAIL="${ADMIN_EMAIL:-noa.cohen@lawfirm.co.il}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-123456}"
-USER_EMAIL="${USER_EMAIL:-noa.cohen@lawfirm.co.il}"
+USER_EMAIL="${USER_EMAIL:-itai.mizrahi@lawfirm.co.il}"
 USER_PASSWORD="${USER_PASSWORD:-123456}"
 
 PASS_COUNT=0
