@@ -4,7 +4,7 @@ import { UserRole, isAdminOrAbove } from '../types/auth.types';
 import { colors } from '../styles/theme';
 import { ChangePasswordModal } from './ChangePasswordModal';
 
-export type DashboardView = 'incidents' | 'bugs' | 'new-bug' | 'network-diagnostics' | 'about' | 'azure-health' | 'security' | 'offices' | 'failed-incidents' | 'login-security';
+export type DashboardView = 'incidents' | 'bugs' | 'new-bug' | 'network-diagnostics' | 'about' | 'azure-health' | 'security' | 'offices' | 'login-security';
 
 interface NavbarProps {
   currentView: DashboardView;
@@ -12,7 +12,6 @@ interface NavbarProps {
   openIncidentsCount: number;
   newIncidentsCount: number;
   officesOpenCount: number;
-  failedIncidentsCount: number;
   blockedIpsCount: number;
   user: AuthUser;
   onLogout: () => void;
@@ -33,7 +32,7 @@ const NavCountBadge: React.FC<{ count: number }> = ({ count }) => (
   ) : null
 );
 
-export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openIncidentsCount, newIncidentsCount, officesOpenCount, failedIncidentsCount, blockedIpsCount, user, onLogout }) => {
+export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openIncidentsCount, newIncidentsCount, officesOpenCount, blockedIpsCount, user, onLogout }) => {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const getNavBtnStyle = (view: DashboardView): React.CSSProperties => {
     const isActive = currentView === view;
@@ -134,7 +133,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
             משרד ולעובדים רגילים. כל השאר (מידע כללי, אבטחה, תשתית, סקירה
             חוצת-לקוחות) זמינים רק ל-SiteAdmin - החלטה מפורשת, לא רק "אין להם צורך".
             הסדר ביניהם לפי חשיבות למנכ"ל: תמונת-על עסקית (משרדים) ונקודות-מכירה
-            (אבטחה, יכולות המערכת) קודם; הכי טכני/פנימי (תקריות שנכשלו) אחרון */}
+            (אבטחה, יכולות המערכת) קודם */}
         {user.role === UserRole.SiteAdmin && (
           <>
             <button
@@ -172,14 +171,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onViewChange, openI
               style={getNavBtnStyle('azure-health')}
             >
               <span>בריאות תשתית Azure</span>
-            </button>
-
-            <button
-              onClick={() => onViewChange('failed-incidents')}
-              style={getNavBtnStyle('failed-incidents')}
-            >
-              <span>תקריות שנכשלו</span>
-              <NavCountBadge count={failedIncidentsCount} />
             </button>
           </>
         )}

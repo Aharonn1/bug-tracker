@@ -33,7 +33,6 @@ const NewBugPage = lazy(() => import('./pages/NewBugPage'));
 const NetworkDiagnosticsPage = lazy(() => import('./pages/NetworkDiagnosticsPage'));
 const SecurityTrustPage = lazy(() => import('./pages/SecurityTrustPage'));
 const OfficesOverviewPage = lazy(() => import('./pages/OfficesOverviewPage'));
-const FailedIncidentsPage = lazy(() => import('./pages/FailedIncidentsPage'));
 const LoginSecurityPage = lazy(() => import('./pages/LoginSecurityPage'));
 
 const PageLoadingFallback: React.FC = () => (
@@ -165,7 +164,7 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
   const openIncidentsCount = incidents.filter(i => !i.isResolved).length;
 
   const { newCount, resetToZero } = useNewIncidentsCount();
-  const { officesOpenCount, failedIncidentsCount, blockedIpsCount } = useSiteAdminBadgeCounts(user.role === UserRole.SiteAdmin);
+  const { officesOpenCount, blockedIpsCount } = useSiteAdminBadgeCounts(user.role === UserRole.SiteAdmin);
   // תוספת לצד הפולינג הקיים (לא תחליף) - ראו הערה בתוך ה-hook עצמו
   useIncidentPushUpdates();
 
@@ -195,7 +194,6 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
         openIncidentsCount={openIncidentsCount}
         newIncidentsCount={newCount}
         officesOpenCount={officesOpenCount}
-        failedIncidentsCount={failedIncidentsCount}
         blockedIpsCount={blockedIpsCount}
         user={user}
         onLogout={onLogout}
@@ -233,8 +231,6 @@ const Dashboard: React.FC<{ user: AuthUser; onLogout: () => void }> = ({ user, o
           {currentView === 'azure-health' && <AzureInfrastructureHealthPage />}
 
           {currentView === 'offices' && <OfficesOverviewPage />}
-
-          {currentView === 'failed-incidents' && <FailedIncidentsPage />}
 
           {currentView === 'login-security' && <LoginSecurityPage />}
 
