@@ -3,6 +3,23 @@ import { API_BASE_URL } from '../config';
 import { incidentService } from '../api/incidentService';
 import { colors, radius } from '../styles/theme';
 import { Card } from './ui/Card';
+import { InfoButton } from './ui/InfoButton';
+import { MetricInfoModal, type MetricExplain } from './ui/MetricInfoModal';
+
+const SCALE_TEST_EXPLAIN: MetricExplain = {
+  source: 'backend',
+  body: [
+    'כל אחת מה-N הבקשות נשלחת בלי טוקן התחברות בכלל (אנונימית) - כל אחת נושאת רק header נפרד משלה (X-Tenant-Id) שמזהה אותה כ"משרד" אחר. זה בכוונה, כדי לדמות N משרדים אמיתיים שמעולם לא התחברו ולא ראו זה את זה.',
+    'התגובה (202 Accepted) חוזרת מיד - אבל זו עדיין לא כתיבה בפועל למסד הנתונים. כל בקשה רק נכנסת לתור פנימי בזיכרון, ו-worker נפרד ברקע (שמעבד כמה בקשות במקביל) הוא זה שבאמת כותב לטבלה, בפער זמן קצר אחרי שה-202 כבר חזר. זו בדיוק הסיבה ש"תקריות חסרות" בשלב האימות לרוב אומר "עוד לא עובד", לא "אבד".',
+    'שלב האימות (השלב השני, אחרי השליחה) דורש להיות מחובר כ-SiteAdmin ממש - לא מספיק Admin רגיל. זו ההרשאה היחידה שמדלגת על ההגבלה הרגילה שכל חשבון רואה רק משרד אחד, ומאפשרת לראות את כל ה-N המשרדים המלאכותיים בבת אחת כדי לבדוק שאף אחד מהם לא "זלג" למשרד אחר.',
+    'מה בפועל מונע זליגה בין משרדים: ההתאמה/המיזוג של תקריות כפולות תמיד מתבצעת לפי הצירוף (מזהה-משרד + טביעת-אצבע של תוכן השגיאה) יחד - אף פעם לא לפי טביעת-האצבע לבד - ויש גם אילוץ ייחודיות אמיתי במסד הנתונים שאוכף בדיוק את אותו הצירוף. זליגה אמיתית הייתה דורשת תקלה ממשית בלוגיקה הזו, לא משהו שקורה סתם מעומס.',
+  ],
+  qa: [
+    { q: 'האם הבדיקה הזו עוברת דרך תהליך ההתחברות הרגיל?', a: 'לא - היא שולחת בלי טוקן בכלל, ומזהה את ה"משרד" שלה רק דרך header נפרד לכל בקשה. זה בכוונה, כדי לדמות משרדים אמיתיים שמעולם לא ראו זה את זה.' },
+    { q: 'למה מופיעות "תקריות חסרות" מיד אחרי השליחה?', a: 'כי הכתיבה האמיתית למסד הנתונים קורית ב-worker נפרד ברקע, לא באותו רגע שהבקשה חוזרת עם 202. זה עניין של תזמון, לא אובדן מידע.' },
+    { q: 'האם מנהל רגיל (לא SiteAdmin) יכול להריץ את שלב האימות?', a: 'טכנית הבדיקה תרוץ, אבל בלי תוקף - בלי הרשאת SiteAdmin רוב המשרדים המלאכותיים ייראו "חסרים" פשוט כי אין לחשבון הרשאה לראות אותם, לא בגלל תקלה אמיתית.' },
+  ],
+};
 
 const TENANT_PREFIX = 'scale-test-tenant-';
 const MAX_COUNT = 300;
@@ -48,6 +65,7 @@ export const TenantScaleTestCard: React.FC = () => {
   const [phase, setPhase] = useState<'submit' | 'verify' | null>(null);
   const [submitStats, setSubmitStats] = useState<SubmitStats>(emptySubmitStats());
   const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
+  const [infoOpen, setInfoOpen] = useState(false);
   const statsRef = useRef<SubmitStats>(emptySubmitStats());
 
   const runTest = async () => {
@@ -150,22 +168,25 @@ export const TenantScaleTestCard: React.FC = () => {
     <Card
       title="בדיקת קנה-מידה - שיוך אוטומטי של תקריות למשרדים"
       action={
-        <button
-          onClick={runTest}
-          disabled={running || !countInput}
-          style={{
-            padding: '7px 16px',
-            background: running || !countInput ? colors.border : 'linear-gradient(135deg, #dc2626, #ea580c)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: running || !countInput ? 'default' : 'pointer',
-            fontWeight: 600,
-            fontSize: '12px',
-          }}
-        >
-          {running ? (phase === 'submit' ? 'שולח...' : 'מאמת...') : 'הרץ בדיקה'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <InfoButton onClick={() => setInfoOpen(true)} />
+          <button
+            onClick={runTest}
+            disabled={running || !countInput}
+            style={{
+              padding: '7px 16px',
+              background: running || !countInput ? colors.border : 'linear-gradient(135deg, #dc2626, #ea580c)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: running || !countInput ? 'default' : 'pointer',
+              fontWeight: 600,
+              fontSize: '12px',
+            }}
+          >
+            {running ? (phase === 'submit' ? 'שולח...' : 'מאמת...') : 'הרץ בדיקה'}
+          </button>
+        </div>
       }
     >
       <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: colors.textFaint }}>
@@ -242,6 +263,16 @@ export const TenantScaleTestCard: React.FC = () => {
             </div>
           )}
         </>
+      )}
+
+      {infoOpen && (
+        <MetricInfoModal
+          title="בדיקת קנה-מידה - מה קורה בענן בכל שלב"
+          source={SCALE_TEST_EXPLAIN.source}
+          body={SCALE_TEST_EXPLAIN.body}
+          qa={SCALE_TEST_EXPLAIN.qa}
+          onClose={() => setInfoOpen(false)}
+        />
       )}
     </Card>
   );
