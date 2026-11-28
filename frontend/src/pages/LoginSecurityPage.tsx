@@ -104,6 +104,8 @@ function summarizeFailedLogins(attempts: LoginAttemptSummary[]): FailedLoginSumm
   };
 }
 
+type AttemptsFilter = 'failed' | 'mostUser' | 'busiestDay' | 'suspiciousIp' | null;
+
 const inputStyle: React.CSSProperties = {
   padding: '8px 12px',
   borderRadius: radius.md,
@@ -119,8 +121,33 @@ export const LoginSecurityPage: React.FC = () => {
   const [manualIp, setManualIp] = useState('');
   const [manualHours, setManualHours] = useState('24');
   const [infoOpen, setInfoOpen] = useState<'blocked' | 'attempts' | null>(null);
+  const [attemptsFilter, setAttemptsFilter] = useState<AttemptsFilter>(null);
 
   const failedLoginSummary = useMemo(() => summarizeFailedLogins(attempts ?? []), [attempts]);
+
+  // לחיצה על כרטיס מדד מסננת את הטבלה למטה רק לשורות הרלוונטיות לאותו
+  // כרטיס; לחיצה חוזרת על אותו כרטיס מבטלת את הסינון
+  const toggleFilter = (filter: AttemptsFilter) => setAttemptsFilter((prev) => (prev === filter ? null : filter));
+
+  const displayedAttempts = useMemo(() => {
+    const all = attempts ?? [];
+    switch (attemptsFilter) {
+      case 'failed':
+        return all.filter((a) => FAILED_OUTCOMES.has(a.outcome));
+      case 'mostUser':
+        return failedLoginSummary.mostFailedUser
+          ? all.filter((a) => (a.email || 'לא ידוע') === failedLoginSummary.mostFailedUser!.email)
+          : [];
+      case 'busiestDay':
+        return failedLoginSummary.busiestDay
+          ? all.filter((a) => formatDay(a.attemptedAt) === failedLoginSummary.busiestDay!.day)
+          : [];
+      case 'suspiciousIp':
+        return all.filter((a) => failedLoginSummary.suspiciousIps.has(a.ipAddress));
+      default:
+        return all;
+    }
+  }, [attempts, attemptsFilter, failedLoginSummary]);
 
   const handleUnblock = (ip: string) => unblock(ip);
 
@@ -257,9 +284,28 @@ export const LoginSecurityPage: React.FC = () => {
       </div>
 
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm, flexWrap: 'wrap' }}>
           <h3 style={{ fontSize: '14px', color: colors.textPrimary, margin: 0 }}>ניסיונות התחברות אחרונים</h3>
           <InfoButton onClick={() => setInfoOpen('attempts')} />
+          {attemptsFilter && (
+            <button
+              type="button"
+              onClick={() => setAttemptsFilter(null)}
+              style={{
+                marginRight: 'auto',
+                padding: '4px 12px',
+                borderRadius: radius.md,
+                border: `1px solid ${colors.accent}`,
+                backgroundColor: 'transparent',
+                color: colors.accentSoft,
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              מציג רק את הכרטיס שנבחר - נקה סינון ✕
+            </button>
+          )}
         </div>
 
         {attempts.length > 0 && (
@@ -269,30 +315,40 @@ export const LoginSecurityPage: React.FC = () => {
               value={failedLoginSummary.failedCount}
               valueColor={failedLoginSummary.failedCount > 0 ? colors.dangerSoft : colors.successSoft}
               explain={FAILED_LOGIN_SUMMARY_EXPLAIN}
+              onClick={() => toggleFilter('failed')}
+              active={attemptsFilter === 'failed'}
             />
             <StatCard
               label="המשתמש עם הכי הרבה כשלונות"
               value={failedLoginSummary.mostFailedUser ? `${failedLoginSummary.mostFailedUser.email} (${failedLoginSummary.mostFailedUser.count})` : 'אין'}
               valueColor={colors.warningSoft}
               explain={FAILED_LOGIN_SUMMARY_EXPLAIN}
+              onClick={failedLoginSummary.mostFailedUser ? () => toggleFilter('mostUser') : undefined}
+              active={attemptsFilter === 'mostUser'}
             />
             <StatCard
               label="היום עם הכי הרבה כשלונות"
               value={failedLoginSummary.busiestDay ? `${failedLoginSummary.busiestDay.day} (${failedLoginSummary.busiestDay.count})` : 'אין'}
               valueColor={colors.accentSoft}
               explain={FAILED_LOGIN_SUMMARY_EXPLAIN}
+              onClick={failedLoginSummary.busiestDay ? () => toggleFilter('busiestDay') : undefined}
+              active={attemptsFilter === 'busiestDay'}
             />
             <StatCard
               label="כתובות IP חשודות (נגד 2+ חשבונות)"
               value={failedLoginSummary.suspiciousIps.size}
               valueColor={failedLoginSummary.suspiciousIps.size > 0 ? colors.dangerSoft : colors.successSoft}
               explain={FAILED_LOGIN_SUMMARY_EXPLAIN}
+              onClick={failedLoginSummary.suspiciousIps.size > 0 ? () => toggleFilter('suspiciousIp') : undefined}
+              active={attemptsFilter === 'suspiciousIp'}
             />
           </div>
         )}
 
         {attempts.length === 0 ? (
           <p style={{ color: colors.textFaint, fontSize: '13px' }}>אין ניסיונות התחברות מתועדים עדיין</p>
+        ) : displayedAttempts.length === 0 ? (
+          <p style={{ color: colors.textFaint, fontSize: '13px' }}>אין שורות התואמות לסינון שנבחר</p>
         ) : (
           <div style={{ overflowX: 'auto', background: colors.surface, borderRadius: radius.lg, border: `1px solid ${colors.borderSubtle}` }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', color: colors.textSecondary, fontSize: '12.5px' }}>
@@ -307,7 +363,7 @@ export const LoginSecurityPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {attempts.map((a, idx) => {
+                {displayedAttempts.map((a, idx) => {
                   const outcome = OUTCOME_LABELS[a.outcome];
                   const isSuspicious = failedLoginSummary.suspiciousIps.has(a.ipAddress);
                   return (

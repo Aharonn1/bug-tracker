@@ -9,27 +9,37 @@ interface StatCardProps {
   valueColor?: string;
   hint?: string;
   explain?: MetricExplain;
+  onClick?: () => void;
+  active?: boolean;
 }
 
 // אריח מדד בודד - משמש גם ב-KeyMetricsRow וגם ב-OpsSummaryPanel, כדי
 // שלכל המספרים הגדולים בדשבורד יהיה אותו מראה בדיוק. explain אופציונלי -
-// כשמוגדר, מופיע כפתור "i" שפותח הסבר "מה עומד מאחורי המספר הזה"
-export const StatCard: React.FC<StatCardProps> = ({ label, value, valueColor = colors.textPrimary, hint, explain }) => {
+// כשמוגדר, מופיע כפתור "i" שפותח הסבר "מה עומד מאחורי המספר הזה". onClick
+// אופציונלי - כשמוגדר, הכרטיס הופך לבר-לחיצה (למשל כדי לסנן טבלה למטה
+// לפי הכרטיס הזה בלבד); active מסמן ויזואלית שזה הסינון הפעיל כרגע
+export const StatCard: React.FC<StatCardProps> = ({ label, value, valueColor = colors.textPrimary, hint, explain, onClick, active }) => {
   const [infoOpen, setInfoOpen] = useState(false);
 
   return (
     <div
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
       style={{
         background: colors.card,
         padding: `${spacing.lg} ${spacing.xl}`,
         borderRadius: radius.lg,
-        border: `1px solid ${colors.border}`,
+        border: `1px solid ${active ? colors.accent : colors.border}`,
+        boxShadow: active ? `0 0 0 1px ${colors.accent}` : undefined,
         flex: '1',
         minWidth: '180px',
         display: 'flex',
         flexDirection: 'column',
         gap: '6px',
         position: 'relative',
+        cursor: onClick ? 'pointer' : undefined,
       }}
     >
       {explain && (
