@@ -8,6 +8,7 @@ import { colors, radius, severityPalette, shadow, spacing } from '../styles/them
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { InfoButton } from '../components/ui/InfoButton';
 import { MetricInfoModal } from '../components/ui/MetricInfoModal';
+import { TENANT_DISPLAY_NAMES } from '../constants/tenantDisplayNames';
 
 // הסבר "מה קורה מאחורי הקלעים" - זהה לכל כרטיס משרד, כי זה אותו מנגנון
 // בדיוק שרץ עבור כולם, רק עם נתונים שונים
@@ -22,15 +23,6 @@ const OFFICES_OVERVIEW_EXPLAIN = {
     { q: 'זה מציג תמונה מלאה של כל התקריות בכל המשרדים?', a: 'לא לגמרי - הנתונים מוגבלים ל-200 התקריות הראשונות שמגיעות מה-API. אם יש יותר מזה בסך הכול, התצוגה הזו לא תשקף הכל.' },
     { q: 'למה בכלל לבנות את זה ככה, בלי endpoint ייעודי?', a: 'כי זה מסך פנימי ל-SiteAdmin בלבד, בשימוש נדיר יחסית - לא הצדיק עדיין להשקיע ב-endpoint מיוחד. אם ההיקף יגדל, זה המקום הראשון שכדאי לשדרג.' },
   ],
-};
-
-// שמות תצוגה בעברית לכל Tenant - קוסמטי בלבד, אין להם שום ייצוג ב-DB
-// (ה-TenantId עצמו הוא ה-slug הטכני, למשל "cohen-gold-law")
-const TENANT_DISPLAY_NAMES: Record<string, string> = {
-  'default-tenant': 'המשרד הראשי',
-  'cohen-gold-law': "כהן-גולד ושות', עורכי דין",
-  'mizrahi-partners': 'מזרחי ושותפים, משרד עורכי דין',
-  'ben-ami-legal': 'בן-עמי משפטי',
 };
 
 const SEVERITY_ORDER = [4, 3, 2, 1] as const;

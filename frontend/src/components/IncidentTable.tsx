@@ -3,6 +3,7 @@ import { IncidentDetailsModal } from './IncidentDetailsModal';
 import { IncidentSeverity, type SystemIncident } from '../types/bug.types';
 import { UserRole } from '../types/auth.types';
 import { isSiteAdminEmail } from '../constants/siteAdmin';
+import { getTenantDisplayName } from '../constants/tenantDisplayNames';
 import { useAgentDiagnosis } from '../hooks/useAgentDiagnosis';
 
 // lazy, לא import רגיל - זה גורר את react-markdown (ספרייה לא-זעירה), אבל
@@ -74,6 +75,7 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
               <th style={{ padding: '12px' }}>תיאור התקלה</th>
               <th style={{ padding: '12px', textAlign: 'center' }}>הופעות</th>
               <th style={{ padding: '12px' }}>זמן רישום</th>
+              <th style={{ padding: '12px' }}>משרד</th>
               <th style={{ padding: '12px' }}>דווח על ידי</th>
               <th style={{ padding: '12px' }}>סטטוס</th>
               <th style={{ padding: '12px', textAlign: 'center' }}>פעולות</th>
@@ -82,7 +84,7 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
           <tbody>
             {incidents.length === 0 ? (
               <tr>
-                <td colSpan={10} style={{ textAlign: 'center', padding: '24px', color: '#90a0b5' }}>
+                <td colSpan={11} style={{ textAlign: 'center', padding: '24px', color: '#90a0b5' }}>
                   אין אירועי תקלות להצגה
                 </td>
               </tr>
@@ -173,6 +175,9 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                     </td>
                     <td style={{ padding: '12px', whiteSpace: 'nowrap', fontSize: '12px' }}>
                       {new Date(i.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                    </td>
+                    <td style={{ padding: '12px', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                      {getTenantDisplayName(i.tenantId, i.subsystem)}
                     </td>
                     <td style={{ padding: '12px', fontSize: '12px' }}>
                       {employeeReporters.length === 0 ? (
