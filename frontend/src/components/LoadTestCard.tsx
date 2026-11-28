@@ -2,6 +2,24 @@ import React, { useRef, useState } from 'react';
 import { API_BASE_URL, tenantHeaders } from '../config';
 import { colors, radius } from '../styles/theme';
 import { Card } from './ui/Card';
+import { InfoButton } from './ui/InfoButton';
+import { MetricInfoModal, type MetricExplain } from './ui/MetricInfoModal';
+
+const LOAD_TEST_EXPLAIN: MetricExplain = {
+  source: 'backend',
+  body: [
+    'הלולאה עצמה רצה בדפדפן שלך, לא בשרת: 100 "משתמשים" וירטואליים, כל אחד בלולאה נפרדת ששולחת בקשת GET אמיתית (עם הטוקן המחובר שלך), מחכה לתשובה (או ל-timeout של 8 שניות), ומיד שולחת את הבאה - שוב ושוב, במשך כל 30 השניות. "סה״כ בקשות" הוא הסכום של כל הבקשות האלה מכל 100 הלולאות יחד, לא 100 בדיוק.',
+    'שתי הבדיקות עוברות קודם באותו צינור בדיוק ב-App Service: HTTPS, CORS, ואותו Rate Limiter גלובלי (מגביל כמות בקשות-מקבילות לכל האתר; מעבר למכסה נכנסות לתור קצר, ומעבר לתור מקבלות 503) - זהה לשתי הבדיקות, אז הוא לא ה"הבדל" ביניהן.',
+    '/health ("בלי DB") הוא endpoint מובנה של ASP.NET Core, בלי אימות Token - אבל לא "בלי DB" לגמרי: הוא כן פותח חיבור אמיתי ל-Azure SQL כדי לוודא שהוא זמין (CanConnectAsync), רק בלי להריץ שאילתה עסקית אמיתית על טבלת התקריות.',
+    '/api/Incidents ("עם DB") עובר קודם אימות Token מלא + זיהוי הלקוח (Tenant), ואז מריץ בפועל 2-3 שאילתות נפרדות מול SQL לכל בקשה בודדת: ספירת סה"כ תקריות, שליפת העמוד הנוכחי עם join לדיווחים ולפרטים, ושליפת היסטוריית דיפלויים - כולן קריאה-בלבד, אבל עם joins, לא שאילתה בודדת וקלה.',
+    'בדיוק בגלל זה כדאי להריץ את שתיהן ולהשוות: אם גם /health (שלא נוגע בעסק בכלל) נכשל תחת עומס, הבעיה היא ב-App Service עצמו (ליבת CPU יחידה, בלי autoscale) - לא רק ב-SQL. אם רק /api/Incidents נכשל, זה מצביע יותר על התקרה הנמוכה של ה-SQL (Standard S0, 10 DTU).',
+  ],
+  qa: [
+    { q: 'האם /health זו בדיקה שלא נוגעת ב-DB בכלל?', a: 'כמעט - היא כן פותחת חיבור אמיתי ל-Azure SQL כדי לבדוק שהוא זמין, רק בלי להריץ שאילתה עסקית אמיתית על טבלת התקריות.' },
+    { q: 'האם שתי הבדיקות מוגבלות באותו Rate Limiter?', a: 'כן, בדיוק אותו - המגבלה הגלובלית על כמות בקשות מקבילות לכל האתר זהה לשתי הבדיקות, אז היא לא ההבדל ביניהן.' },
+    { q: 'למה בכלל להריץ שתי בדיקות נפרדות ולא רק אחת?', a: 'כדי לבודד את מקור הבעיה: אם גם /health נכשל, זו בעיה ב-App Service עצמו; אם רק /api/Incidents נכשל, זו בעיה ב-SQL.' },
+  ],
+};
 
 const CONCURRENCY = 100;
 const DURATION_MS = 30_000;
@@ -44,6 +62,7 @@ export const LoadTestCard: React.FC = () => {
   const [running, setRunning] = useState(false);
   const [stats, setStats] = useState<Stats>(emptyStats());
   const [finished, setFinished] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const statsRef = useRef<Stats>(emptyStats());
 
   const runTest = async () => {
@@ -104,22 +123,25 @@ export const LoadTestCard: React.FC = () => {
     <Card
       title="בדיקת עומס - סימולציית משתמשים במקביל"
       action={
-        <button
-          onClick={runTest}
-          disabled={running}
-          style={{
-            padding: '7px 16px',
-            background: running ? colors.border : 'linear-gradient(135deg, #dc2626, #ea580c)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: running ? 'default' : 'pointer',
-            fontWeight: 600,
-            fontSize: '12px',
-          }}
-        >
-          {running ? 'רץ כרגע...' : `הרץ בדיקה (${CONCURRENCY} משתמשים, ${DURATION_MS / 1000}ש׳)`}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <InfoButton onClick={() => setInfoOpen(true)} />
+          <button
+            onClick={runTest}
+            disabled={running}
+            style={{
+              padding: '7px 16px',
+              background: running ? colors.border : 'linear-gradient(135deg, #dc2626, #ea580c)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: running ? 'default' : 'pointer',
+              fontWeight: 600,
+              fontSize: '12px',
+            }}
+          >
+            {running ? 'רץ כרגע...' : `הרץ בדיקה (${CONCURRENCY} משתמשים, ${DURATION_MS / 1000}ש׳)`}
+          </button>
+        </div>
       }
     >
       <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: colors.textFaint }}>
@@ -192,6 +214,16 @@ export const LoadTestCard: React.FC = () => {
             ? 'זה היה מול /health, שלא נוגע ב-DB בכלל - כלומר הבעיה היא ב-App Service עצמו (CPU/thread pool), לא רק ב-SQL. גם שדרוג ה-SQL לבדו לא יפתור את זה.'
             : 'זה היה מול /api/Incidents, שכן נוגע ב-DB. כדי לדעת אם זה ה-SQL או ה-App Service עצמו - הריצו את אותה בדיקה מול /health (בחירת היעד למעלה) ותשוו.'}
         </div>
+      )}
+
+      {infoOpen && (
+        <MetricInfoModal
+          title="בדיקת עומס - מה קורה בענן בכל בקשה"
+          source={LOAD_TEST_EXPLAIN.source}
+          body={LOAD_TEST_EXPLAIN.body}
+          qa={LOAD_TEST_EXPLAIN.qa}
+          onClose={() => setInfoOpen(false)}
+        />
       )}
     </Card>
   );
