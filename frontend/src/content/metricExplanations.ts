@@ -44,12 +44,6 @@ export const METRIC_EXPLANATIONS: Record<string, MetricExplain> = {
       'כלומר - Azure עצמו עוקב אחרי כל בקשה שמגיעה לשרת, ללא תלות בקוד האפליקציה שלנו; השרת רק שואל את Azure "כמה היו" ומעביר את התשובה הלאה.',
     ],
   },
-  opsFailedRequests: {
-    source: 'cloud',
-    body: [
-      'אותו מקור בדיוק כמו "סה״כ בקשות" - שאילתה מול Application Insights, הפעם מסוננת לבקשות שסומנו ככושלות. גם כאן, לא קוד שלנו סופר - Azure כבר מתעד את ההצלחה/כישלון של כל בקשה בזמן אמת.',
-    ],
-  },
   opsMedianResponse: {
     source: 'cloud',
     body: [

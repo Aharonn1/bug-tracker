@@ -10,8 +10,6 @@ export const OpsSummaryPanel: React.FC = () => {
   if (error) return null;
   if (!loading && !summary) return null;
 
-  const failureRate = summary && summary.totalRequests > 0 ? (summary.failedRequests / summary.totalRequests) * 100 : 0;
-
   return (
     <div style={{ marginBottom: '24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
@@ -34,25 +32,9 @@ export const OpsSummaryPanel: React.FC = () => {
         </button>
       </div>
 
-      {/* סדר מימין לשמאל לפי מה שהכי חשוב לבדוק קודם: האם יש כשלים כרגע
-          (הכי דחוף/מדאיג) → ביצועים (זמן תגובה) → נפח-בקשות (הקשר, הכי פחות
-          מדאיג כשלעצמו) */}
+      {/* סדר מימין לשמאל לפי מה שהכי חשוב לבדוק קודם: ביצועים (זמן תגובה)
+          → נפח-בקשות (הקשר, הכי פחות מדאיג כשלעצמו) */}
       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-        <StatCard
-          label="בקשות שנכשלו"
-          value={
-            <>
-              {summary?.failedRequests ?? '—'}
-              {summary && summary.totalRequests > 0 && (
-                <span style={{ fontSize: '13px', color: colors.textMuted, marginRight: '6px' }}>
-                  ({failureRate.toFixed(1)}%)
-                </span>
-              )}
-            </>
-          }
-          valueColor={(summary?.failedRequests ?? 0) > 0 ? colors.dangerSoft : colors.successSoft}
-          explain={METRIC_EXPLANATIONS.opsFailedRequests}
-        />
         <StatCard
           label="זמן תגובה חציוני"
           value={
