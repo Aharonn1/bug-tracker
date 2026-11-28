@@ -3,7 +3,7 @@ import { IncidentDetailsModal } from './IncidentDetailsModal';
 import { IncidentSeverity, type SystemIncident } from '../types/bug.types';
 import { UserRole } from '../types/auth.types';
 import { isSiteAdminEmail } from '../constants/siteAdmin';
-import { getTenantDisplayName } from '../constants/tenantDisplayNames';
+import { getTenantDisplayName, isScaleTestTenant } from '../constants/tenantDisplayNames';
 import { useAgentDiagnosis } from '../hooks/useAgentDiagnosis';
 
 // lazy, לא import רגיל - זה גורר את react-markdown (ספרייה לא-זעירה), אבל
@@ -48,6 +48,15 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
   // כי אלמנט שמרונדר תמיד (גם כש-isOpen=false) עדיין גורם לדפדפן להוריד
   // את ה-chunk מיד עם טעינת הטבלה
   const [hasOpenedAgentModal, setHasOpenedAgentModal] = useState(false);
+  // אילו קבוצות scale-test פתוחות כרגע - מפתח הוא ה-incidentId של התקרית
+  // הראשונה ברצף, יציב כל עוד רשימת התקריות לא משתנה
+  const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set());
+  const toggleGroup = (key: number) =>
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
 
   const getSeverityBadge = (level: number) => {
     switch (level) {
@@ -61,6 +70,221 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
         return <span style={{ background: '#1e293b', color: '#94a3b8', padding: '3px 8px', borderRadius: '4px', fontSize: '11px' }}>נמוך (1)</span>;
     }
   };
+
+  // תקריות scale-test (ראו TenantScaleTestCard) יכולות להגיע בעשרות-מאות
+  // בבת אחת, אחת לכל "משרד" מלאכותי - בלי קיבוץ הן היו הופכות את הטבלה
+  // לבלתי-קריאה. מקבצים רק רצפים *רצופים* של 2+ (לא את כולן גלובלית), כדי
+  // לשמור על סדר כרונולוגי נכון מול תקריות אמיתיות שמופיעות ביניהן
+  const renderIncidentRow = (i: SystemIncident, grouped = false) => {
+    const resolved = i.isResolved;
+    // SiteAdmin (מנהל-על חוצה-לקוחות) לא נחשב "עובד שדיווח" מבחינת
+    // עמודת "דווח על ידי" - אותו שיקול כמו בפילוח לפי משתמש למעלה
+    const employeeReporters = i.reportedByUsers.filter((r) => r.role !== UserRole.SiteAdmin);
+    // מחושב פעם אחת לשורה (לא פעמיים) - extractAttemptedEmail עושה
+    // JSON.parse על rawPayload, ורק נחוץ בכלל כש-employeeReporters ריק
+    const attemptedEmail = employeeReporters.length === 0 ? extractAttemptedEmail(i.rawPayload) : null;
+    return (
+      <tr key={i.incidentId} style={{ borderBottom: '1px solid #1e293b', background: grouped ? 'rgba(15, 23, 42, 0.6)' : resolved ? 'rgba(15, 23, 42, 0.4)' : '#131f37' }}>
+        <td style={{ padding: '12px', fontFamily: 'monospace' }}>#{i.incidentId}</td>
+        <td style={{ padding: '12px' }}>{getSeverityBadge(i.severity)}</td>
+        <td style={{ padding: '12px', fontWeight: 'bold', color: '#38bdf8' }}>{i.subsystem}</td>
+        <td style={{ padding: '12px', fontFamily: 'monospace', color: '#f8fafc' }}>{i.caseNumber || '—'}</td>
+        <td style={{ padding: '12px', maxWidth: '320px' }}>
+          <div style={{
+            fontWeight: 'bold',
+            color: '#fff',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {i.hebrewDescription}
+          </div>
+          <div style={{
+            fontSize: '11px',
+            color: '#94a3b8',
+            marginTop: '2px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {i.errorMessage}
+          </div>
+          {isSuspectedStaleBundle(i.rawPayload) && (
+            <span
+              title="השגיאה נקלטה בזמן שהטאב טען גרסה ישנה של האתר - ייתכן שזה לא באג אמיתי, רק באנדל ישן שנשאר טעון אחרי דיפלוי"
+              style={{
+                display: 'inline-block',
+                marginTop: '4px',
+                padding: '2px 7px',
+                background: '#1e293b',
+                border: '1px solid #334155',
+                borderRadius: '4px',
+                color: '#94a3b8',
+                fontSize: '10px',
+              }}
+            >
+              ⚠ יתכן גרסה ישנה בדפדפן
+            </span>
+          )}
+          <button
+            onClick={() => setDetailsIncident(i)}
+            style={{
+              marginTop: '6px',
+              padding: '3px 9px',
+              background: 'transparent',
+              border: '1px solid #334155',
+              borderRadius: '6px',
+              color: '#94a3b8',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+          >
+            פרטים והנחיות ›
+          </button>
+        </td>
+        <td style={{ padding: '12px', textAlign: 'center' }}>
+          <span
+            title={`נראה לאחרונה: ${new Date(i.lastSeenAt).toLocaleString('he-IL')}`}
+            style={{
+              display: 'inline-block',
+              minWidth: '28px',
+              padding: '3px 8px',
+              borderRadius: '999px',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              background: i.occurrencesCount > 1 ? '#78350f' : '#1e293b',
+              color: i.occurrencesCount > 1 ? '#fde047' : '#94a3b8',
+            }}
+          >
+            × {i.occurrencesCount}
+          </span>
+        </td>
+        <td style={{ padding: '12px', whiteSpace: 'nowrap', fontSize: '12px' }}>
+          {new Date(i.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+        </td>
+        <td style={{ padding: '12px', fontSize: '12px', whiteSpace: 'nowrap' }}>
+          {getTenantDisplayName(i.tenantId, i.subsystem)}
+        </td>
+        <td style={{ padding: '12px', fontSize: '12px' }}>
+          {employeeReporters.length === 0 ? (
+            attemptedEmail ? (
+              <span style={{ color: '#fca5a5' }} title="אימייל שהוקלד בניסיון התחברות, לפני שהייתה זהות מאומתת">
+                {attemptedEmail}
+              </span>
+            ) : (
+              <span style={{ color: '#90a0b5' }}>לא מזוהה</span>
+            )
+          ) : employeeReporters.length === 1 ? (
+            <span style={{ color: '#e2e8f0', whiteSpace: 'nowrap' }}>
+              {employeeReporters[0].userName}
+              {employeeReporters[0].occurrenceCount > 1 && (
+                <span style={{ color: '#94a3b8' }}> ×{employeeReporters[0].occurrenceCount}</span>
+              )}
+            </span>
+          ) : (
+            <span
+              title={employeeReporters.map((r) => `${r.userName} — ${r.occurrenceCount} פעמים`).join('\n')}
+              style={{
+                display: 'inline-block',
+                padding: '3px 9px',
+                borderRadius: '999px',
+                background: '#1e293b',
+                color: '#e2e8f0',
+                fontSize: '11px',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                cursor: 'default',
+              }}
+            >
+              {employeeReporters.length} משתמשים
+            </span>
+          )}
+        </td>
+        <td style={{ padding: '12px' }}>
+          {resolved ? (
+            <span style={{ color: '#4ade80', fontWeight: 'bold' }}>✓ נפתר</span>
+          ) : (
+            <span style={{ color: '#f87171', fontWeight: 'bold' }}>● פתוח</span>
+          )}
+        </td>
+        <td style={{ padding: '12px' }}>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+            {/* כפתור חקירת הסוכן */}
+            <button
+              onClick={() => {
+                setHasOpenedAgentModal(true);
+                runAgent(i);
+              }}
+              title="הפעל סוכן AI לניתוח שורש התקלה"
+              style={{
+                padding: '6px 12px',
+                background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <span>חקור</span>
+              <span>🤖</span>
+            </button>
+
+            {!resolved && (
+              <button
+                onClick={() => {
+                  // prompt() כי זו שורה בודדת בטבלה בלי מודאל ייעודי
+                  // לפעולה הזו - עקבי עם ה-alert() הקיים כבר בהוק הזה
+                  // לשגיאות. null (Cancel) מבטל את כל הפעולה; שדה
+                  // ריק (OK בלי טקסט) כן סוגר, רק בלי הערה
+                  const notes = window.prompt('מה פתר את התקלה? (אופציונלי - אפשר להשאיר ריק)');
+                  if (notes === null) return;
+                  onResolve(i.incidentId, notes.trim() || undefined);
+                }}
+                style={{
+                  padding: '6px 10px',
+                  background: '#15803d',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '12px'
+                }}
+              >
+                פתור
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
+  type Row = { kind: 'single'; incident: SystemIncident } | { kind: 'group'; key: number; incidents: SystemIncident[] };
+
+  const rows: Row[] = [];
+  for (let idx = 0; idx < incidents.length; ) {
+    if (isScaleTestTenant(incidents[idx].tenantId)) {
+      const run: SystemIncident[] = [];
+      while (idx < incidents.length && isScaleTestTenant(incidents[idx].tenantId)) {
+        run.push(incidents[idx]);
+        idx++;
+      }
+      if (run.length >= 2) {
+        rows.push({ kind: 'group', key: run[0].incidentId, incidents: run });
+      } else {
+        rows.push({ kind: 'single', incident: run[0] });
+      }
+    } else {
+      rows.push({ kind: 'single', incident: incidents[idx] });
+      idx++;
+    }
+  }
 
   return (
     <>
@@ -89,193 +313,39 @@ export const IncidentTable: React.FC<Props> = ({ incidents, onResolve }) => {
                 </td>
               </tr>
             ) : (
-              incidents.map((i) => {
-                const resolved = i.isResolved;
-                // SiteAdmin (מנהל-על חוצה-לקוחות) לא נחשב "עובד שדיווח" מבחינת
-                // עמודת "דווח על ידי" - אותו שיקול כמו בפילוח לפי משתמש למעלה
-                const employeeReporters = i.reportedByUsers.filter((r) => r.role !== UserRole.SiteAdmin);
-                // מחושב פעם אחת לשורה (לא פעמיים) - extractAttemptedEmail עושה
-                // JSON.parse על rawPayload, ורק נחוץ בכלל כש-employeeReporters ריק
-                const attemptedEmail = employeeReporters.length === 0 ? extractAttemptedEmail(i.rawPayload) : null;
+              rows.map((row) => {
+                if (row.kind === 'single') {
+                  return renderIncidentRow(row.incident);
+                }
+                const isOpen = expandedGroups.has(row.key);
                 return (
-                  <tr key={i.incidentId} style={{ borderBottom: '1px solid #1e293b', background: resolved ? 'rgba(15, 23, 42, 0.4)' : '#131f37' }}>
-                    <td style={{ padding: '12px', fontFamily: 'monospace' }}>#{i.incidentId}</td>
-                    <td style={{ padding: '12px' }}>{getSeverityBadge(i.severity)}</td>
-                    <td style={{ padding: '12px', fontWeight: 'bold', color: '#38bdf8' }}>{i.subsystem}</td>
-                    <td style={{ padding: '12px', fontFamily: 'monospace', color: '#f8fafc' }}>{i.caseNumber || '—'}</td>
-                    <td style={{ padding: '12px', maxWidth: '320px' }}>
-                      <div style={{
-                        fontWeight: 'bold',
-                        color: '#fff',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {i.hebrewDescription}
-                      </div>
-                      <div style={{
-                        fontSize: '11px',
-                        color: '#94a3b8',
-                        marginTop: '2px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {i.errorMessage}
-                      </div>
-                      {isSuspectedStaleBundle(i.rawPayload) && (
-                        <span
-                          title="השגיאה נקלטה בזמן שהטאב טען גרסה ישנה של האתר - ייתכן שזה לא באג אמיתי, רק באנדל ישן שנשאר טעון אחרי דיפלוי"
-                          style={{
-                            display: 'inline-block',
-                            marginTop: '4px',
-                            padding: '2px 7px',
-                            background: '#1e293b',
-                            border: '1px solid #334155',
-                            borderRadius: '4px',
-                            color: '#94a3b8',
-                            fontSize: '10px',
-                          }}
-                        >
-                          ⚠ יתכן גרסה ישנה בדפדפן
-                        </span>
-                      )}
-                      <button
-                        onClick={() => setDetailsIncident(i)}
-                        style={{
-                          marginTop: '6px',
-                          padding: '3px 9px',
-                          background: 'transparent',
-                          border: '1px solid #334155',
-                          borderRadius: '6px',
-                          color: '#94a3b8',
-                          fontSize: '11px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        פרטים והנחיות ›
-                      </button>
-                    </td>
-                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                      <span
-                        title={`נראה לאחרונה: ${new Date(i.lastSeenAt).toLocaleString('he-IL')}`}
-                        style={{
-                          display: 'inline-block',
-                          minWidth: '28px',
-                          padding: '3px 8px',
-                          borderRadius: '999px',
-                          fontSize: '12px',
-                          fontWeight: 'bold',
-                          background: i.occurrencesCount > 1 ? '#78350f' : '#1e293b',
-                          color: i.occurrencesCount > 1 ? '#fde047' : '#94a3b8',
-                        }}
-                      >
-                        × {i.occurrencesCount}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px', whiteSpace: 'nowrap', fontSize: '12px' }}>
-                      {new Date(i.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
-                    </td>
-                    <td style={{ padding: '12px', fontSize: '12px', whiteSpace: 'nowrap' }}>
-                      {getTenantDisplayName(i.tenantId, i.subsystem)}
-                    </td>
-                    <td style={{ padding: '12px', fontSize: '12px' }}>
-                      {employeeReporters.length === 0 ? (
-                        attemptedEmail ? (
-                          <span style={{ color: '#fca5a5' }} title="אימייל שהוקלד בניסיון התחברות, לפני שהייתה זהות מאומתת">
-                            {attemptedEmail}
-                          </span>
-                        ) : (
-                          <span style={{ color: '#90a0b5' }}>לא מזוהה</span>
-                        )
-                      ) : employeeReporters.length === 1 ? (
-                        <span style={{ color: '#e2e8f0', whiteSpace: 'nowrap' }}>
-                          {employeeReporters[0].userName}
-                          {employeeReporters[0].occurrenceCount > 1 && (
-                            <span style={{ color: '#94a3b8' }}> ×{employeeReporters[0].occurrenceCount}</span>
-                          )}
-                        </span>
-                      ) : (
-                        <span
-                          title={employeeReporters.map((r) => `${r.userName} — ${r.occurrenceCount} פעמים`).join('\n')}
-                          style={{
-                            display: 'inline-block',
-                            padding: '3px 9px',
-                            borderRadius: '999px',
-                            background: '#1e293b',
-                            color: '#e2e8f0',
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap',
-                            cursor: 'default',
-                          }}
-                        >
-                          {employeeReporters.length} משתמשים
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      {resolved ? (
-                        <span style={{ color: '#4ade80', fontWeight: 'bold' }}>✓ נפתר</span>
-                      ) : (
-                        <span style={{ color: '#f87171', fontWeight: 'bold' }}>● פתוח</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        {/* כפתור חקירת הסוכן */}
+                  <React.Fragment key={`group-${row.key}`}>
+                    <tr style={{ borderBottom: '1px solid #1e293b', background: '#1e293b' }}>
+                      <td colSpan={11} style={{ padding: '10px 12px' }}>
                         <button
-                          onClick={() => {
-                            setHasOpenedAgentModal(true);
-                            runAgent(i);
-                          }}
-                          title="הפעל סוכן AI לניתוח שורש התקלה"
+                          onClick={() => toggleGroup(row.key)}
                           style={{
-                            padding: '6px 12px',
-                            background: 'linear-gradient(135deg, #0284c7, #2563eb)',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontWeight: '600',
-                            fontSize: '12px',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px'
+                            gap: '8px',
+                            width: '100%',
+                            padding: 0,
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#cbd5e1',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            textAlign: 'right',
                           }}
                         >
-                          <span>חקור</span>
-                          <span>🤖</span>
+                          <span>🧪 {row.incidents.length} תקריות בדיקת קנה-מידה (scale-test) מקובצות</span>
+                          <span style={{ color: '#94a3b8', fontWeight: 400 }}>{isOpen ? 'הסתר ▴' : 'הצג הכל ▾'}</span>
                         </button>
-
-                        {!resolved && (
-                          <button
-                            onClick={() => {
-                              // prompt() כי זו שורה בודדת בטבלה בלי מודאל ייעודי
-                              // לפעולה הזו - עקבי עם ה-alert() הקיים כבר בהוק הזה
-                              // לשגיאות. null (Cancel) מבטל את כל הפעולה; שדה
-                              // ריק (OK בלי טקסט) כן סוגר, רק בלי הערה
-                              const notes = window.prompt('מה פתר את התקלה? (אופציונלי - אפשר להשאיר ריק)');
-                              if (notes === null) return;
-                              onResolve(i.incidentId, notes.trim() || undefined);
-                            }}
-                            style={{
-                              padding: '6px 10px',
-                              background: '#15803d',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              fontSize: '12px'
-                            }}
-                          >
-                            פתור
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                    </tr>
+                    {isOpen && row.incidents.map((i) => renderIncidentRow(i, true))}
+                  </React.Fragment>
                 );
               })
             )}

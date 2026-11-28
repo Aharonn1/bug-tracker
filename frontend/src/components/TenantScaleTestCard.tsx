@@ -5,6 +5,7 @@ import { colors, radius } from '../styles/theme';
 import { Card } from './ui/Card';
 import { InfoButton } from './ui/InfoButton';
 import { MetricInfoModal, type MetricExplain } from './ui/MetricInfoModal';
+import { SCALE_TEST_TENANT_PREFIX } from '../constants/tenantDisplayNames';
 
 const SCALE_TEST_EXPLAIN: MetricExplain = {
   source: 'backend',
@@ -21,7 +22,7 @@ const SCALE_TEST_EXPLAIN: MetricExplain = {
   ],
 };
 
-const TENANT_PREFIX = 'scale-test-tenant-';
+const TENANT_PREFIX = SCALE_TEST_TENANT_PREFIX;
 const MAX_COUNT = 300;
 const TIMEOUT_MS = 15_000;
 

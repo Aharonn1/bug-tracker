@@ -19,3 +19,12 @@ export function getTenantDisplayName(tenantId: string, subsystem?: string | null
   }
   return TENANT_DISPLAY_NAMES[tenantId] ?? tenantId;
 }
+
+// משותף בין TenantScaleTestCard (שיוצר את התקריות המלאכותיות האלו) לבין
+// IncidentTable (שמקבץ אותן לשורה אחת בתצוגה) - מקור יחיד כדי ששני
+// הצדדים תמיד יזהו את אותו דפוס
+export const SCALE_TEST_TENANT_PREFIX = 'scale-test-tenant-';
+
+export function isScaleTestTenant(tenantId: string): boolean {
+  return tenantId.startsWith(SCALE_TEST_TENANT_PREFIX);
+}
